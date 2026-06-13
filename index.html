@@ -979,7 +979,7 @@ function renderContent(){
 // ══════════════════════════════════════════
 const AUTH = {
   user: 'smerav',
-  pass: 'Ksiksou1992',
+  pass: localStorage.getItem('smerav_pwd') || 'Ksiksou1992',
   isLoggedIn: () => sessionStorage.getItem('smerav_auth') === 'ok',
   login: (u, p) => {
     if(u === AUTH.user && p === AUTH.pass){
@@ -1916,21 +1916,96 @@ function renderCheques(){
 
 // ── MON PROFIL ───────────────────────────
 function renderProfil(){
-  const s=state.settings;
-  return div({style:{maxWidth:500}},
-    div({style:{fontSize:18,fontWeight:800,marginBottom:20}},'Mon Profil'),
-    div({className:'card',style:{padding:24}},
-      div({style:{display:'flex',alignItems:'center',gap:16,marginBottom:20,paddingBottom:20,borderBottom:'1px solid #E5E9F2'}},
-        div({style:{width:64,height:64,background:'linear-gradient(135deg,#E8730A,#F59B2B)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,fontWeight:900,color:'#fff'}},'S'),
-        div({},div({style:{fontSize:16,fontWeight:800}},s.nom||'SMERAV S.A.R.L'),div({style:{color:'#6B7A99',fontSize:13}},'Administrateur'),div({style:{color:'#6B7A99',fontSize:12,marginTop:4}},s.email||'sarl.smerav@gmail.com'))
-      ),
-      ...[['Société',s.nom],['Téléphone',s.tel],['Email',s.email],['Adresse',s.adresse],['RC',s.rc],['ICE',s.ice],['TVA',s.tva+'%']].map(([k,v])=>
-        div({style:{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid #E5E9F2',fontSize:13}},
-          span({style:{color:'#6B7A99',fontWeight:700}},k),
-          span({style:{fontWeight:600}},v||'—')
+  const s = state.settings;
+  let tab = renderProfil._tab || 'info';
+  renderProfil._tab = tab;
+
+  // Change password logic
+  let newPwd = '', confirmPwd = '';
+
+  const infoTab = div({style:{display: tab==='info'?'block':'none'}},
+    ...[
+      ['🏢 Nom de l\'entreprise', s.nom],
+      ['📞 Téléphone', s.tel],
+      ['✉️ Email', s.email],
+      ['📍 Adresse', s.adresse],
+      ['🔢 RC', s.rc],
+      ['🆔 ICE', s.ice],
+      ['🧾 IF', s.if_],
+      ['📋 CNSS', s.cnss],
+      ['💳 RIB', s.rib],
+      ['💰 TVA', (s.tva||20)+'%'],
+    ].map(([k,v]) =>
+      div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'13px 0',borderBottom:'1px solid #E5E9F2'}},
+        span({style:{color:'#6B7A99',fontSize:12,fontWeight:700,textTransform:'uppercase',letterSpacing:0.5}}, k),
+        span({style:{fontWeight:600,fontSize:13,color:'#1A2540'}}, v||'—')
+      )
+    ),
+    div({style:{marginTop:20}},
+      btn('✎ Modifier les informations','btn-orange',()=>setState({page:'parametres'}),{style:{width:'100%'}})
+    )
+  );
+
+  const secTab = div({style:{display: tab==='sec'?'block':'none'}},
+    div({style:{marginBottom:20,padding:16,background:'#F8FAFD',borderRadius:10,border:'1px solid #E5E9F2'}},
+      div({style:{fontSize:12,color:'#6B7A99',fontWeight:700,marginBottom:4,textTransform:'uppercase'}},'Nom d\'utilisateur'),
+      div({style:{fontSize:15,fontWeight:700}},'smerav')
+    ),
+    div({style:{fontWeight:700,fontSize:13,color:'#1A2540',marginBottom:14}}, '🔐 Modifier le mot de passe'),
+    div({style:{marginBottom:12}},
+      el('label',{className:'lbl'},'Nouveau mot de passe'),
+      Object.assign(el('input',{type:'password',placeholder:'••••••••'}),{oninput:e=>newPwd=e.target.value})
+    ),
+    div({style:{marginBottom:20}},
+      el('label',{className:'lbl'},'Confirmation'),
+      Object.assign(el('input',{type:'password',placeholder:'••••••••'}),{oninput:e=>confirmPwd=e.target.value})
+    ),
+    btn('Mettre à jour','btn-blue',()=>{
+      if(!newPwd){alert('Entrez un nouveau mot de passe');return;}
+      if(newPwd!==confirmPwd){alert('Les mots de passe ne correspondent pas');return;}
+      AUTH.pass = newPwd;
+      localStorage.setItem('smerav_pwd', newPwd);
+      notify('Mot de passe mis à jour ✓');
+    },{style:{width:'100%',marginBottom:10}}),
+    div({style:{fontSize:11,color:'#10B981',textAlign:'center',marginTop:8}},
+      '✅ Le mot de passe est sauvegardé sur cet appareil'
+    )
+  );
+
+  return div({style:{maxWidth:620}},
+    // Header banner
+    div({style:{background:'linear-gradient(135deg,#1A2D50,#2563EB)',borderRadius:16,padding:'28px 24px',marginBottom:20,display:'flex',alignItems:'center',gap:20,position:'relative',overflow:'hidden'}},
+      div({style:{width:80,height:80,background:'rgba(255,255,255,0.15)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36,fontWeight:900,color:'#fff',border:'3px solid rgba(255,255,255,0.3)'}}, 'S'),
+      div({},
+        div({style:{fontSize:20,fontWeight:900,color:'#fff',letterSpacing:0.5}}, s.nom||'SMERAV S.A.R.L'),
+        div({style:{color:'rgba(255,255,255,0.7)',fontSize:13,marginTop:4}}, '✉️ '+(s.email||'sarl.smerav@gmail.com')),
+        div({style:{marginTop:8}},
+          span({style:{background:'rgba(255,255,255,0.2)',color:'#fff',padding:'3px 12px',borderRadius:20,fontSize:11,fontWeight:700}}, '👑 Administrateur')
         )
       ),
-      div({style:{marginTop:16}},btn('✎ Modifier dans Paramètres','btn-orange',()=>setState({page:'parametres'}),{style:{width:'100%'}}))
+      el('button',{
+        onclick:()=>setState({page:'parametres'}),
+        style:{position:'absolute',top:16,right:16,background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,padding:'8px 14px',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}
+      }, '⚙️ MODIFIER')
+    ),
+
+    // Tabs
+    div({style:{display:'flex',gap:4,marginBottom:20,background:'#F4F6FA',borderRadius:10,padding:4}},
+      ...[['info','👤 Informations du compte'],['sec','🛡️ Sécurité & Accès']].map(([key,label])=>
+        el('button',{
+          onclick:()=>{renderProfil._tab=key;render();},
+          style:{flex:1,padding:'10px',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer',
+            background:tab===key?'#fff':'transparent',
+            color:tab===key?'#2563EB':'#6B7A99',
+            boxShadow:tab===key?'0 1px 4px rgba(0,0,0,0.1)':'none'}
+        }, label)
+      )
+    ),
+
+    // Content
+    div({className:'card',style:{padding:24}},
+      infoTab,
+      secTab
     )
   );
 }
