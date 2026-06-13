@@ -1206,33 +1206,147 @@ function renderProjetCharges(p, updateProject){
 
 
 function renderListeProjets(){
+  // Filters state
+  if(!renderListeProjets._f) renderListeProjets._f = {search:'',client:'',statut:'',dateMin:'',dateMax:'',progMin:'',progMax:''};
+  const flt = renderListeProjets._f;
+
+  // Get unique clients
+  const clients = [...new Set(state.projects.map(p=>p.client).filter(Boolean))];
+
+  // Filter projects
+  let projs = state.projects.filter(p=>{
+    if(flt.search && !p.nom.toLowerCase().includes(flt.search.toLowerCase()) && !p.ref.toLowerCase().includes(flt.search.toLowerCase())) return false;
+    if(flt.client && p.client !== flt.client) return false;
+    if(flt.statut && p.statut !== flt.statut) return false;
+    if(flt.dateMin && p.dateDebut < flt.dateMin) return false;
+    if(flt.dateMax && p.dateDebut > flt.dateMax) return false;
+    if(flt.progMin && (p.progression||0) < Number(flt.progMin)) return false;
+    if(flt.progMax && (p.progression||0) > Number(flt.progMax)) return false;
+    return true;
+  });
+
+  function inp(placeholder, key, type='text', val=''){
+    const i = el('input',{type,placeholder,value:flt[key]||val,style:{padding:'8px 12px',fontSize:12,borderRadius:8,border:'1.5px solid #E5E9F2',background:'#F8FAFD',color:'#1A2540',outline:'none',width:'100%'}});
+    i.oninput = e => { flt[key]=e.target.value; renderListeProjets._f=flt; render(); };
+    return i;
+  }
+  function sel(key, opts, placeholder){
+    const s = el('select',{style:{padding:'8px 12px',fontSize:12,borderRadius:8,border:'1.5px solid #E5E9F2',background:'#F8FAFD',color:'#1A2540',outline:'none',width:'100%'}});
+    s.innerHTML = `<option value="">${placeholder}</option>` + opts.map(o=>`<option value="${o}" ${flt[key]===o?'selected':''}>${o}</option>`).join('');
+    s.onchange = e => { flt[key]=e.target.value; renderListeProjets._f=flt; render(); };
+    return s;
+  }
+
+  // Export Excel
+  function exportExcel(){
+    if(!window.XLSX){alert('XLSX non disponible');return;}
+    const rows = [['Réf','Nom','Client','Maître ouvrage','Budget (MAD)','Montant payé','Reste à recevoir','Date début','Date fin','Progression (%)','Statut']];
+    projs.forEach(p=>{
+      const paye = (p.payements||[]).reduce((s,x)=>s+(x.montant||0),0);
+      rows.push([p.ref,p.nom,p.client,p.maitreOuvrage||'',p.budget||0,paye,(p.budget||0)-paye,p.dateDebut||'',p.dateFin||'',p.progression||0,p.statut]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Projets');
+    XLSX.writeFile(wb,'Projets_SMERAV.xlsx');
+  }
+
+  // Export PDF (print)
+  function exportPDF(){
+    const win = window.open('','_blank');
+    const rows = projs.map((p,i)=>{
+      const paye = (p.payements||[]).reduce((s,x)=>s+(x.montant||0),0);
+      const reste = (p.budget||0) - paye;
+      const statColor = p.statut==='En cours'?'#2563EB':p.statut==='Terminé'?'#10B981':'#F59E0B';
+      return `<tr style="background:${i%2===0?'#fff':'#F8FAFD'}">
+        <td>${p.ref}</td><td><strong>${p.nom}</strong></td><td>${p.client||'-'}</td>
+        <td style="color:#E8730A;font-weight:700">${Number(p.budget||0).toLocaleString('fr-MA')} DH</td>
+        <td>${Number(paye).toLocaleString('fr-MA')} DH</td>
+        <td style="color:#EF4444">${Number(reste).toLocaleString('fr-MA')} DH</td>
+        <td>${p.dateDebut||'-'}</td>
+        <td><div style="background:#eee;border-radius:10px;height:8px;width:80px"><div style="background:#E8730A;height:100%;border-radius:10px;width:${p.progression||0}%"></div></div><span style="font-size:11px">${p.progression||0}%</span></td>
+        <td><span style="background:${statColor}20;color:${statColor};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">${p.statut}</span></td>
+      </tr>`;
+    }).join('');
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Projets SMERAV</title>
+    <style>body{font-family:'Segoe UI',Arial,sans-serif;padding:20px;color:#1A2540}h1{color:#E8730A;margin-bottom:5px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#0F1628;color:#fff;padding:10px 12px;text-align:left;font-size:11px}td{padding:9px 12px;border-bottom:1px solid #E5E9F2}@media print{@page{size:A4 landscape;margin:10mm}}</style>
+    </head><body>
+    <h1>SMERAV S.A.R.L - Gestion des Projets</h1>
+    <p style="color:#6B7A99;font-size:12px;margin-bottom:16px">${projs.length} projet(s) · Exporté le ${new Date().toLocaleDateString('fr-MA')}</p>
+    <table><thead><tr><th>Réf</th><th>Nom</th><th>Client</th><th>Budget</th><th>Montant payé</th><th>Reste à recevoir</th><th>Date début</th><th>Progression</th><th>Statut</th></tr></thead>
+    <tbody>${rows}</tbody></table></body></html>`);
+    win.document.close();
+    setTimeout(()=>win.print(),500);
+  }
+
+  const statColors = {'En cours':'#2563EB','Terminé':'#10B981','En attente':'#F59E0B','Suspendu':'#EF4444'};
+
   return div({},
-    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}},
-      div({style:{fontSize:18,fontWeight:800}},'Gestion des Projets'),
-      btn('+ Nouveau Projet','btn-orange',()=>setState({page:'nouveau-projet'}))
+    // Header
+    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:12}},
+      div({},
+        div({style:{fontSize:20,fontWeight:800}},'Gestion des Projets'),
+        div({style:{fontSize:12,color:'#6B7A99',marginTop:2}},projs.length+' projet(s)')
+      ),
+      div({style:{display:'flex',gap:8,flexWrap:'wrap'}},
+        el('button',{onclick:exportPDF,style:{padding:'9px 16px',background:'#EF444415',color:'#EF4444',border:'1.5px solid #EF444430',borderRadius:9,fontWeight:700,fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:6}},'📄 Exporter PDF'),
+        el('button',{onclick:exportExcel,style:{padding:'9px 16px',background:'#10B98115',color:'#10B981',border:'1.5px solid #10B98130',borderRadius:9,fontWeight:700,fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:6}},'📊 Exporter Excel'),
+        btn('+ Ajouter un Projet','btn-orange',()=>setState({page:'nouveau-projet'}))
+      )
     ),
-    div({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16}},
-      ...state.projects.map((p,i)=>
-        div({className:'card',style:{overflow:'hidden'}},
-          div({style:{background:'linear-gradient(135deg,#0F1628,#1A2D50)',padding:'14px 16px'}},
-            div({style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}},
-              div({style:{fontSize:11,color:'#6A8099'}},p.ref),
-              span({className:'badge',style:{background:p.statut==='En cours'?'#2563EB30':'#10B98130',color:p.statut==='En cours'?'#93C5FD':'#6EE7B7'}},p.statut)
+
+    // Filters
+    div({className:'card',style:{padding:16,marginBottom:16}},
+      div({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:10,marginBottom:10}},
+        div({style:{position:'relative'}},
+          el('span',{style:{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'#6B7A99',fontSize:14}},'🔍'),
+          Object.assign(el('input',{type:'text',placeholder:'Rechercher un projet...',value:flt.search,style:{padding:'8px 12px 8px 32px',fontSize:12,borderRadius:8,border:'1.5px solid #E5E9F2',background:'#F8FAFD',color:'#1A2540',outline:'none',width:'100%'}}),{oninput:e=>{flt.search=e.target.value;renderListeProjets._f=flt;render();}})
+        ),
+        sel('client', clients, 'Tous les clients'),
+        sel('statut', ['En cours','Terminé','En attente','Suspendu'], 'Tous les statuts'),
+        inp('Date début min','dateMin','date'),
+        inp('Date début max','dateMax','date'),
+        inp('Progression min (%)','progMin','number'),
+        inp('Progression max (%)','progMax','number')
+      ),
+      el('button',{onclick:()=>{renderListeProjets._f={search:'',client:'',statut:'',dateMin:'',dateMax:'',progMin:'',progMax:''};render();},style:{fontSize:12,color:'#6B7A99',background:'none',border:'none',cursor:'pointer',textDecoration:'underline'}},'Réinitialiser')
+    ),
+
+    // Table
+    div({className:'card'},
+      el('table',{},
+        el('thead',{},el('tr',{},
+          ...['NOM','CLIENT','BUDGET','MONTANT PAYÉ','RESTE À RECEVOIR','DATE DE DÉBUT','PROGRESSION','STATUT','ACTIONS'].map(h=>el('th',{},h))
+        )),
+        el('tbody',{},...(projs.length ? projs.map((p,i)=>{
+          const paye = (p.payements||[]).reduce((s,x)=>s+(x.montant||0),0);
+          const reste = (p.budget||0) - paye;
+          const sc = statColors[p.statut]||'#6B7A99';
+          return el('tr',{style:{cursor:'pointer'},onclick:(e)=>{if(!e.target.closest('button'))setState({page:'fiche-projet',selProject:p.id,ficheSection:'info'});}},
+            el('td',{},
+              div({style:{fontWeight:700,color:'#1A2540'}},p.nom),
+              div({style:{fontSize:11,color:'#6B7A99'}},p.ref)
             ),
-            div({style:{fontSize:16,fontWeight:900,color:'#fff',marginTop:4}},p.nom),
-            div({style:{fontSize:12,color:'#8AA0C0',marginTop:2}},p.client+' · '+p.ville)
-          ),
-          div({style:{padding:'14px 16px'}},
-            div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}},
-              div({},div({style:{fontSize:10,color:'#6B7A99',fontWeight:700}},'BUDGET'),div({style:{fontWeight:800,color:'#E8730A'}},fmt(p.budget))),
-              div({},div({style:{fontSize:10,color:'#6B7A99',fontWeight:700}},'PROGRESSION'),div({style:{fontWeight:800}},(p.progression||0)+'%'))
+            el('td',{},div({style:{fontWeight:600}},p.client||'-'),div({style:{fontSize:11,color:'#6B7A99'}},p.maitreOuvrage||'')),
+            el('td',{style:{fontWeight:800,color:'#E8730A'}},fmt(p.budget)),
+            el('td',{style:{color:'#10B981',fontWeight:700}},fmt(paye)),
+            el('td',{style:{color:reste>0?'#EF4444':'#10B981',fontWeight:700}},fmt(reste)),
+            el('td',{},p.dateDebut?fmtDate(p.dateDebut):'-'),
+            el('td',{style:{minWidth:120}},
+              div({style:{display:'flex',alignItems:'center',gap:8}},
+                div({style:{background:'#eee',borderRadius:20,height:8,flex:1}},
+                  div({style:{background:'#E8730A',height:'100%',borderRadius:20,width:(p.progression||0)+'%'}})
+                ),
+                span({style:{fontSize:12,fontWeight:700,minWidth:32}},(p.progression||0)+'%')
+              )
             ),
-            div({style:{background:'#eee',borderRadius:20,height:6,marginBottom:12}},
-              div({style:{background:'#E8730A',height:'100%',borderRadius:20,width:(p.progression||0)+'%'}})
-            ),
-            btn('📂 Fiche Projet','btn-blue',()=>setState({page:'fiche-projet',selProject:p.id,ficheSection:'info'}),{style:{width:'100%'}})
-          )
-        )
+            el('td',{},span({className:'badge',style:{background:sc+'20',color:sc}},p.statut)),
+            el('td',{},div({style:{display:'flex',gap:6}},
+              btn('📂','btn-blue',()=>setState({page:'fiche-projet',selProject:p.id,ficheSection:'info'}),{style:{padding:'5px 10px',fontSize:13},title:'Fiche Projet'}),
+              btn('✕','btn-red',()=>{if(confirmDelete()){const idx=state.projects.indexOf(p);setState({projects:state.projects.filter((_,j)=>j!==idx)});notify('Projet supprimé');}},{style:{padding:'5px 10px',fontSize:13},title:'Supprimer'})
+            ))
+          );
+        }) : [el('tr',{},el('td',{colSpan:9,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun projet trouvé'))]))
       )
     )
   );
