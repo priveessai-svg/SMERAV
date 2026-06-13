@@ -1,0 +1,24 @@
+{
+  "name": "SMERAV - Gestion Chantier",
+  "short_name": "SMERAV",
+  "description": "Système de gestion des chantiers SMERAV S.A.R.L",
+  "start_url": "/SMERAV/",
+  "display": "standalone",
+  "background_color": "#0F1628",
+  "theme_color": "#E8730A",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192x192/E8730A/ffffff?text=SM",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://via.placeholder.com/512x512/E8730A/ffffff?text=SM",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
