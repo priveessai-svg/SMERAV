@@ -968,7 +968,69 @@ function renderContent(){
   }
 }
 
+// ══════════════════════════════════════════
+// LOGIN SYSTEM
+// ══════════════════════════════════════════
+const AUTH = {
+  user: 'smerav',
+  pass: 'Ksiksou1992',
+  isLoggedIn: () => sessionStorage.getItem('smerav_auth') === 'ok',
+  login: (u, p) => {
+    if(u === AUTH.user && p === AUTH.pass){
+      sessionStorage.setItem('smerav_auth','ok');
+      return true;
+    }
+    return false;
+  },
+  logout: () => { sessionStorage.removeItem('smerav_auth'); render(); }
+};
+
+function renderLogin(){
+  const app = document.getElementById('app');
+  app.innerHTML='';
+  let errMsg = null;
+
+  const draw = () => {
+    app.innerHTML='';
+    const userInput = el('input',{type:'text',placeholder:'Nom d\'utilisateur',style:{marginBottom:12,padding:'12px 16px',fontSize:15,borderRadius:10,border:'2px solid #1E2D4A',background:'#1A2540',color:'#fff',outline:'none',width:'100%'}});
+    const passInput = el('input',{type:'password',placeholder:'Mot de passe',style:{marginBottom:16,padding:'12px 16px',fontSize:15,borderRadius:10,border:'2px solid #1E2D4A',background:'#1A2540',color:'#fff',outline:'none',width:'100%'}});
+
+    const doLogin = () => {
+      if(AUTH.login(userInput.value.trim(), passInput.value.trim())){
+        render();
+      } else {
+        errMsg = '❌ Nom d\'utilisateur ou mot de passe incorrect';
+        draw();
+      }
+    };
+
+    passInput.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+    app.appendChild(
+      div({style:{minHeight:'100vh',background:'#0F1628',display:'flex',alignItems:'center',justifyContent:'center',padding:20}},
+        div({style:{background:'#162030',borderRadius:20,padding:'40px 36px',width:'100%',maxWidth:380,border:'1px solid #1E2D4A',boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}},
+          div({style:{textAlign:'center',marginBottom:28}},
+            div({style:{fontSize:42,marginBottom:8}}, '🏗️'),
+            div({style:{fontSize:22,fontWeight:800,color:'#E8730A',letterSpacing:1}}, 'SMERAV'),
+            div({style:{fontSize:12,color:'#6B7A99',marginTop:4}}, 'Gestion Chantier')
+          ),
+          userInput,
+          passInput,
+          errMsg ? div({style:{color:'#EF4444',fontSize:12,marginBottom:12,textAlign:'center'}}, errMsg) : null,
+          el('button',{
+            style:{width:'100%',padding:'13px',background:'#E8730A',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:15,cursor:'pointer'},
+            onclick: doLogin
+          }, '🔐 Se connecter')
+        )
+      )
+    );
+  };
+  draw();
+}
+
 function render(){
+  if(!AUTH.isLoggedIn()){ renderLogin(); return; }
+
   const app = document.getElementById('app');
   app.innerHTML='';
 
@@ -979,6 +1041,7 @@ function render(){
         div({style:{fontSize:15,fontWeight:700}}, getPageTitle()),
         div({style:{display:'flex',alignItems:'center',gap:12}},
           state.syncing ? span({style:{fontSize:11,color:'#6B7A99'}}, '🔄 Sync...') : span({style:{fontSize:11,color:'#10B981'}}, '☁️ Connecté'),
+          el('button',{style:{padding:'5px 12px',background:'#FEE2E2',color:'#EF4444',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'},onclick:()=>{if(confirm('Se déconnecter ?'))AUTH.logout();}}, '🚪 Déconnexion'),
           state.notif ? span({style:{background:state.notif.type==='success'?'#10B98120':'#FEE2E2',color:state.notif.type==='success'?'#10B981':'#EF4444',padding:'6px 14px',borderRadius:20,fontSize:12,fontWeight:700}},state.notif.msg) : null
         )
       ),
@@ -1391,7 +1454,7 @@ function renderPaiementsClients(){
           el('td',{style:{fontWeight:800,color:'#E8730A'}},fmt(p.montant)),
           el('td',{},p.mode),el('td',{style:{color:'#6B7A99'}},p.numReglement||'—'),
           el('td',{style:{color:'#6B7A99'}},p.facRef||'—'),el('td',{style:{color:'#6B7A99',fontSize:12}},p.note||'—'),
-          el('td',{},btn('✕','btn-red',()=>{if(confirmDelete()){const np=(state.paiementsClients||[]).filter((_,idx)=>idx!==i);setState({paiementsClients:np});DB.set('paiementsClients',np);}},{style:{padding:'4px 8px',fontSize:12}}))
+          el('td',{},btn('✕','btn-red',()=>{const np=(state.paiementsClients||[]).filter((_,idx)=>idx!==i);setState({paiementsClients:np});DB.set('paiementsClients',np);},{style:{padding:'4px 8px',fontSize:12}}))
         )):[el('tr',{},el('td',{colSpan:8,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun paiement'))]))
       )
     )
@@ -1565,7 +1628,7 @@ function renderPaiementsFourn(){
           el('td',{},fmtDate(p.date)),el('td',{style:{fontWeight:600}},p.fournisseur),
           el('td',{style:{fontWeight:800,color:'#E8730A'}},fmt(p.montant)),
           el('td',{},p.mode),el('td',{style:{color:'#6B7A99'}},p.numReglement||'—'),el('td',{style:{color:'#6B7A99'}},p.facRef||'—'),
-          el('td',{},btn('✕','btn-red',()=>{if(confirmDelete()){const np=(state.paiementsFourn||[]).filter((_,idx)=>idx!==i);setState({paiementsFourn:np});DB.set('paiementsFourn',np);}},{style:{padding:'4px 8px',fontSize:12}}))
+          el('td',{},btn('✕','btn-red',()=>{const np=(state.paiementsFourn||[]).filter((_,idx)=>idx!==i);setState({paiementsFourn:np});DB.set('paiementsFourn',np);},{style:{padding:'4px 8px',fontSize:12}}))
         )):[el('tr',{},el('td',{colSpan:7,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun paiement'))]))
       )
     )
@@ -2260,7 +2323,7 @@ function renderRapportSection(p, updateProject){
                   el('td',{style:{padding:'4px 6px'}},Object.assign(el('input',{value:l.piecesReparer||'',style:{width:80,border:'1px solid transparent',borderRadius:4,padding:'3px 5px',fontSize:11,background:'transparent'}}),{oninput:e=>{const nl=[...lignes];nl[idx]={...nl[idx],piecesReparer:e.target.value};saveRapport(selMonth,{...rapports2[selMonth],lignes:nl});},onfocus:e=>e.target.style.borderColor='#E8730A',onblur:e=>e.target.style.borderColor='transparent'})),
                   ...bd.map(b=>el('td',{style:{padding:'3px 4px',textAlign:'center'}},Object.assign(el('input',{type:'number',min:0,step:0.01,value:l.qtes&&l.qtes[b.id]||'',style:{width:50,textAlign:'center',border:'1px solid #E5E9F2',borderRadius:4,padding:'3px',fontSize:11,background:l.qtes&&l.qtes[b.id]>0?'#FFF8F0':'#F8FAFD',color:l.qtes&&l.qtes[b.id]>0?'#E8730A':'#6B7A99'}}),{oninput:e=>{const nl=[...lignes];if(!nl[idx].qtes)nl[idx].qtes={};nl[idx].qtes[b.id]=parseFloat(e.target.value)||0;saveRapport(selMonth,{...rapports2[selMonth],lignes:nl});}}))),
                   el('td',{style:{padding:'7px 6px',textAlign:'right',fontWeight:800,color:rt>0?'#E8730A':'#6B7A99',fontSize:11}},rt>0?fmtN(rt):'-'),
-                  el('td',{},btn('✕','btn-red',()=>{if(confirmDelete()){const nl=lignes.filter((_,oi)=>oi!==idx);saveRapport(selMonth,{...rapports2[selMonth],lignes:nl});}},{style:{padding:'3px 7px',fontSize:10}}))
+                  el('td',{},btn('✕','btn-red',()=>{const nl=lignes.filter((_,oi)=>oi!==idx);saveRapport(selMonth,{...rapports2[selMonth],lignes:nl});},{style:{padding:'3px 7px',fontSize:10}}))
                 );
               }),
               el('tr',{key:'w'+wk,style:{background:'#FFF3E0',borderTop:'2px solid #E8730A40'}},
