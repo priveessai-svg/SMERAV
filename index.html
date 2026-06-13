@@ -2078,7 +2078,22 @@ function renderAttachementsSection(p, updateProject){
               el('td',{style:{padding:'6px 8px',textAlign:'center',color:'#6B7A99'}},l.unite),
               el('td',{style:{padding:'6px 8px',textAlign:'right',color:'#6B7A99'}},fmtN(l.qteBD)),
               el('td',{style:{padding:'6px 8px',textAlign:'right',color:'#6B7A99'}},fmtN(l.qtePrecedente)),
-              el('td',{style:{padding:'4px'}},Object.assign(el('input',{type:'number',min:0,step:0.01,value:l.qteMois||'',style:{width:70,textAlign:'right',border:'2px solid #E8730A60',borderRadius:6,padding:'4px 6px',fontSize:11,background:'#FFF8F0'}}),{oninput:e=>updateLigne(i,e.target.value)})),
+              el('td',{style:{padding:'4px'}},(()=>{
+  const inp = el('input',{type:'number',min:0,step:0.01,value:l.qteMois||'',
+    'data-idx':i,
+    style:{width:70,textAlign:'right',border:'2px solid #E8730A60',borderRadius:6,padding:'4px 6px',fontSize:11,background:'#FFF8F0'}});
+  inp.oninput = e => updateLigne(i, e.target.value);
+  inp.onkeydown = e => {
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      const allInputs = document.querySelectorAll('input[data-idx]');
+      const arr = Array.from(allInputs);
+      const idx = arr.indexOf(e.target);
+      if(idx >= 0 && idx < arr.length - 1){ arr[idx+1].focus(); arr[idx+1].select(); }
+    }
+  };
+  return inp;
+})()),
               el('td',{style:{padding:'6px 8px',textAlign:'right',fontWeight:700,color:'#2563EB'}},fmtN(l.cumul)),
               el('td',{style:{padding:'6px 8px',textAlign:'right'}},span({style:{background:l.pct>=100?'#10B98120':l.pct>0?'#2563EB15':'#F4F6FA',color:l.pct>=100?'#10B981':l.pct>0?'#2563EB':'#6B7A99',padding:'2px 7px',borderRadius:20,fontSize:10,fontWeight:700}},l.pct+'%'))
             )))
