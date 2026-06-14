@@ -1917,96 +1917,121 @@ function renderCheques(){
 // ── MON PROFIL ───────────────────────────
 function renderProfil(){
   const s = state.settings;
-  let tab = renderProfil._tab || 'info';
-  renderProfil._tab = tab;
-
-  // Change password logic
+  if(!renderProfil._tab) renderProfil._tab = 'info';
+  if(!renderProfil._editing) renderProfil._editing = false;
+  const tab = renderProfil._tab;
+  const editing = renderProfil._editing;
+  let ef = editing ? {...s} : null;
   let newPwd = '', confirmPwd = '';
 
-  const infoTab = div({style:{display: tab==='info'?'block':'none'}},
-    ...[
-      ['🏢 Nom de l\'entreprise', s.nom],
-      ['📞 Téléphone', s.tel],
-      ['✉️ Email', s.email],
-      ['📍 Adresse', s.adresse],
-      ['🔢 RC', s.rc],
-      ['🆔 ICE', s.ice],
-      ['🧾 IF', s.if_],
-      ['📋 CNSS', s.cnss],
-      ['💳 RIB', s.rib],
-      ['💰 TVA', (s.tva||20)+'%'],
-    ].map(([k,v]) =>
-      div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'13px 0',borderBottom:'1px solid #E5E9F2'}},
-        span({style:{color:'#6B7A99',fontSize:12,fontWeight:700,textTransform:'uppercase',letterSpacing:0.5}}, k),
-        span({style:{fontWeight:600,fontSize:13,color:'#1A2540'}}, v||'—')
-      )
-    ),
-    div({style:{marginTop:20}},
-      btn('✎ Modifier les informations','btn-orange',()=>setState({page:'parametres'}),{style:{width:'100%'}})
-    )
-  );
+  function inp2(key, type='text', placeholder=''){
+    const i = el('input',{type,value:ef?ef[key]||'':'',placeholder,
+      style:{padding:'10px 14px',fontSize:14,borderRadius:8,border:'1.5px solid #E5E9F2',background:'#F8FAFD',color:'#1A2540',outline:'none',width:'100%'}});
+    i.oninput = e => { if(ef) ef[key] = type==='number'?+e.target.value:e.target.value; };
+    return i;
+  }
 
-  const secTab = div({style:{display: tab==='sec'?'block':'none'}},
-    div({style:{marginBottom:20,padding:16,background:'#F8FAFD',borderRadius:10,border:'1px solid #E5E9F2'}},
-      div({style:{fontSize:12,color:'#6B7A99',fontWeight:700,marginBottom:4,textTransform:'uppercase'}},'Nom d\'utilisateur'),
-      div({style:{fontSize:15,fontWeight:700}},'smerav')
+  function row(label, value){
+    return div({style:{marginBottom:20}},
+      div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',letterSpacing:0.5,marginBottom:6}}, label),
+      div({style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',background:'#F8FAFD',borderRadius:10,border:'1px solid #E5E9F2'}},
+        div({style:{display:'flex',alignItems:'center',gap:10}},
+          span({style:{fontSize:18}}, label.includes('NOM')?'🏢':label.includes('EMAIL')?'✉️':label.includes('TÉL')?'📞':label.includes('ADRESSE')?'📍':label.includes('RC')?'🔢':label.includes('ICE')?'🆔':label.includes('TVA')?'💰':'📋'),
+          span({style:{fontWeight:600,fontSize:14,color:'#1A2540'}}, value||'—')
+        ),
+        span({style:{color:'#6B7A99',fontSize:18,cursor:'pointer'}}, '›')
+      )
+    );
+  }
+
+  // Info tab content
+  const infoContent = editing
+    ? div({},
+        ...[
+          ['Nom de l\'entreprise','nom'],['Téléphone','tel'],['Email','email'],
+          ['Adresse','adresse'],['RC','rc'],['ICE','ice'],['IF','if_'],
+          ['CNSS','cnss'],['RIB','rib'],['TVA (%)','tva'],
+        ].map(([label,key]) =>
+          div({style:{marginBottom:14}},
+            div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',marginBottom:5}}, label),
+            inp2(key, key==='tva'?'number':'text')
+          )
+        ),
+        div({style:{display:'flex',gap:10,marginTop:10}},
+          el('button',{onclick:()=>{setState({settings:{...state.settings,...ef}});renderProfil._editing=false;notify('Informations mises à jour ✓');},
+            style:{flex:1,padding:'12px',background:'#10B981',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:14,cursor:'pointer'}}, '💾 Enregistrer'),
+          el('button',{onclick:()=>{renderProfil._editing=false;render();},
+            style:{flex:1,padding:'12px',background:'#F4F6FA',color:'#6B7A99',border:'none',borderRadius:10,fontWeight:700,fontSize:14,cursor:'pointer'}}, 'Annuler')
+        )
+      )
+    : div({},
+        row('NOM DE L\'ENTREPRISE', s.nom),
+        row('EMAIL DE CONNEXION', s.email),
+        row('TÉLÉPHONE', s.tel),
+        row('ADRESSE', s.adresse),
+        row('RC', s.rc),
+        row('ICE', s.ice),
+        row('IF', s.if_),
+        row('CNSS', s.cnss),
+        row('RIB', s.rib),
+        row('TVA', (s.tva||20)+'%')
+      );
+
+  // Security tab
+  const secContent = div({},
+    div({style:{display:'flex',alignItems:'center',gap:10,marginBottom:24}},
+      span({style:{fontSize:20}}, '🔑'),
+      span({style:{fontWeight:700,fontSize:15,color:'#1A2540'}}, 'MODIFIER LE MOT DE PASSE')
     ),
-    div({style:{fontWeight:700,fontSize:13,color:'#1A2540',marginBottom:14}}, '🔐 Modifier le mot de passe'),
-    div({style:{marginBottom:12}},
-      el('label',{className:'lbl'},'Nouveau mot de passe'),
-      Object.assign(el('input',{type:'password',placeholder:'••••••••'}),{oninput:e=>newPwd=e.target.value})
+    div({style:{marginBottom:16}},
+      div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',marginBottom:6}}, 'NOUVEAU MOT DE PASSE'),
+      Object.assign(el('input',{type:'password',placeholder:'••••••••',
+        style:{padding:'12px 16px',fontSize:14,borderRadius:10,border:'1.5px solid #E5E9F2',background:'#F8FAFD',width:'100%',outline:'none'}}),
+        {oninput:e=>newPwd=e.target.value})
     ),
-    div({style:{marginBottom:20}},
-      el('label',{className:'lbl'},'Confirmation'),
-      Object.assign(el('input',{type:'password',placeholder:'••••••••'}),{oninput:e=>confirmPwd=e.target.value})
+    div({style:{marginBottom:24}},
+      div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',marginBottom:6}}, 'CONFIRMATION'),
+      Object.assign(el('input',{type:'password',placeholder:'••••••••',
+        style:{padding:'12px 16px',fontSize:14,borderRadius:10,border:'1.5px solid #E5E9F2',background:'#F8FAFD',width:'100%',outline:'none'}}),
+        {oninput:e=>confirmPwd=e.target.value})
     ),
-    btn('Mettre à jour','btn-blue',()=>{
+    el('button',{onclick:()=>{
       if(!newPwd){alert('Entrez un nouveau mot de passe');return;}
       if(newPwd!==confirmPwd){alert('Les mots de passe ne correspondent pas');return;}
-      AUTH.pass = newPwd;
-      localStorage.setItem('smerav_pwd', newPwd);
+      AUTH.pass=newPwd;localStorage.setItem('smerav_pwd',newPwd);
       notify('Mot de passe mis à jour ✓');
-    },{style:{width:'100%',marginBottom:10}}),
-    div({style:{fontSize:11,color:'#10B981',textAlign:'center',marginTop:8}},
-      '✅ Le mot de passe est sauvegardé sur cet appareil'
-    )
+    },style:{width:'100%',padding:'14px',background:'#2563EB',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:'pointer',letterSpacing:0.5}},
+    'METTRE À JOUR')
   );
 
-  return div({style:{maxWidth:620}},
-    // Header banner
-    div({style:{background:'linear-gradient(135deg,#1A2D50,#2563EB)',borderRadius:16,padding:'28px 24px',marginBottom:20,display:'flex',alignItems:'center',gap:20,position:'relative',overflow:'hidden'}},
-      div({style:{width:80,height:80,background:'rgba(255,255,255,0.15)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36,fontWeight:900,color:'#fff',border:'3px solid rgba(255,255,255,0.3)'}}, 'S'),
+  return div({style:{maxWidth:700}},
+    // Blue banner
+    div({style:{background:'linear-gradient(135deg,#2563EB,#1A3A8F)',borderRadius:20,padding:'32px 28px',marginBottom:24,display:'flex',alignItems:'center',gap:20,position:'relative'}},
+      div({style:{width:90,height:90,background:'rgba(255,255,255,0.2)',borderRadius:20,display:'flex',alignItems:'center',justifyContent:'center',fontSize:44,border:'2px solid rgba(255,255,255,0.3)'}},'👤'),
       div({},
-        div({style:{fontSize:20,fontWeight:900,color:'#fff',letterSpacing:0.5}}, s.nom||'SMERAV S.A.R.L'),
-        div({style:{color:'rgba(255,255,255,0.7)',fontSize:13,marginTop:4}}, '✉️ '+(s.email||'sarl.smerav@gmail.com')),
-        div({style:{marginTop:8}},
-          span({style:{background:'rgba(255,255,255,0.2)',color:'#fff',padding:'3px 12px',borderRadius:20,fontSize:11,fontWeight:700}}, '👑 Administrateur')
+        div({style:{fontSize:22,fontWeight:900,color:'#fff',letterSpacing:0.5}}, s.nom||'SMERAV S.A.R.L'),
+        div({style:{color:'rgba(255,255,255,0.75)',fontSize:13,marginTop:6,display:'flex',alignItems:'center',gap:6}},
+          span({},'✉️'), span({},s.email||'sarl.smerav@gmail.com')
         )
       ),
-      el('button',{
-        onclick:()=>setState({page:'parametres'}),
-        style:{position:'absolute',top:16,right:16,background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:8,padding:'8px 14px',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}
-      }, '⚙️ MODIFIER')
+      el('button',{onclick:()=>{renderProfil._editing=!renderProfil._editing;renderProfil._tab='info';render();},
+        style:{position:'absolute',top:20,right:20,background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.4)',borderRadius:10,padding:'8px 16px',color:'#fff',fontSize:12,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:6}},
+        '⚙️ MODIFIER')
     ),
 
     // Tabs
-    div({style:{display:'flex',gap:4,marginBottom:20,background:'#F4F6FA',borderRadius:10,padding:4}},
+    div({style:{display:'flex',borderBottom:'2px solid #E5E9F2',marginBottom:24}},
       ...[['info','👤 Informations du compte'],['sec','🛡️ Sécurité & Accès']].map(([key,label])=>
-        el('button',{
-          onclick:()=>{renderProfil._tab=key;render();},
-          style:{flex:1,padding:'10px',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer',
-            background:tab===key?'#fff':'transparent',
-            color:tab===key?'#2563EB':'#6B7A99',
-            boxShadow:tab===key?'0 1px 4px rgba(0,0,0,0.1)':'none'}
-        }, label)
+        el('button',{onclick:()=>{renderProfil._tab=key;render();},
+          style:{padding:'12px 20px',border:'none',borderBottom:tab===key?'3px solid #2563EB':'3px solid transparent',
+            fontWeight:tab===key?800:500,fontSize:13,cursor:'pointer',background:'transparent',
+            color:tab===key?'#2563EB':'#6B7A99',marginBottom:-2}},
+          label)
       )
     ),
 
     // Content
-    div({className:'card',style:{padding:24}},
-      infoTab,
-      secTab
-    )
+    tab==='info' ? infoContent : secContent
   );
 }
 
@@ -2230,6 +2255,58 @@ function renderAttachementsSection(p, updateProject){
                   )
                 );
                 setState({modal:{title:'Attachement N°'+a.num+' — Du '+fmtDate(a.du)+' au '+fmtDate(a.au),content:detailEl,wide:true}});
+              },{style:{padding:'4px 8px',fontSize:12}}),
+              btn('🖨️','btn-blue',()=>{
+                const s = state.settings;
+                const win = window.open('','_blank');
+                const rows = (a.lignes||[]).map((l,li)=>`<tr style="background:${li%2===0?'#fff':'#F8FAFD'}">
+                  <td style="color:#2563EB;font-weight:700">${l.id||''}</td>
+                  <td>${l.designation||''}</td>
+                  <td style="text-align:center">${l.unite||''}</td>
+                  <td style="text-align:right">${l.qteBD||0}</td>
+                  <td style="text-align:right">${l.qtePrecedente||0}</td>
+                  <td style="text-align:right;font-weight:800;color:#E8730A">${l.qteMois||0}</td>
+                  <td style="text-align:right;font-weight:700;color:#2563EB">${l.cumul||0}</td>
+                  <td style="text-align:right"><span style="background:#2563EB15;color:#2563EB;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">${l.pct||0}%</span></td>
+                </tr>`).join('');
+                win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+                <title>Attachement N°${a.num}</title>
+                <style>
+                  body{font-family:'Segoe UI',Arial,sans-serif;padding:20px;color:#1A2540;font-size:12px}
+                  .header{display:flex;justify-content:space-between;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #2563EB}
+                  .logo{font-size:20px;font-weight:900;color:#E8730A}
+                  h2{color:#1A2540;margin:10px 0 4px}
+                  .info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;padding:12px;background:#F8FAFD;border-radius:8px;border:1px solid #E5E9F2}
+                  .info-item label{font-size:9px;font-weight:700;color:#6B7A99;text-transform:uppercase;display:block;margin-bottom:3px}
+                  .info-item span{font-weight:700;font-size:13px}
+                  table{width:100%;border-collapse:collapse;font-size:11px}
+                  th{background:#0F1628;color:#fff;padding:8px 10px;text-align:left;font-size:10px}
+                  td{padding:7px 10px;border-bottom:1px solid #E5E9F2}
+                  .footer{margin-top:20px;padding-top:12px;border-top:1px solid #E5E9F2;font-size:10px;color:#6B7A99;text-align:center}
+                  @media print{@page{size:A4 landscape;margin:10mm}button{display:none}}
+                </style></head><body>
+                <div class="header">
+                  <div><div class="logo">SMERAV S.A.R.L</div><div style="font-size:10px;color:#6B7A99">${s.adresse||''} · RC: ${s.rc||''} · ICE: ${s.ice||''}</div></div>
+                  <div style="text-align:right"><div style="font-weight:800;font-size:14px">ATTACHEMENT N°${a.num}</div><div style="font-size:10px;color:#6B7A99">Imprimé le ${new Date().toLocaleDateString('fr-MA')}</div></div>
+                </div>
+                <h2>${p.nom}</h2>
+                <div class="info-grid">
+                  <div class="info-item"><label>Client</label><span>${p.client||''}</span></div>
+                  <div class="info-item"><label>Période du</label><span>${a.du?new Date(a.du).toLocaleDateString('fr-MA'):''}</span></div>
+                  <div class="info-item"><label>Au</label><span>${a.au?new Date(a.au).toLocaleDateString('fr-MA'):''}</span></div>
+                  <div class="info-item"><label>Maître d'ouvrage</label><span>${p.maitreOuvrage||''}</span></div>
+                  <div class="info-item"><label>Réf Projet</label><span>${p.ref||''}</span></div>
+                  <div class="info-item"><label>Date</label><span>${a.date?new Date(a.date).toLocaleDateString('fr-MA'):''}</span></div>
+                </div>
+                <table><thead><tr>
+                  <th>N° Prix</th><th>Désignation</th><th>Uté</th><th style="text-align:right">Qté Marché</th>
+                  <th style="text-align:right">Qté Précédente</th><th style="text-align:right">Qté du Mois</th>
+                  <th style="text-align:right">Cumul</th><th style="text-align:right">%</th>
+                </tr></thead><tbody>${rows}</tbody></table>
+                <div class="footer">SMERAV S.A.R.L · ${s.tel||''} · ${s.email||''} · TVA: ${s.tva||20}%</div>
+                </body></html>`);
+                win.document.close();
+                setTimeout(()=>win.print(),500);
               },{style:{padding:'4px 8px',fontSize:12}}),
               btn('🗑','btn-red',()=>{if(confirmDelete())updateProject({attachements:atts.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}})
             ))
