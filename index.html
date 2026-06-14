@@ -2006,21 +2006,23 @@ function renderProfil(){
 
   return div({style:{maxWidth:700}},
     // Blue banner
-    div({style:{background:'linear-gradient(135deg,#1e40af,#1d4ed8,#2563EB)',borderRadius:16,padding:'28px 24px',marginBottom:24,display:'flex',alignItems:'center',gap:20,position:'relative',overflow:'hidden'}},
-      // Icon
-      div({style:{width:100,height:100,background:'rgba(255,255,255,0.15)',borderRadius:20,display:'flex',alignItems:'center',justifyContent:'center',fontSize:52,flexShrink:0,border:'2px solid rgba(255,255,255,0.25)',backdropFilter:'blur(4px)'}},'👤'),
-      // Info
-      div({style:{flex:1}},
-        div({style:{fontSize:20,fontWeight:900,color:'#fff',letterSpacing:0.5,marginBottom:6}}, (s.nom||'SMERAV S.A.R.L').toUpperCase()),
-        div({style:{color:'rgba(255,255,255,0.8)',fontSize:12,display:'flex',alignItems:'center',gap:6}},
-          span({style:{fontSize:14}},'✉️'),
-          span({},(s.email||'sarl.smerav@gmail.com').toUpperCase())
+    div({style:{background:'linear-gradient(135deg,#1e40af,#2563EB)',borderRadius:16,marginBottom:24,overflow:'hidden'}},
+      // Top: MODIFIER button
+      div({style:{display:'flex',justifyContent:'flex-end',padding:'12px 16px 0'}},
+        el('button',{onclick:()=>{renderProfil._editing=!renderProfil._editing;renderProfil._tab='info';render();},
+          style:{background:'rgba(255,255,255,0.15)',border:'1.5px solid rgba(255,255,255,0.4)',borderRadius:8,padding:'7px 14px',color:'#fff',fontSize:12,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:6}},
+          [el('span',{},'⚙️'), el('span',{},'MODIFIER')]
         )
       ),
-      // MODIFIER button
-      el('button',{onclick:()=>{renderProfil._editing=!renderProfil._editing;renderProfil._tab='info';render();},
-        style:{position:'absolute',top:20,right:20,background:'rgba(255,255,255,0.12)',border:'1.5px solid rgba(255,255,255,0.3)',borderRadius:10,padding:'10px 20px',color:'#fff',fontSize:12,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:8,letterSpacing:0.5}},
-        [el('span',{style:{fontSize:14}},'⚙️'), el('span',{},'MODIFIER')])
+      // Center: Icon + Info
+      div({style:{display:'flex',flexDirection:'column',alignItems:'center',padding:'10px 16px 28px',textAlign:'center'}},
+        div({style:{width:90,height:90,background:'rgba(255,255,255,0.15)',borderRadius:20,display:'flex',alignItems:'center',justifyContent:'center',fontSize:44,border:'2px solid rgba(255,255,255,0.3)',marginBottom:14}},'👤'),
+        div({style:{fontSize:18,fontWeight:900,color:'#fff',letterSpacing:0.5,marginBottom:6}}, (s.nom||'SMERAV S.A.R.L').toUpperCase()),
+        div({style:{color:'rgba(255,255,255,0.75)',fontSize:12,display:'flex',alignItems:'center',gap:6,justifyContent:'center'}},
+          span({},'✉️'),
+          span({},(s.email||'sarl.smerav@gmail.com').toUpperCase())
+        )
+      )
     ),
 
     // Tabs
