@@ -882,58 +882,134 @@ function printFacture(f){
 // ── PARAMETRES ───────────────────────────
 function renderParametres(){
   const s = {...state.settings};
-  return div({style:{maxWidth:700}},
-    div({style:{fontSize:18,fontWeight:800,marginBottom:20}},'Paramètres d\'impression'),
-    div({className:'card'},
-      div({style:{background:'linear-gradient(135deg,#0F1628,#1A2D50)',padding:'16px 24px'}},
-        div({style:{color:'#fff',fontWeight:800,fontSize:14}},"Paramètres d'impression"),
-        div({style:{color:'#6A8099',fontSize:12}},"Informations apparaissant sur tous vos documents")
-      ),
-      div({style:{padding:24,display:'flex',flexDirection:'column',gap:14}},
-        div({style:{display:'grid',gridTemplateColumns:'1fr auto',gap:20,alignItems:'start'}},
-          div({style:{display:'flex',flexDirection:'column',gap:12}},
-            div({},el('label',{className:'lbl'},'Nomination'),Object.assign(el('input',{value:s.nom||''}),{oninput:e=>s.nom=e.target.value})),
-            div({},el('label',{className:'lbl'},'Titulaire du Marché'),Object.assign(el('input',{value:s.titulaire||'',placeholder:'ex: Sté SMERAV sarl'}),{oninput:e=>s.titulaire=e.target.value})),
-            div({},el('label',{className:'lbl'},'En-tête Page (Impression)'),Object.assign(el('textarea',{rows:3,style:{resize:'vertical',fontStyle:'italic',fontWeight:700}},s.enTete||''),{oninput:e=>s.enTete=e.target.value})),
-            div({},el('label',{className:'lbl'},'Pied de Page (Impression)'),Object.assign(el('textarea',{rows:3,style:{resize:'vertical',fontSize:11}},s.piedPage||''),{oninput:e=>s.piedPage=e.target.value})),
+  let activeTab = 'identite';
+
+  function saveSettings(){
+    setState({settings:s});
+    DB.set('settings',s);
+    notify('Paramètres enregistrés ✓');
+  }
+
+  const tabs = [
+    {key:'identite', label:'Paramètres', sub:'IDENTITÉ & CONTACT'},
+    {key:'ice',      label:'ICE',        sub:'IDENTIFIANTS FISCAUX'},
+    {key:'perso',    label:'Personnalisation', sub:'LOGO & COULEURS'},
+    {key:'docs',     label:'Documents',  sub:'FORMAT & PDF'},
+  ];
+
+  const container = div({style:{display:'flex',minHeight:480}});
+
+  function getTabContent(){
+    if(activeTab==='identite') return div({style:{padding:28,flex:1}},
+      div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',letterSpacing:1,marginBottom:20}},'COORDONNÉES DE L\'ENTREPRISE'),
+      div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}},
+        div({style:{gridColumn:'1/-1'}},el('label',{className:'lbl'},'Société'),Object.assign(el('input',{value:s.nom||''}),{oninput:e=>s.nom=e.target.value})),
+        div({style:{gridColumn:'1/-1'}},el('label',{className:'lbl'},'Adresse'),Object.assign(el('input',{value:s.adresse||''}),{oninput:e=>s.adresse=e.target.value})),
+        div({},el('label',{className:'lbl'},'Téléphone'),Object.assign(el('input',{value:s.tel||''}),{oninput:e=>s.tel=e.target.value})),
+        div({},el('label',{className:'lbl'},'Email'),Object.assign(el('input',{value:s.email||''}),{oninput:e=>s.email=e.target.value})),
+        div({},el('label',{className:'lbl'},'Ville'),Object.assign(el('input',{value:s.ville||''}),{oninput:e=>s.ville=e.target.value})),
+        div({},el('label',{className:'lbl'},'Titulaire du Marché'),Object.assign(el('input',{value:s.titulaire||''}),{oninput:e=>s.titulaire=e.target.value})),
+      )
+    );
+    if(activeTab==='ice') return div({style:{padding:28,flex:1}},
+      div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',letterSpacing:1,marginBottom:20}},'IDENTIFIANTS LÉGAUX & FISCAUX'),
+      div({style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16}},
+        div({},el('label',{className:'lbl'},'I.C.E'),Object.assign(el('input',{value:s.ice||''}),{oninput:e=>s.ice=e.target.value})),
+        div({},el('label',{className:'lbl'},'R.C'),Object.assign(el('input',{value:s.rc||''}),{oninput:e=>s.rc=e.target.value})),
+        div({},el('label',{className:'lbl'},'I.F'),Object.assign(el('input',{value:s.if_||''}),{oninput:e=>s.if_=e.target.value})),
+        div({},el('label',{className:'lbl'},'Patente'),Object.assign(el('input',{value:s.tp||''}),{oninput:e=>s.tp=e.target.value})),
+        div({},el('label',{className:'lbl'},'CNSS'),Object.assign(el('input',{value:s.cnss||''}),{oninput:e=>s.cnss=e.target.value})),
+        div({},el('label',{className:'lbl'},'Capital'),Object.assign(el('input',{value:s.capital||'1 000 000,00'}),{oninput:e=>s.capital=e.target.value})),
+        div({style:{gridColumn:'1/-1'}},el('label',{className:'lbl'},'R.I.B'),Object.assign(el('input',{value:s.rib||'',placeholder:'011270000006210002125734'}),{oninput:e=>s.rib=e.target.value})),
+      )
+    );
+       if(activeTab==='perso') return div({style:{padding:28,flex:1}},
+      div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',letterSpacing:1,marginBottom:20}},'IDENTITÉ VISUELLE'),
+      div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:32}},
+        div({},
+          el('label',{className:'lbl'},'LOGO OFFICIEL'),
+          div({style:{width:'100%',height:150,border:'2px dashed #E5E9F2',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',background:'#F8FAFD',overflow:'hidden',marginBottom:10}},
+            s.logo ? Object.assign(el('img',{src:s.logo,style:{maxHeight:130,objectFit:'contain'}})) :
+            div({style:{color:'#6B7A99',fontSize:12,textAlign:'center',padding:10}},'Cliquez pour ajouter votre logo')
           ),
-          div({style:{textAlign:'center',minWidth:130}},
-            div({style:{width:120,height:120,border:'2px dashed #E5E9F2',borderRadius:12,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#F8FAFD',overflow:'hidden',marginBottom:8}},
-              s.logo ? Object.assign(el('img',{src:s.logo,style:{width:'100%',height:'100%',objectFit:'contain'}})) :
-              div({style:{color:'#6B7A99',fontSize:12,textAlign:'center'}},'Logo')
-            ),
-            el('label',{style:{cursor:'pointer',color:C.blue,fontSize:12,fontWeight:700,textDecoration:'underline'}},
-              'Choisir votre logo...',
-              Object.assign(el('input',{type:'file',accept:'image/*',style:{display:'none'}}),{
-                onchange:e=>{
-                  const file=e.target.files[0]; if(!file) return;
-                  const r=new FileReader();
-                  r.onload=ev=>{s.logo=ev.target.result;setState({settings:s});notify('Logo mis à jour ✓');};
-                  r.readAsDataURL(file);
-                }
-              })
-            )
+          el('label',{style:{cursor:'pointer',color:C.blue,fontSize:12,fontWeight:700}},
+            '📁 Choisir votre logo...',
+            Object.assign(el('input',{type:'file',accept:'image/*',style:{display:'none'}}),{
+              onchange:e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{s.logo=ev.target.result;setState({settings:s});notify('Logo mis à jour ✓');};r.readAsDataURL(file);}
+            })
           )
         ),
-        div({className:'grid-3'},
-          div({},el('label',{className:'lbl'},'Lieu ou Ville'),Object.assign(el('input',{value:s.ville||''}),{oninput:e=>s.ville=e.target.value})),
-          div({},
-            el('label',{className:'lbl'},'Facturation'),
-            (()=>{const sel=el('select',{});['Hors Taxe (HT)','Toutes Taxes Comprises (TTC)'].forEach(o=>sel.innerHTML+=`<option ${s.facturation===o.split(' ')[0]?'selected':''}>${o}</option>`);sel.oninput=e=>s.facturation=e.target.value.includes('HT')?'HT':'TTC';return sel;})()
+        div({},
+          el('label',{className:'lbl'},'COULEUR PRINCIPALE'),
+          div({style:{display:'flex',alignItems:'center',gap:16,marginBottom:20}},
+            Object.assign(el('input',{type:'color',value:s.couleur||'#C9A84C',style:{width:80,height:80,borderRadius:12,border:'2px solid #E5E9F2',cursor:'pointer',padding:4}}),{oninput:e=>{s.couleur=e.target.value;}}),
+            div({style:{fontSize:11,color:'#6B7A99',lineHeight:'1.8'}},el('span',{},'Cette couleur sera utilisée'),el('br',{}),'pour les titres, les bordures',el('br',{}),'et les éléments graphiques',el('br',{}),'de vos documents PDF.')
           ),
-          div({},
-            el('label',{className:'lbl'},'Taux de TVA'),
-            div({style:{display:'flex',alignItems:'center',gap:8}},
-              Object.assign(el('input',{type:'number',value:s.tva||20,style:{width:80}}),{oninput:e=>s.tva=+e.target.value}),
-              span({style:{fontWeight:800,fontSize:16}},'%')
-            )
-          )
-        ),
-        div({style:{display:'flex',justifyContent:'flex-end',borderTop:'1px solid #E5E9F2',paddingTop:16}},
-          btn('✓ Valider','btn-green',()=>{setState({settings:s});notify('Paramètres enregistrés ✓');},{style:{padding:'12px 36px',fontSize:15}})
+          el('label',{className:'lbl'},'EN-TÊTE (IMPRESSION)'),
+          Object.assign(el('textarea',{rows:3,style:{resize:'vertical',fontStyle:'italic',fontWeight:700,width:'100%'}},s.enTete||''),{oninput:e=>s.enTete=e.target.value})
         )
       )
-    )
+    );
+    if(activeTab==='docs') return div({style:{padding:28,flex:1}},
+      div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',letterSpacing:1,marginBottom:16}},'AFFICHAGE DES PRIX'),
+      div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:24}},
+        div({style:{border:'2px solid '+(s.facturation!=='TTC'?'#2563EB':'#E5E9F2'),borderRadius:12,padding:16,cursor:'pointer'},onclick:()=>{s.facturation='HT';saveSettings();}},
+          div({style:{fontWeight:800,fontSize:13,marginBottom:6}},'MODE CLASSIQUE (HT)'),
+          div({style:{fontSize:11,color:'#6B7A99'}},'Affiche les montants hors taxes. Recommandé pour la gestion professionnelle (B2B).')
+        ),
+        div({style:{border:'2px solid '+(s.facturation==='TTC'?'#2563EB':'#E5E9F2'),borderRadius:12,padding:16,cursor:'pointer'},onclick:()=>{s.facturation='TTC';saveSettings();}},
+          div({style:{fontWeight:800,fontSize:13,marginBottom:6}},'MODE SIMPLIFIÉ (TTC)'),
+          div({style:{fontSize:11,color:'#6B7A99'}},'Affiche directement les montants toutes taxes comprises.')
+        )
+      ),
+      div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',letterSpacing:1,marginBottom:8}},'PIED DE PAGE (IMPRESSION)'),
+      Object.assign(el('textarea',{rows:3,style:{resize:'vertical',fontSize:11,width:'100%'}},s.piedPage||''),{oninput:e=>s.piedPage=e.target.value}),
+      div({style:{fontSize:11,color:'#6B7A99',marginTop:6}},'Ces informations apparaîtront en bas de tous vos documents imprimés.')
+    );
+  }
+
+  function render(){
+    container.innerHTML='';
+    const sidebar = div({style:{width:240,minWidth:240,borderRight:'1px solid #E5E9F2',padding:'12px 0'}});
+    tabs.forEach(t=>{
+      const active = activeTab===t.key;
+      const item = div({
+        style:{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',cursor:'pointer',
+          borderRadius:10,margin:'2px 8px',
+          background:active?'#2563EB':'transparent',
+          color:active?'#fff':'#1A2540'},
+        onclick:()=>{activeTab=t.key;render();}
+      },
+        div({style:{width:32,height:32,borderRadius:8,background:active?'rgba(255,255,255,0.2)':'#F4F6FA',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0}},
+          t.key==='identite'?'🏢':t.key==='ice'?'🛡️':t.key==='perso'?'🎨':'📄'
+        ),
+        div({},
+          div({style:{fontWeight:700,fontSize:13}},t.label),
+          div({style:{fontSize:10,opacity:active?0.8:0.6,textTransform:'uppercase',letterSpacing:0.5}},t.sub)
+        )
+      );
+      sidebar.appendChild(item);
+    });
+    const right = div({style:{flex:1,display:'flex',flexDirection:'column'}});
+    right.appendChild(getTabContent());
+    right.appendChild(div({style:{padding:'16px 24px',borderTop:'1px solid #E5E9F2',display:'flex',justifyContent:'flex-end'}},
+      btn('💾 SAUVEGARDER TOUT','btn-blue',saveSettings,{style:{padding:'11px 28px',fontSize:13,borderRadius:9}})
+    ));
+    container.appendChild(sidebar);
+    container.appendChild(right);
+  }
+
+  render();
+
+  return div({style:{maxWidth:980}},
+    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}},
+      div({},
+        div({style:{fontSize:28,fontWeight:800}},'Paramètres'),
+        div({style:{fontSize:13,color:'#6B7A99',marginTop:4}},'Configurez votre profil d\'entreprise et vos préférences d\'édition.')
+      ),
+      btn('💾 SAUVEGARDER TOUT','btn-blue',saveSettings,{style:{padding:'12px 28px',fontSize:13,borderRadius:10,background:'#2563EB'}})
+    ),
+    div({className:'card',style:{overflow:'hidden'}}, container)
   );
 }
 
