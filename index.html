@@ -60,8 +60,27 @@ tr:hover{background:#F8FAFD;}
   thead{display:table-header-group!important;}
   tr{page-break-inside:avoid;}
   body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-  @page{size:A4;margin:10mm;}
+  @page{
+    size:A4;
+    margin:10mm 10mm 25mm 10mm;
+  }
   .print-page{page-break-after:always;}
+  /* Cacher date/heure du navigateur */
+  @page { margin-top: 10mm; }
+  /* Footer personnalisé */
+  .print-footer{
+    display:block!important;
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    text-align:center;
+    font-size:8px;
+    color:#444;
+    border-top:1px solid #aaa;
+    padding:4px 10mm;
+    background:#fff;
+  }
 }
 </style>
 </head>
@@ -318,7 +337,8 @@ function printDoc(htmlContent, title='Document'){
     const s = getSettings();
     const logoHTML = s.logo ? `<img src="${s.logo}" style="height:60px;object-fit:contain;"/>` :
       `<div style="width:60px;height:60px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;">SM</div>`;
-    const footerTxt = (s.piedPage||'').replace(/\n/g,'<br>');
+    const defaultFooter = 'Siège social : N 75 Lotissement Bassma Masira – 30000 Fès · (+212) 06 69 99 84 90 · (+212) 06 61 80 88 94 · sarl.smerav@gmail.com · R.C : 71021 · T.P : 13440432 · I.F : 51696715 · CNSS : 2996480 · ICE : 002993123000065 · RIB : 011270000006210002125734';
+    const footerTxt = ((s.piedPage||'').trim() || defaultFooter).replace(/\n/g,'<br>');
     const enTeteTxt = (s.enTete||'').replace(/\n/g,'<br>');
     const w = window.open('','_blank');
     if(!w){ alert('Activez les popups pour imprimer'); return; }
@@ -393,7 +413,9 @@ function headerHTML(){
 
 function footerHTML(){
   const s = getSettings();
-  return `<div style="font-size:9px;color:#444;text-align:center;border-top:1px solid #ccc;padding-top:6px;margin-top:10px;">${(s.piedPage||'').replace(/\n/g,'<br>')}</div>`;
+  const defaultFooter = 'Siège social : N 75 Lotissement Bassma Masira – 30000 Fès · (+212) 06 69 99 84 90 · (+212) 06 61 80 88 94 · sarl.smerav@gmail.com · R.C : 71021 · T.P : 13440432 · I.F : 51696715 · CNSS : 2996480 · ICE : 002993123000065 · RIB : 011270000006210002125734';
+  const txt = (s.piedPage||'').trim() || defaultFooter;
+  return `<div style="font-size:9px;color:#444;text-align:center;border-top:1px solid #ccc;padding-top:6px;margin-top:10px;">${txt.replace(/\n/g,'<br>')}</div>`;
 }
 
 // ══════════════════════════════════════════
@@ -854,7 +876,8 @@ function printFacture(f){
     <div style="font-weight:700;font-size:11px;text-decoration:underline">Arrêtée la présente facture à la somme de :</div>
     <div style="font-style:italic;font-size:10px;margin-top:4px">${numToWords(f.montantTTC||0)}</div>
   </div>
-  <div style="text-align:right;font-size:9px;color:#999;margin-top:8px">Page : 1/1</div>`;
+  <div style="text-align:right;font-size:9px;color:#999;margin-top:8px">Page : 1/1</div>
+  ${footerHTML()}`;
   printDoc(html, 'Facture '+f.num);
 }
 
@@ -1575,7 +1598,8 @@ function printDevis(d){
     <tr><td style="border:none">TVA ${d.tva||20}%</td><td style="border:none;text-align:right">${fmtN(d.montantTVA||0)}</td></tr>
     <tr style="background:#fff3e0"><td style="border:none;font-weight:900">Total TTC</td><td style="border:none;text-align:right;font-weight:900;color:#E8730A">${fmtN(d.montantTTC||0)}</td></tr>
   </table>
-  <div style="margin-top:12px;font-size:10px;color:#666">Validité du devis : ${d.validite||30} jours · ${numToWords(d.montantTTC||0)}</div>`;
+  <div style="margin-top:12px;font-size:10px;color:#666">Validité du devis : ${d.validite||30} jours · ${numToWords(d.montantTTC||0)}</div>
+  ${footerHTML()}`;
   printDoc(html,'Devis '+d.num);
 }
 
@@ -2444,15 +2468,61 @@ function renderAttachementsSection(p, updateProject){
                   <tbody>${rows}</tbody>
                 </table>
 
-                ${piedPage ? '<div class="pied">'+piedPage+'</div>' : ''}
+                <div class="pied">${piedPage || 'Siège social : N 75 Lotissement Bassma Masira – 30000 Fès · (+212) 06 69 99 84 90 · (+212) 06 61 80 88 94 · sarl.smerav@gmail.com · R.C : 71021 · T.P : 13440432 · I.F : 51696715 · CNSS : 2996480 · ICE : 002993123000065 · RIB : 011270000006210002125734'}</div>
 
                 </body></html>`);
                 win.document.close();
                 setTimeout(()=>win.print(),500);
               },{style:{padding:'4px 8px',fontSize:12}}),
               btn('✏️','btn-orange',()=>{
-                // Open edit modal for this attachement
+                // Open edit modal with full table
+                const editLignes = JSON.parse(JSON.stringify(a.lignes||[]));
                 const editForm = {du:a.du,au:a.au,date:a.date,num:a.num,travailNum:a.travailNum||''};
+
+                const lignesContainer = div({});
+
+                function renderEditLignes(){
+                  lignesContainer.innerHTML='';
+                  lignesContainer.appendChild(
+                    el('table',{style:{width:'100%',fontSize:11,marginTop:8}},
+                      el('thead',{},el('tr',{style:{background:'#1A2540',color:'#fff'}},
+                        ...['N° Prix','Désignation','Uté','Qté Marché','Qté Précédente','Qté du Mois','Cumul','%'].map(h=>
+                          el('th',{style:{padding:'6px 8px',fontWeight:700,fontSize:10}},h))
+                      )),
+                      el('tbody',{},...editLignes.map((l,li)=>{
+                        const inp = el('input',{type:'number',min:0,step:0.01,value:l.qteMois||0,
+                          style:{width:70,textAlign:'right',border:'2px solid #E8730A',borderRadius:6,padding:'3px 6px',fontSize:11}});
+                        inp.oninput = e => {
+                          editLignes[li].qteMois = parseFloat(e.target.value)||0;
+                          editLignes[li].cumul = (editLignes[li].qtePrecedente||0) + editLignes[li].qteMois;
+                          editLignes[li].pct = editLignes[li].qteBD>0 ? Math.round(editLignes[li].cumul/editLignes[li].qteBD*1000)/10 : 0;
+                          renderEditLignes();
+                        };
+                        inp.onkeydown = e => {
+                          if(e.key==='Enter'){
+                            e.preventDefault();
+                            const allInps = lignesContainer.querySelectorAll('input[type=number]');
+                            const arr = Array.from(allInps);
+                            const idx2 = arr.indexOf(e.target);
+                            if(idx2 >= 0 && idx2 < arr.length-1){ arr[idx2+1].focus(); arr[idx2+1].select(); }
+                          }
+                        };
+                        return el('tr',{style:{background:li%2===0?'#fff':'#F8FAFD'}},
+                          el('td',{style:{padding:'5px 8px',fontWeight:700,color:'#2563EB',textAlign:'center'}},l.id||''),
+                          el('td',{style:{padding:'5px 8px',fontSize:10}},l.designation||''),
+                          el('td',{style:{padding:'5px 8px',textAlign:'center'}},l.unite||''),
+                          el('td',{style:{padding:'5px 8px',textAlign:'center'}},l.qteBD||0),
+                          el('td',{style:{padding:'5px 8px',textAlign:'center'}},l.qtePrecedente||0),
+                          el('td',{style:{padding:'3px 6px'}},inp),
+                          el('td',{style:{padding:'5px 8px',textAlign:'center',fontWeight:700,color:'#2563EB'}},editLignes[li].cumul||0),
+                          el('td',{style:{padding:'5px 8px',textAlign:'center',color:'#10B981',fontWeight:700}},(editLignes[li].pct||0)+'%')
+                        );
+                      }))
+                    )
+                  );
+                }
+                renderEditLignes();
+
                 const formEl = div({style:{display:'flex',flexDirection:'column',gap:12}},
                   div({style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}},
                     div({},el('label',{className:'lbl'},'N° Attachement'),Object.assign(el('input',{value:editForm.num||'',style:{width:'100%'}}),{oninput:e=>editForm.num=e.target.value})),
@@ -2463,14 +2533,16 @@ function renderAttachementsSection(p, updateProject){
                     div({},el('label',{className:'lbl'},'Du'),Object.assign(el('input',{type:'date',value:editForm.du||'',style:{width:'100%'}}),{oninput:e=>editForm.du=e.target.value})),
                     div({},el('label',{className:'lbl'},'Au'),Object.assign(el('input',{type:'date',value:editForm.au||'',style:{width:'100%'}}),{oninput:e=>editForm.au=e.target.value}))
                   ),
+                  div({style:{overflowX:'auto'}},lignesContainer),
                   btn('💾 Enregistrer','btn-green',()=>{
-                    const updated = atts.map((x,xi)=>xi===i?{...x,...editForm}:x);
+                    const total = editLignes.reduce((s,l)=>s+(l.qteMois||0)*(l.pu||0),0);
+                    const updated = atts.map((x,xi)=>xi===i?{...x,...editForm,lignes:editLignes,total}:x);
                     updateProject({attachements:updated});
                     setState({modal:null});
                     notify('Attachement mis à jour ✓');
                   })
                 );
-                setState({modal:{title:'Modifier Attachement N°'+a.num,content:formEl}});
+                setState({modal:{title:'Modifier Attachement N°'+a.num,content:formEl,wide:true}});
               },{style:{padding:'4px 8px',fontSize:12}}),
               btn('🗑','btn-red',()=>{if(confirmDelete())updateProject({attachements:atts.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}})
             ))
@@ -2634,7 +2706,7 @@ function printDecompte(att, p){
     <td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;text-decoration:underline">Représentant Entreprise</td></tr>
     <tr><td style="border:1px solid #ccc;height:60px"></td><td style="border:1px solid #ccc;text-align:center;font-weight:bold;color:#666">SMERAV</td></tr>
   </table>
-  <div style="margin-top:12px;padding-top:8px;border-top:1px solid #ccc;font-size:9px;color:#666;text-align:center">${s.piedPage||''}</div>`;
+  ${footerHTML()}`;
   printDoc(html,'Décompte N°'+att.num);
 }
 
@@ -2835,6 +2907,12 @@ window.addEventListener('appinstalled', () => {
   if(btn) btn.style.display = 'none';
 });
 </script>
+
+<!-- Footer d'impression -->
+<div class="print-footer" style="display:none;">
+  Siège social : N 75 Lotissement Bassma Masira – 30000 Fès &nbsp;|&nbsp; (+212) 06 61 80 88 94 &nbsp;|&nbsp; sarl.smerav@gmail.com &nbsp;|&nbsp;
+  R.C : 71021 &nbsp;|&nbsp; T.P : 13440432 &nbsp;|&nbsp; I.F : 51696715 &nbsp;|&nbsp; CNSS : 2996480 &nbsp;|&nbsp; ICE : 002993123000065 &nbsp;|&nbsp; RIB : 01127000000062100021 25734
+</div>
 
 <div id="pwa-btn" onclick="if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(()=>{deferredPrompt=null;document.getElementById('pwa-btn').style.display='none';});}" style="display:none;position:fixed;bottom:24px;right:24px;background:#E8730A;color:#fff;padding:13px 20px;border-radius:50px;font-weight:800;font-size:13px;cursor:pointer;z-index:9999;align-items:center;gap:8px;box-shadow:0 4px 24px rgba(232,115,10,0.5);">
   📲 Installer l'app SMERAV
