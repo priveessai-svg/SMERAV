@@ -315,24 +315,59 @@ function labeledInput(lbl_text, inputEl){
 
 function printDoc(htmlContent, title='Document'){
   try {
+    const s = getSettings();
+    const logoHTML = s.logo ? `<img src="${s.logo}" style="height:60px;object-fit:contain;"/>` :
+      `<div style="width:60px;height:60px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;">SM</div>`;
+    const footerTxt = (s.piedPage||'').replace(/\n/g,'<br>');
+    const enTeteTxt = (s.enTete||'').replace(/\n/g,'<br>');
     const w = window.open('','_blank');
     if(!w){ alert('Activez les popups pour imprimer'); return; }
     w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
     <style>
-      body{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;margin:0;}
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;}
       table{border-collapse:collapse;width:100%;}
       th,td{border:1px solid #000;padding:5px 8px;}
       th{background:#f5f5f5;font-weight:bold;text-align:center;}
-      @page{size:A4;margin:10mm;}
-      @media print{.no-print{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
-      .header{display:flex;align-items:center;gap:16px;padding-bottom:10px;border-bottom:2px solid #E8730A;margin-bottom:10px;}
-      .footer{margin-top:15px;padding-top:8px;border-top:1px solid #ccc;font-size:9px;color:#666;text-align:center;}
+      @page{size:A4;margin:0;}
+      @media print{
+        .no-print{display:none!important}
+        body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      }
+      .page-wrapper{
+        width:210mm;min-height:297mm;margin:0 auto;
+        padding:10mm;position:relative;
+        display:flex;flex-direction:column;
+      }
+      .page-header{
+        display:flex;align-items:center;gap:14px;
+        padding-bottom:10px;border-bottom:2px solid #E8730A;margin-bottom:14px;
+      }
+      .page-footer{
+        position:fixed;bottom:8mm;left:10mm;right:10mm;
+        font-size:9px;color:#444;text-align:center;
+        border-top:1px solid #ccc;padding-top:6px;
+      }
+      .content{flex:1;}
+      .no-print-bar{text-align:center;padding:10px;background:#1A2540;position:sticky;top:0;z-index:100;}
     </style></head><body>
-    <div class="no-print" style="text-align:center;padding:10px;background:#1A2540;">
+    <div class="no-print no-print-bar">
       <button onclick="window.print()" style="background:#E8730A;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;margin-right:10px;">🖨 Imprimer / PDF</button>
       <button onclick="window.close()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">✕ Fermer</button>
     </div>
-    ${htmlContent}
+    <div class="page-wrapper">
+      <div class="page-header">
+        ${logoHTML}
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:20px;font-weight:900;">${s.nom||'SMERAV S.A.R.L'}</div>
+          <div style="font-size:11px;font-style:italic;font-weight:700;color:#333;">${enTeteTxt}</div>
+        </div>
+      </div>
+      <div class="content">
+        ${htmlContent}
+      </div>
+    </div>
+    <div class="page-footer no-print-exclude">${footerTxt}</div>
     </body></html>`);
     w.document.close();
   } catch(e) { alert('Erreur impression: ' + e.message); }
@@ -342,19 +377,21 @@ function getSettings(){ return state.settings; }
 
 function headerHTML(){
   const s = getSettings();
-  const logoHTML = s.logo ? `<img src="${s.logo}" style="width:60px;height:60px;object-fit:contain;"/>` : `<div style="width:60px;height:60px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#fff;">SM</div>`;
-  return `<div class="header">
-    ${logoHTML}
-    <div style="flex:1">
-      <div style="font-size:18px;font-weight:900;">${s.nom}</div>
-      <div style="font-size:11px;color:#666;font-style:italic;font-weight:700;white-space:pre-line;">${s.enTete||""}</div>
-    </div>
-  </div>`;
+  const logoHTML = s.logo ? `<img src="${s.logo}" style="height:70px;object-fit:contain;"/>` :
+    `<div style="width:70px;height:70px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#fff;flex-shrink:0;">SM</div>`;
+  return `
+    <div style="display:flex;align-items:center;gap:16px;padding-bottom:10px;border-bottom:2px solid #E8730A;margin-bottom:14px;">
+      ${logoHTML}
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:22px;font-weight:900;">${s.nom||'SMERAV S.A.R.L'}</div>
+        <div style="font-size:11px;font-style:italic;font-weight:700;color:#333;">${(s.enTete||'').replace(/\n/g,'<br>')}</div>
+      </div>
+    </div>`;
 }
 
 function footerHTML(){
   const s = getSettings();
-  return `<div class="footer">${s.piedPage}</div>`;
+  return `<div style="font-size:9px;color:#444;text-align:center;border-top:1px solid #ccc;padding-top:6px;margin-top:10px;">${(s.piedPage||'').replace(/\n/g,'<br>')}</div>`;
 }
 
 // ══════════════════════════════════════════
@@ -1121,6 +1158,7 @@ function renderFicheProjet(){
     ),
     // Content
     sec==='info' ? renderProjetInfo(p, updateProject) :
+    sec==='info-edit' ? renderProjetInfoEdit(p, updateProject) :
     sec==='bordereau' ? renderBordereauSection(p, updateProject) :
     sec==='attachements' ? renderAttachementsSection(p, updateProject) :
     sec==='decomptes' ? renderDecomptesSection(p, updateProject) :
@@ -1157,6 +1195,49 @@ function renderProjetInfo(p, updateProject){
     )
   );
   return viewEl;
+}
+
+function renderProjetInfoEdit(p, updateProject){
+  let f = {...p};
+  function inp(label, key, type='text'){
+    return div({},
+      el('label',{className:'lbl'},label),
+      Object.assign(el('input',{type,value:f[key]||'',style:{width:'100%'}}),{oninput:e=>f[key]=type==='number'?+e.target.value:e.target.value})
+    );
+  }
+  return div({className:'card',style:{padding:20}},
+    div({style:{fontSize:14,fontWeight:800,color:'#E8730A',marginBottom:16,textTransform:'uppercase'}},'Modifier le Projet'),
+    div({style:{fontWeight:800,color:'#2563EB',marginBottom:12,fontSize:12}},'INFORMATIONS GÉNÉRALES'),
+    div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:16}},
+      inp('Nom du projet *','nom'),
+      inp('Client','client'),
+      inp('Budget (MAD)','budget','number'),
+      div({},el('label',{className:'lbl'},'Statut'),(()=>{const s=el('select',{style:{width:'100%'}});['En cours','Terminé','En attente','Suspendu'].forEach(o=>{const opt=el('option',{value:o},o);if(f.statut===o)opt.selected=true;s.appendChild(opt);});s.oninput=e=>f.statut=e.target.value;return s;})()),
+      inp('Date début','dateDebut','date'),
+      inp('Date fin','dateFin','date'),
+      inp('Ville','ville'),
+      inp('Progression (%)','progression','number')
+    ),
+    div({style:{fontWeight:800,color:'#2563EB',marginBottom:12,fontSize:12}},'INFORMATIONS MARCHÉ'),
+    div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:16}},
+      inp("Maître d'ouvrage",'maitreOuvrage'),
+      inp('Marché N°','marcheNum'),
+      inp('Ordre de Service N°','ordreService'),
+      inp('Date OS','dateOS','date')
+    ),
+    div({style:{marginBottom:16}},
+      el('label',{className:'lbl'},'Objet du marché'),
+      Object.assign(el('textarea',{rows:3,style:{width:'100%',resize:'vertical'}},f.objet||''),{oninput:e=>f.objet=e.target.value})
+    ),
+    div({style:{display:'flex',gap:10}},
+      btn('💾 Enregistrer','btn-green',()=>{
+        updateProject(f);
+        setState({ficheSection:'info'});
+        notify('Projet mis à jour ✓');
+      }),
+      btn('Annuler','btn-gray',()=>setState({ficheSection:'info'}))
+    )
+  );
 }
 
 function renderProjetCharges(p, updateProject){
