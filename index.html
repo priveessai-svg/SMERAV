@@ -835,8 +835,9 @@ function renderParametres(){
         div({style:{display:'grid',gridTemplateColumns:'1fr auto',gap:20,alignItems:'start'}},
           div({style:{display:'flex',flexDirection:'column',gap:12}},
             div({},el('label',{className:'lbl'},'Nomination'),Object.assign(el('input',{value:s.nom||''}),{oninput:e=>s.nom=e.target.value})),
-            div({},el('label',{className:'lbl'},'En-tête Page'),Object.assign(el('textarea',{rows:3,style:{resize:'vertical',fontStyle:'italic',fontWeight:700}},s.entete||''),{oninput:e=>s.entete=e.target.value})),
-            div({},el('label',{className:'lbl'},'Pied de Page'),Object.assign(el('textarea',{rows:3,style:{resize:'vertical',fontSize:11}},s.piedPage||''),{oninput:e=>s.piedPage=e.target.value})),
+            div({},el('label',{className:'lbl'},'Titulaire du Marché'),Object.assign(el('input',{value:s.titulaire||'',placeholder:'ex: Sté SMERAV sarl'}),{oninput:e=>s.titulaire=e.target.value})),
+            div({},el('label',{className:'lbl'},'En-tête Page (Impression)'),Object.assign(el('textarea',{rows:3,style:{resize:'vertical',fontStyle:'italic',fontWeight:700}},s.enTete||''),{oninput:e=>s.enTete=e.target.value})),
+            div({},el('label',{className:'lbl'},'Pied de Page (Impression)'),Object.assign(el('textarea',{rows:3,style:{resize:'vertical',fontSize:11}},s.piedPage||''),{oninput:e=>s.piedPage=e.target.value})),
           ),
           div({style:{textAlign:'center',minWidth:130}},
             div({style:{width:120,height:120,border:'2px dashed #E5E9F2',borderRadius:12,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#F8FAFD',overflow:'hidden',marginBottom:8}},
@@ -2214,6 +2215,11 @@ function renderAttachementsSection(p, updateProject){
             div({},el('label',{className:'lbl'},'Du'),Object.assign(el('input',{type:'date',value:''}),{oninput:e=>formData.du=e.target.value})),
             div({},el('label',{className:'lbl'},'Au'),Object.assign(el('input',{type:'date',value:''}),{oninput:e=>formData.au=e.target.value})),
           ),
+          div({className:'grid-3'},
+            div({},el('label',{className:'lbl'},'Travail N°'),Object.assign(el('input',{type:'text',placeholder:'ex: 01',value:formData.travailNum||''}),{oninput:e=>formData.travailNum=e.target.value})),
+            div({}),
+            div({}),
+          ),
           div({style:{overflowX:'auto'}},lignesContainer),
           totalDiv,
           div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
@@ -2265,51 +2271,84 @@ function renderAttachementsSection(p, updateProject){
               btn('🖨️','btn-blue',()=>{
                 const s = state.settings;
                 const win = window.open('','_blank');
-                const rows = (a.lignes||[]).map((l,li)=>`<tr style="background:${li%2===0?'#fff':'#F8FAFD'}">
-                  <td style="color:#2563EB;font-weight:700">${l.id||''}</td>
-                  <td>${l.designation||''}</td>
-                  <td style="text-align:center">${l.unite||''}</td>
-                  <td style="text-align:right">${l.qteBD||0}</td>
-                  <td style="text-align:right">${l.qtePrecedente||0}</td>
-                  <td style="text-align:right;font-weight:800;color:#E8730A">${l.qteMois||0}</td>
-                  <td style="text-align:right;font-weight:700;color:#2563EB">${l.cumul||0}</td>
-                  <td style="text-align:right"><span style="background:#2563EB15;color:#2563EB;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">${l.pct||0}%</span></td>
+                const rows = (a.lignes||[]).map((l,li)=>`<tr style="background:${li%2===0?'#fff':'#f5f5f5'}">
+                  <td style="border:1px solid #999;padding:5px 8px;font-weight:700;text-align:center">${l.id||''}</td>
+                  <td style="border:1px solid #999;padding:5px 8px">${l.designation||''}</td>
+                  <td style="border:1px solid #999;padding:5px 8px;text-align:center">${l.unite||''}</td>
+                  <td style="border:1px solid #999;padding:5px 8px;text-align:center">${l.qteBD||0}</td>
+                  <td style="border:1px solid #999;padding:5px 8px;text-align:center">${l.qtePrecedente||0}</td>
+                  <td style="border:1px solid #999;padding:5px 8px;text-align:center;font-weight:700">${l.qteMois||0}</td>
+                  <td style="border:1px solid #999;padding:5px 8px;text-align:center;font-weight:700">${l.cumul||0}</td>
+                  <td style="border:1px solid #999;padding:5px 8px;text-align:center">${l.pct||0}%</td>
                 </tr>`).join('');
+
+                const enTete = s.enTete||'';
+                const piedPage = s.piedPage||'';
+
                 win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
                 <title>Attachement N°${a.num}</title>
                 <style>
-                  body{font-family:'Segoe UI',Arial,sans-serif;padding:20px;color:#1A2540;font-size:12px}
-                  .header{display:flex;justify-content:space-between;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #2563EB}
-                  .logo{font-size:20px;font-weight:900;color:#E8730A}
-                  h2{color:#1A2540;margin:10px 0 4px}
-                  .info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;padding:12px;background:#F8FAFD;border-radius:8px;border:1px solid #E5E9F2}
-                  .info-item label{font-size:9px;font-weight:700;color:#6B7A99;text-transform:uppercase;display:block;margin-bottom:3px}
-                  .info-item span{font-weight:700;font-size:13px}
-                  table{width:100%;border-collapse:collapse;font-size:11px}
-                  th{background:#0F1628;color:#fff;padding:8px 10px;text-align:left;font-size:10px}
-                  td{padding:7px 10px;border-bottom:1px solid #E5E9F2}
-                  .footer{margin-top:20px;padding-top:12px;border-top:1px solid #E5E9F2;font-size:10px;color:#6B7A99;text-align:center}
+                  *{margin:0;padding:0;box-sizing:border-box}
+                  body{font-family:Arial,sans-serif;font-size:11px;color:#000;padding:15mm 10mm}
+                  .entete{white-space:pre-wrap;font-size:10px;margin-bottom:8px;text-align:center}
+                  .header-table{width:100%;border-collapse:collapse;margin-bottom:10px;border:1px solid #999}
+                  .header-table td{border:1px solid #999;padding:5px 8px;vertical-align:top}
+                  .header-table .label{font-size:9px;color:#555;display:block}
+                  .header-table .val{font-weight:700;font-size:11px}
+                  .title-row{background:#e0e0e0}
+                  h2{font-size:13px;font-weight:900;margin-bottom:8px;text-transform:uppercase}
+                  table{width:100%;border-collapse:collapse;font-size:10px}
+                  th{border:1px solid #999;padding:6px 8px;text-align:center;background:#d0d0d0;font-weight:700;font-size:10px}
+                  td{border:1px solid #999;padding:5px 8px}
+                  .pied{white-space:pre-wrap;font-size:10px;margin-top:10px;text-align:center;border-top:1px solid #ccc;padding-top:8px}
                   @media print{@page{size:A4 landscape;margin:10mm}button{display:none}}
                 </style></head><body>
-                <div class="header">
-                  <div><div class="logo">SMERAV S.A.R.L</div><div style="font-size:10px;color:#6B7A99">${s.adresse||''} · RC: ${s.rc||''} · ICE: ${s.ice||''}</div></div>
-                  <div style="text-align:right"><div style="font-weight:800;font-size:14px">ATTACHEMENT N°${a.num}</div><div style="font-size:10px;color:#6B7A99">Imprimé le ${new Date().toLocaleDateString('fr-MA')}</div></div>
-                </div>
-                <h2>${p.nom}</h2>
-                <div class="info-grid">
-                  <div class="info-item"><label>Client</label><span>${p.client||''}</span></div>
-                  <div class="info-item"><label>Période du</label><span>${a.du?new Date(a.du).toLocaleDateString('fr-MA'):''}</span></div>
-                  <div class="info-item"><label>Au</label><span>${a.au?new Date(a.au).toLocaleDateString('fr-MA'):''}</span></div>
-                  <div class="info-item"><label>Maître d'ouvrage</label><span>${p.maitreOuvrage||''}</span></div>
-                  <div class="info-item"><label>Réf Projet</label><span>${p.ref||''}</span></div>
-                  <div class="info-item"><label>Date</label><span>${a.date?new Date(a.date).toLocaleDateString('fr-MA'):''}</span></div>
-                </div>
-                <table><thead><tr>
-                  <th>N° Prix</th><th>Désignation</th><th>Uté</th><th style="text-align:right">Qté Marché</th>
-                  <th style="text-align:right">Qté Précédente</th><th style="text-align:right">Qté du Mois</th>
-                  <th style="text-align:right">Cumul</th><th style="text-align:right">%</th>
-                </tr></thead><tbody>${rows}</tbody></table>
-                <div class="footer">SMERAV S.A.R.L · ${s.tel||''} · ${s.email||''} · TVA: ${s.tva||20}%</div>
+
+                ${enTete ? `<div class="entete">${enTete}</div>` : ''}
+
+                <table class="header-table">
+                  <tr>
+                    <td colspan="2"><span class="label">Maître d'ouvrage</span><span class="val">${p.maitreOuvrage||p.client||''}</span></td>
+                    <td><span class="label">Marché N°</span><span class="val">${p.marcheNum||'—'}</span></td>
+                    <td><span class="label">ORDRE DE SERVICE N°</span><span class="val">${p.osNum||'—'}</span></td>
+                    <td><span class="label">Date OS</span><span class="val">${p.dateOS?new Date(p.dateOS).toLocaleDateString('fr-MA'):'—'}</span></td>
+                  </tr>
+                  <tr>
+                    <td colspan="2"><span class="label">Titulaire du Marché</span><span class="val">${s.titulaire||s.nom||'Sté SMERAV sarl'}</span></td>
+                    <td><span class="label">Travail N°</span><span class="val">${a.travailNum||'—'}</span></td>
+                    <td colspan="2"><span class="label">Travaux Attachés</span>
+                      <table style="border:none;width:100%">
+                        <tr><td style="border:none;padding:2px"><span class="label">DU</span><span class="val">${a.du?new Date(a.du).toLocaleDateString('fr-MA'):'—'}</span></td>
+                            <td style="border:none;padding:2px"><span class="label">AU</span><span class="val">${a.au?new Date(a.au).toLocaleDateString('fr-MA'):'—'}</span></td></tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="5"><span class="label">Objet</span><span class="val">${p.nom||''}</span></td>
+                  </tr>
+                  <tr class="title-row">
+                    <td colspan="5" style="text-align:center;font-weight:900;font-size:12px">
+                      ATTACHEMENT PROVISOIRE N° ${a.num}/${p.marcheNum||'—'}
+                    </td>
+                  </tr>
+                </table>
+
+                <table>
+                  <thead><tr>
+                    <th style="width:60px">N° Prix</th>
+                    <th>DESIGNATION DES ARTICLES</th>
+                    <th style="width:40px">Uté</th>
+                    <th style="width:70px">Qté marché</th>
+                    <th style="width:80px">Qté précédente</th>
+                    <th style="width:70px">Qté du mois</th>
+                    <th style="width:60px">cumul</th>
+                    <th style="width:45px">%</th>
+                  </tr></thead>
+                  <tbody>${rows}</tbody>
+                </table>
+
+                ${piedPage ? `<div class="pied">${piedPage}</div>` : ''}
+
                 </body></html>`);
                 win.document.close();
                 setTimeout(()=>win.print(),500);
@@ -2439,7 +2478,7 @@ function printDecompte(att, p){
   <div style="display:flex;align-items:center;gap:12px;padding-bottom:8px;border-bottom:2px solid #E8730A;margin-bottom:10px;">
     ${logoHTML}
     <div style="flex:1"><div style="font-size:16px;font-weight:900">${s.nom}</div>
-    <div style="font-size:10px;color:#666;font-style:italic">${s.entete||''}</div></div>
+    <div style="font-size:10px;color:#666;font-style:italic">${s.enTete||''}</div></div>
   </div>
   <table style="margin-bottom:8px;border:none;">
     <tr><td style="border:none"><strong>Maître d'ouvrage:</strong> ${p.maitreOuvrage||'—'}</td>
