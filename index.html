@@ -222,10 +222,10 @@ const DB = {
 const INIT_SETTINGS = {
   nom:'SMERAV S.A.R.L.au',
   entete:'TRAVAUX DIVERS (GENIE CIVIL)\nTRAVAUX D\'EAUX POTABLE ET D\'ASSAINISSEMENT',
-  piedPage:'Siège social : Riad Zaytoune N 121, 30000 Fès · (+212) 06 69 99 84 90 · 06 61 80 88 94 · sarl.smerav@gmail.com · R.C : 71021 · T.P : 13440432 · I.F : 51696715 · CNSS : 2996480 · ICE : 002993123000065 · RIB : 011270000006210002125734',
+  piedPage:'Siège social : N 75 Lotissement Bassma Masira – 30000 Fès · (+212) 06 69 99 84 90 · (+212) 06 61 80 88 94 · sarl.smerav@gmail.com · R.C : 71021 · T.P : 13440432 · I.F : 51696715 · CNSS : 2996480 · ICE : 002993123000065 · RIB : 011270000006210002125734',
   ville:'FES', facturation:'HT', tva:20, logo:null,
   rc:'71021', tp:'13440432', if_:'51696715', cnss:'2996480', ice:'002993123000065', rib:'011270000006210002125734',
-  tel:'(+212) 06 69 99 84 90', email:'sarl.smerav@gmail.com', adresse:'Riad Zaytoune N 121, 30000 Fès'
+  tel:'(+212) 06 61 80 88 94', email:'sarl.smerav@gmail.com', adresse:'N 75 Lotissement Bassma Masira – 30000 Fès'
 };
 
 const INIT_PROJECTS = [
@@ -337,8 +337,7 @@ function printDoc(htmlContent, title='Document'){
     const s = getSettings();
     const logoHTML = s.logo ? `<img src="${s.logo}" style="height:60px;object-fit:contain;"/>` :
       `<div style="width:60px;height:60px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;">SM</div>`;
-    const defaultFooter = 'Siège social : N 75 Lotissement Bassma Masira – 30000 Fès · (+212) 06 69 99 84 90 · (+212) 06 61 80 88 94 · sarl.smerav@gmail.com · R.C : 71021 · T.P : 13440432 · I.F : 51696715 · CNSS : 2996480 · ICE : 002993123000065 · RIB : 011270000006210002125734';
-    const footerTxt = ((s.piedPage||'').trim() || defaultFooter).replace(/\n/g,'<br>');
+    const footerTxt = (s.piedPage||'').replace(/\n/g,'<br>');
     const enTeteTxt = (s.enTete||'').replace(/\n/g,'<br>');
     const w = window.open('','_blank');
     if(!w){ alert('Activez les popups pour imprimer'); return; }
@@ -413,8 +412,7 @@ function headerHTML(){
 
 function footerHTML(){
   const s = getSettings();
-  const defaultFooter = 'Siège social : N 75 Lotissement Bassma Masira – 30000 Fès · (+212) 06 69 99 84 90 · (+212) 06 61 80 88 94 · sarl.smerav@gmail.com · R.C : 71021 · T.P : 13440432 · I.F : 51696715 · CNSS : 2996480 · ICE : 002993123000065 · RIB : 011270000006210002125734';
-  const txt = (s.piedPage||'').trim() || defaultFooter;
+  const txt = (s.piedPage||'').trim();
   return `<div style="font-size:9px;color:#444;text-align:center;border-top:1px solid #ccc;padding-top:6px;margin-top:10px;">${txt.replace(/\n/g,'<br>')}</div>`;
 }
 
@@ -2468,7 +2466,7 @@ function renderAttachementsSection(p, updateProject){
                   <tbody>${rows}</tbody>
                 </table>
 
-                <div class="pied">${piedPage || 'Siège social : N 75 Lotissement Bassma Masira – 30000 Fès · (+212) 06 69 99 84 90 · (+212) 06 61 80 88 94 · sarl.smerav@gmail.com · R.C : 71021 · T.P : 13440432 · I.F : 51696715 · CNSS : 2996480 · ICE : 002993123000065 · RIB : 011270000006210002125734'}</div>
+                <div class="pied">${piedPage}</div>
 
                 </body></html>`);
                 win.document.close();
