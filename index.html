@@ -344,10 +344,12 @@ function printDoc(htmlContent, title='Document'){
         padding-bottom:10px;border-bottom:2px solid #E8730A;margin-bottom:14px;
       }
       .page-footer{
-        position:fixed;bottom:8mm;left:10mm;right:10mm;
+        position:fixed;bottom:0;left:0;right:0;
         font-size:9px;color:#444;text-align:center;
-        border-top:1px solid #ccc;padding-top:6px;
+        border-top:1px solid #ccc;padding:5px 10mm;
+        background:#fff;
       }
+      .content{margin-bottom:25mm;}
       .content{flex:1;}
       .no-print-bar{text-align:center;padding:10px;background:#1A2540;position:sticky;top:0;z-index:100;}
     </style></head><body>
@@ -798,7 +800,6 @@ function printFacture(f){
     </tr>
   `).join('');
   const html = `
-  ${headerHTML()}
   <table style="margin:10px 0;border:none;">
     <tr>
       <td style="border:none;width:50%;vertical-align:top;">
@@ -853,8 +854,7 @@ function printFacture(f){
     <div style="font-weight:700;font-size:11px;text-decoration:underline">Arrêtée la présente facture à la somme de :</div>
     <div style="font-style:italic;font-size:10px;margin-top:4px">${numToWords(f.montantTTC||0)}</div>
   </div>
-  <div style="text-align:right;font-size:9px;color:#999;margin-top:8px">Page : 1/1</div>
-  ${footerHTML()}`;
+  <div style="text-align:right;font-size:9px;color:#999;margin-top:8px">Page : 1/1</div>`;
   printDoc(html, 'Facture '+f.num);
 }
 
@@ -1562,12 +1562,12 @@ function showDevisForm(){
 function printDevis(d){
   const lignesHTML=(d.lignes||[]).map((l,i)=>`<tr><td>${l.designation||''}</td><td style="text-align:center">${fmtN(l.qte)}</td><td style="text-align:center">${l.unite||''}</td><td style="text-align:right">${fmtN(l.pu)}</td><td style="text-align:right">${fmtN((l.qte||0)*(l.pu||0))}</td></tr>`).join('');
   const s=getSettings();
-  const html=`${headerHTML()}
+  const html=`
   <table style="margin:10px 0;border:none;">
-    <tr><td style="border:none;vertical-align:top;width:50%"><div style="font-size:18px;font-weight:900">DEVIS N° : ${d.num||''}</div><div style="font-size:11px;color:#666;font-style:italic">${s.ville}, Le : ${fmtDate(d.date)}</div></td>
+    <tr><td style="border:none;vertical-align:top;width:50%"><div style="font-size:18px;font-weight:900">DEVIS N° : ${d.num||''}</div><div style="font-size:11px;color:#666;font-style:italic">${s.ville||'FES'}, Le : ${fmtDate(d.date)}</div></td>
     <td style="border:1px solid #ccc;padding:10px;vertical-align:top;width:50%"><div style="font-weight:700">${d.client||''}</div></td></tr>
   </table>
-  ${d.objet?`<div style="margin-bottom:8px;font-size:11px"><strong>Objet:</strong> ${d.objet}</div>`:''}
+  ${d.objet?'<div style="margin-bottom:8px;font-size:11px"><strong>Objet:</strong> '+d.objet+'</div>':''}
   <table><thead><tr style="background:#1A2540;color:white"><th style="border:1px solid #000;color:white">Désignation</th><th style="border:1px solid #000;color:white">Qté</th><th style="border:1px solid #000;color:white">Unité</th><th style="border:1px solid #000;color:white">P.U. HT</th><th style="border:1px solid #000;color:white">Montant HT</th></tr></thead>
   <tbody>${lignesHTML}</tbody></table>
   <table style="margin-top:8px;width:50%;margin-left:50%;border:none;">
@@ -1575,8 +1575,7 @@ function printDevis(d){
     <tr><td style="border:none">TVA ${d.tva||20}%</td><td style="border:none;text-align:right">${fmtN(d.montantTVA||0)}</td></tr>
     <tr style="background:#fff3e0"><td style="border:none;font-weight:900">Total TTC</td><td style="border:none;text-align:right;font-weight:900;color:#E8730A">${fmtN(d.montantTTC||0)}</td></tr>
   </table>
-  <div style="margin-top:12px;font-size:10px;color:#666">Validité du devis : ${d.validite||30} jours · ${numToWords(d.montantTTC||0)}</div>
-  ${footerHTML()}`;
+  <div style="margin-top:12px;font-size:10px;color:#666">Validité du devis : ${d.validite||30} jours · ${numToWords(d.montantTTC||0)}</div>`;
   printDoc(html,'Devis '+d.num);
 }
 
@@ -2229,9 +2228,23 @@ function renderAttachementsSection(p, updateProject){
     return c;
   };
 
+  // Export Excel for attachements
+  function exportAttExcel(){
+    if(!window.XLSX){alert('XLSX non disponible');return;}
+    const rows=[['N° Att','Date','Du','Au','Total HT']];
+    atts.forEach(a=>{rows.push([a.num,a.date?fmtDate(a.date):'-',a.du?fmtDate(a.du):'-',a.au?fmtDate(a.au):'-',a.total||0]);});
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Attachements');
+    XLSX.writeFile(wb,'Attachements_'+p.ref+'.xlsx');
+  }
+
   return div({},
-    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}},
-      div({style:{fontSize:13,color:'#6B7A99'}},atts.length+' attachement(s)'),
+    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:8}},
+      div({style:{display:'flex',gap:8,alignItems:'center'}},
+        div({style:{fontSize:13,color:'#6B7A99'}},atts.length+' attachement(s)'),
+        el('button',{onclick:exportAttExcel,style:{padding:'6px 12px',background:'#10B98115',color:'#10B981',border:'1.5px solid #10B98130',borderRadius:8,fontWeight:700,fontSize:12,cursor:'pointer'}},'📊 Excel')
+      ),
       btn('+ Nouvelle Attachement','btn-orange',()=>{
         if(bd.length===0){alert('Importez d\'abord le Bordereau');return;}
         const attIdx = atts.length;
@@ -2370,19 +2383,22 @@ function renderAttachementsSection(p, updateProject){
                 <title>Attachement N°${a.num}</title>
                 <style>
                   *{margin:0;padding:0;box-sizing:border-box}
-                  body{font-family:Arial,sans-serif;font-size:11px;color:#000;padding:15mm 10mm}
+                  body{font-family:Arial,sans-serif;font-size:11px;color:#000;padding:10mm}
                   .entete{white-space:pre-wrap;font-size:10px;margin-bottom:8px;text-align:center}
                   .header-table{width:100%;border-collapse:collapse;margin-bottom:10px;border:1px solid #999}
                   .header-table td{border:1px solid #999;padding:5px 8px;vertical-align:top}
                   .header-table .label{font-size:9px;color:#555;display:block}
                   .header-table .val{font-weight:700;font-size:11px}
                   .title-row{background:#e0e0e0}
-                  h2{font-size:13px;font-weight:900;margin-bottom:8px;text-transform:uppercase}
                   table{width:100%;border-collapse:collapse;font-size:10px}
                   th{border:1px solid #999;padding:6px 8px;text-align:center;background:#d0d0d0;font-weight:700;font-size:10px}
                   td{border:1px solid #999;padding:5px 8px}
-                  .pied{white-space:pre-wrap;font-size:10px;margin-top:10px;text-align:center;border-top:1px solid #ccc;padding-top:8px}
-                  @media print{@page{size:A4 landscape;margin:10mm}button{display:none}}
+                  .pied{position:fixed;bottom:0;left:0;right:0;white-space:pre-wrap;font-size:9px;padding:5px 10mm;text-align:center;border-top:1px solid #ccc;background:#fff}
+                  @media print{
+                    @page{size:A4 landscape;margin:10mm 10mm 20mm 10mm}
+                    button{display:none}
+                    body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+                  }
                 </style></head><body>
 
                 ${enTete ? '<div class="entete">'+enTete+'</div>' : ''}
@@ -2433,6 +2449,28 @@ function renderAttachementsSection(p, updateProject){
                 </body></html>`);
                 win.document.close();
                 setTimeout(()=>win.print(),500);
+              },{style:{padding:'4px 8px',fontSize:12}}),
+              btn('✏️','btn-orange',()=>{
+                // Open edit modal for this attachement
+                const editForm = {du:a.du,au:a.au,date:a.date,num:a.num,travailNum:a.travailNum||''};
+                const formEl = div({style:{display:'flex',flexDirection:'column',gap:12}},
+                  div({style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}},
+                    div({},el('label',{className:'lbl'},'N° Attachement'),Object.assign(el('input',{value:editForm.num||'',style:{width:'100%'}}),{oninput:e=>editForm.num=e.target.value})),
+                    div({},el('label',{className:'lbl'},'Date'),Object.assign(el('input',{type:'date',value:editForm.date||'',style:{width:'100%'}}),{oninput:e=>editForm.date=e.target.value})),
+                    div({},el('label',{className:'lbl'},'Travail N°'),Object.assign(el('input',{value:editForm.travailNum||'',style:{width:'100%'}}),{oninput:e=>editForm.travailNum=e.target.value}))
+                  ),
+                  div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}},
+                    div({},el('label',{className:'lbl'},'Du'),Object.assign(el('input',{type:'date',value:editForm.du||'',style:{width:'100%'}}),{oninput:e=>editForm.du=e.target.value})),
+                    div({},el('label',{className:'lbl'},'Au'),Object.assign(el('input',{type:'date',value:editForm.au||'',style:{width:'100%'}}),{oninput:e=>editForm.au=e.target.value}))
+                  ),
+                  btn('💾 Enregistrer','btn-green',()=>{
+                    const updated = atts.map((x,xi)=>xi===i?{...x,...editForm}:x);
+                    updateProject({attachements:updated});
+                    setState({modal:null});
+                    notify('Attachement mis à jour ✓');
+                  })
+                );
+                setState({modal:{title:'Modifier Attachement N°'+a.num,content:formEl}});
               },{style:{padding:'4px 8px',fontSize:12}}),
               btn('🗑','btn-red',()=>{if(confirmDelete())updateProject({attachements:atts.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}})
             ))
