@@ -348,10 +348,11 @@ function printDoc(htmlContent, title='Document'){
       table{border-collapse:collapse;width:100%;}
       th,td{border:1px solid #000;padding:5px 8px;}
       th{background:#f5f5f5;font-weight:bold;text-align:center;}
-      @page{size:A4;margin:0;}
+      @page{size:A4;margin:10mm 10mm 20mm 10mm;}
       @media print{
         .no-print{display:none!important}
         body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+        .page-footer{position:fixed;bottom:0;left:0;right:0;}
       }
       .page-wrapper{
         width:210mm;min-height:297mm;margin:0 auto;
@@ -2494,8 +2495,10 @@ function renderAttachementsSection(p, updateProject){
                   .pied{position:fixed;bottom:0;left:0;right:0;white-space:pre-wrap;font-size:9px;padding:5px 10mm;text-align:center;border-top:1px solid #ccc;background:#fff}
                   @media print{
                     @page{size:A4 landscape;margin:10mm 10mm 20mm 10mm}
+                    @page :first { margin-top: 10mm; }
                     button{display:none}
                     body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+                    .pied{position:fixed;bottom:0;left:0;right:0;}
                   }
                 </style></head><body>
 
