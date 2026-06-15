@@ -2532,11 +2532,11 @@ function renderAttachementsSection(p, updateProject){
                   .info-table .lbl{font-size:8px;color:#666;display:block;}
                   .info-table .val{font-weight:700;font-size:10px;}
                   .title-bar{background:#e0e0e0;text-align:center;font-weight:900;font-size:11px;padding:4px;border:1px solid #999;margin-bottom:6px;}
-                  .data-table{width:100%;border-collapse:collapse;font-size:9px;}
+                  .data-table{width:100%;border-collapse:collapse;font-size:9px;page-break-inside:auto;}
                   .data-table thead{display:table-header-group;}
                   .data-table th{border:1px solid #999;padding:4px 5px;text-align:center;background:#d0d0d0;font-weight:700;}
                   .data-table td{border:1px solid #999;padding:3px 5px;}
-                  .data-table tbody tr{page-break-inside:avoid;}
+                  .data-table tbody tr{page-break-inside:avoid;page-break-after:auto;}
                   .no-print{background:#1a2540;text-align:center;padding:8px;position:sticky;top:0;z-index:999;}
                 </style></head><body>
 
@@ -2594,6 +2594,18 @@ function renderAttachementsSection(p, updateProject){
                     </thead>
                     <tbody>${rows}</tbody>
                   </table>
+
+                  <!-- Zone de signature -->
+                  <div style="margin-top:20mm;display:flex;justify-content:space-between;padding:0 10mm;">
+                    <div style="text-align:center;width:35%;">
+                      <div style="font-weight:700;font-size:11px;border-bottom:1px solid #000;padding-bottom:2px;margin-bottom:15mm;">Maître d'ouvrage</div>
+                      <div style="font-size:10px;color:#555;">${p.maitreOuvrage||'SRM-FM'}</div>
+                    </div>
+                    <div style="text-align:center;width:35%;">
+                      <div style="font-weight:700;font-size:11px;border-bottom:1px solid #000;padding-bottom:2px;margin-bottom:15mm;">Titulaire du Marché</div>
+                      <div style="font-size:10px;color:#555;">${s.nom||'SMERAV S.A.R.L.au'}</div>
+                    </div>
+                  </div>
                 </div>
 
                 <script>
