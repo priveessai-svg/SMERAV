@@ -2500,96 +2500,107 @@ function renderAttachementsSection(p, updateProject){
                 <title>Attachement N°${a.num}</title>
                 <style>
                   *{margin:0;padding:0;box-sizing:border-box}
+                  html,body{height:100%;}
                   body{font-family:Arial,sans-serif;font-size:10px;color:#000;}
-                  .att-header{display:flex;align-items:center;gap:12px;padding:2mm 8mm 2mm;border-bottom:2px solid #C9A84C;position:fixed;top:0;left:0;right:0;background:#fff;height:16mm;}
-                  .att-header img{height:12mm;width:auto;object-fit:contain;}
-                  .att-header-center{flex:1;text-align:center;}
-                  .att-header-center .nom{font-size:13px;font-weight:900;}
-                  .att-header-center .entete{font-size:8px;font-style:italic;color:#333;margin-top:1px;}
-                  .att-header-right{font-size:8px;color:#555;text-align:right;white-space:nowrap;font-weight:700;}
-                  .att-footer{position:fixed;bottom:0;left:0;right:0;font-size:8px;color:#444;border-top:1px solid #ccc;padding:2px 8mm;background:#fff;height:10mm;display:flex;align-items:center;justify-content:space-between;}
-                  .att-content{margin-top:18mm;margin-bottom:12mm;padding:2mm 8mm;}
-                  .header-table{width:100%;border-collapse:collapse;margin-bottom:6px;border:1px solid #999}
-                  .header-table td{border:1px solid #999;padding:3px 5px;vertical-align:top}
-                  .header-table .label{font-size:8px;color:#555;display:block}
-                  .header-table .val{font-weight:700;font-size:10px}
-                  .title-row{background:#e0e0e0}
-                  table.data-table{width:100%;border-collapse:collapse;font-size:9px}
-                  table.data-table thead{display:table-header-group;}
-                  table.data-table th{border:1px solid #999;padding:4px 5px;text-align:center;background:#d0d0d0;font-weight:700;font-size:9px}
-                  table.data-table td{border:1px solid #999;padding:3px 5px;}
-                  table.data-table tr{page-break-inside:avoid;}
                   @media print{
-                    @page{size:A4 landscape;margin:18mm 8mm 12mm 8mm;}
+                    @page{size:A4 landscape;margin:0;}
                     button{display:none!important}
                     body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-                    .att-header{position:fixed;top:0;}
-                    .att-footer{position:fixed;bottom:0;}
-                    table.data-table thead{display:table-header-group;}
-                    table.data-table tr{page-break-inside:avoid;}
                   }
+                  /* Structure: header fixe en haut, footer fixe en bas, content au milieu */
+                  .page-header{
+                    position:fixed;top:0;left:0;right:0;height:16mm;
+                    display:flex;align-items:center;gap:10px;
+                    padding:2mm 8mm;border-bottom:2px solid #C9A84C;
+                    background:#fff;
+                  }
+                  .page-header img{height:11mm;object-fit:contain;}
+                  .page-header .center{flex:1;text-align:center;}
+                  .page-header .center .nom{font-size:13px;font-weight:900;}
+                  .page-header .center .ent{font-size:8px;font-style:italic;color:#444;}
+                  .page-header .right{font-size:8px;font-weight:700;color:#333;}
+                  .page-footer{
+                    position:fixed;bottom:0;left:0;right:0;height:10mm;
+                    display:flex;align-items:center;justify-content:space-between;
+                    padding:0 8mm;border-top:1px solid #bbb;
+                    background:#fff;font-size:8px;color:#444;
+                  }
+                  .main{margin-top:18mm;margin-bottom:12mm;padding:2mm 8mm;}
+                  /* Tables */
+                  .info-table{width:100%;border-collapse:collapse;margin-bottom:6px;}
+                  .info-table td{border:1px solid #999;padding:3px 5px;vertical-align:top;}
+                  .info-table .lbl{font-size:8px;color:#666;display:block;}
+                  .info-table .val{font-weight:700;font-size:10px;}
+                  .title-bar{background:#e0e0e0;text-align:center;font-weight:900;font-size:11px;padding:4px;border:1px solid #999;margin-bottom:6px;}
+                  .data-table{width:100%;border-collapse:collapse;font-size:9px;}
+                  .data-table thead{display:table-header-group;}
+                  .data-table th{border:1px solid #999;padding:4px 5px;text-align:center;background:#d0d0d0;font-weight:700;}
+                  .data-table td{border:1px solid #999;padding:3px 5px;}
+                  .data-table tbody tr{page-break-inside:avoid;}
+                  .no-print{background:#1a2540;text-align:center;padding:8px;position:sticky;top:0;z-index:999;}
                 </style></head><body>
-                <div class="att-header">
-                  ${s.logo ? '<img src="'+s.logo+'" />' : '<div style="width:12mm;height:12mm;background:#C9A84C;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:#fff;">SM</div>'}
-                  <div class="att-header-center">
+
+                <div class="no-print">
+                  <button onclick="window.print()" style="background:#E8730A;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;margin-right:8px;">🖨 Imprimer</button>
+                  <button onclick="window.close()" style="background:#6B7A99;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:12px;cursor:pointer;">✕ Fermer</button>
+                </div>
+
+                <div class="page-header">
+                  ${s.logo ? '<img src="'+s.logo+'" />' : '<div style="width:11mm;height:11mm;background:#C9A84C;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:#fff;">SM</div>'}
+                  <div class="center">
                     <div class="nom">${s.nom||'SMERAV S.A.R.L.au'}</div>
-                    ${enTete ? '<div class="entete">'+enTete+'</div>' : ''}
+                    ${enTete ? '<div class="ent">'+enTete+'</div>' : ''}
                   </div>
-                  <div class="att-header-right" id="pnum"></div>
+                  <div class="right" id="pnum"></div>
                 </div>
-                <div class="att-footer">
-                  <span style="flex:1;text-align:center;">${piedPage}</span>
-                  <span style="font-weight:700;white-space:nowrap;margin-left:10px;" id="pnum2"></span>
+
+                <div class="page-footer">
+                  <span>${piedPage}</span>
+                  <span id="pnum2" style="font-weight:700;"></span>
                 </div>
-                <div class="att-content">
 
-                <table class="header-table">
-                  <tr>
-                    <td colspan="2"><span class="label">Maître d'ouvrage</span><span class="val">${p.maitreOuvrage||p.client||''}</span></td>
-                    <td><span class="label">Marché N°</span><span class="val">${p.marcheNum||'—'}</span></td>
-                    <td><span class="label">ORDRE DE SERVICE N°</span><span class="val">${p.osNum||'—'}</span></td>
-                    <td><span class="label">Date OS</span><span class="val">${p.dateOS?new Date(p.dateOS).toLocaleDateString('fr-MA'):'—'}</span></td>
-                  </tr>
-                  <tr>
-                    <td colspan="2"><span class="label">Titulaire du Marché</span><span class="val">${s.titulaire||s.nom||'Sté SMERAV sarl'}</span></td>
-                    <td><span class="label">Travail N°</span><span class="val">${a.travailNum||'—'}</span></td>
-                    <td colspan="2"><span class="label">Travaux Attachés</span>
-                      <table style="border:none;width:100%">
-                        <tr><td style="border:none;padding:2px"><span class="label">DU</span><span class="val">${a.du?new Date(a.du).toLocaleDateString('fr-MA'):'—'}</span></td>
-                            <td style="border:none;padding:2px"><span class="label">AU</span><span class="val">${a.au?new Date(a.au).toLocaleDateString('fr-MA'):'—'}</span></td></tr>
-                      </table>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td colspan="5"><span class="label">Objet</span><span class="val">${p.nom||''}</span></td>
-                  </tr>
-                  <tr class="title-row">
-                    <td colspan="5" style="text-align:center;font-weight:900;font-size:12px">
-                      ATTACHEMENT PROVISOIRE N° ${a.num}/${p.marcheNum||'—'}
-                    </td>
-                  </tr>
-                </table>
-
-                <table class="data-table">
-                  <thead><tr>
-                    <th style="width:60px">N° Prix</th>
-                    <th>DESIGNATION DES ARTICLES</th>
-                    <th style="width:40px">Uté</th>
-                    <th style="width:70px">Qté marché</th>
-                    <th style="width:80px">Qté précédente</th>
-                    <th style="width:70px">Qté du mois</th>
-                    <th style="width:60px">cumul</th>
-                    <th style="width:45px">%</th>
-                  </tr></thead>
-                  <tbody>${rows}</tbody>
-                </table>
+                <div class="main">
+                  <table class="info-table">
+                    <tr>
+                      <td colspan="2"><span class="lbl">Maître d'ouvrage</span><span class="val">${p.maitreOuvrage||p.client||''}</span></td>
+                      <td><span class="lbl">Marché N°</span><span class="val">${p.marcheNum||'—'}</span></td>
+                      <td><span class="lbl">ORDRE DE SERVICE N°</span><span class="val">${p.osNum||'—'}</span></td>
+                      <td><span class="lbl">Date OS</span><span class="val">${p.dateOS?new Date(p.dateOS).toLocaleDateString('fr-MA'):'—'}</span></td>
+                    </tr>
+                    <tr>
+                      <td colspan="2"><span class="lbl">Titulaire du Marché</span><span class="val">${s.titulaire||s.nom||'SMERAV S.A.R.L.au'}</span></td>
+                      <td><span class="lbl">Travail N°</span><span class="val">${a.travailNum||'—'}</span></td>
+                      <td colspan="2">
+                        <span class="lbl">Travaux Attachés DU <strong>${a.du?new Date(a.du).toLocaleDateString('fr-MA'):'—'}</strong> AU <strong>${a.au?new Date(a.au).toLocaleDateString('fr-MA'):'—'}</strong></span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td colspan="5"><span class="lbl">Objet</span><span class="val">${p.nom||''}</span></td>
+                    </tr>
+                  </table>
+                  <div class="title-bar">ATTACHEMENT PROVISOIRE N° ${a.num}/${p.marcheNum||'—'}</div>
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th style="width:55px">N° Prix</th>
+                        <th>DESIGNATION DES ARTICLES</th>
+                        <th style="width:35px">Uté</th>
+                        <th style="width:65px">Qté marché</th>
+                        <th style="width:75px">Qté précédente</th>
+                        <th style="width:65px">Qté du mois</th>
+                        <th style="width:55px">Cumul</th>
+                        <th style="width:40px">%</th>
+                      </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                  </table>
                 </div>
 
                 <script>
                   window.onload = function(){
                     var pageH = 210 * 3.7795;
                     var total = Math.max(1, Math.ceil(document.body.scrollHeight / pageH));
-                    var txt = 'Page 1/' + total;
+                    var txt = 'Page 1 / ' + total;
                     document.getElementById('pnum').textContent = txt;
                     document.getElementById('pnum2').textContent = txt;
                   };
