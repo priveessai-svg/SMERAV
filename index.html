@@ -2501,33 +2501,57 @@ function renderAttachementsSection(p, updateProject){
                 <style>
                   *{margin:0;padding:0;box-sizing:border-box}
                   body{font-family:Arial,sans-serif;font-size:10px;color:#000;}
-                  .att-header{display:flex;align-items:center;gap:12px;padding:6mm 10mm 4mm;border-bottom:2px solid #C9A84C;position:fixed;top:0;left:0;right:0;background:#fff;}
-                  .att-content{margin-top:32mm;margin-bottom:20mm;padding:0 10mm;}
-                  .att-footer{position:fixed;bottom:0;left:0;right:0;font-size:8px;color:#444;text-align:center;border-top:1px solid #ccc;padding:4px 10mm;background:#fff;}
-                  .page-num{font-size:8px;color:#666;text-align:right;margin-left:auto;}
+                  .att-header{
+                    display:flex;align-items:center;gap:16px;
+                    padding:5mm 10mm 4mm;
+                    border-bottom:2px solid #C9A84C;
+                    position:fixed;top:0;left:0;right:0;
+                    background:#fff;height:28mm;
+                  }
+                  .att-header img{height:22mm;width:auto;object-fit:contain;}
+                  .att-header-center{flex:1;text-align:center;}
+                  .att-header-center .nom{font-size:18px;font-weight:900;letter-spacing:0.5px;}
+                  .att-header-center .entete{font-size:9px;font-style:italic;font-weight:700;color:#333;margin-top:3px;}
+                  .att-header-right{font-size:9px;color:#555;text-align:right;white-space:nowrap;}
+                  .att-content{margin-top:30mm;margin-bottom:16mm;padding:4mm 10mm;}
+                  .att-footer{
+                    position:fixed;bottom:0;left:0;right:0;
+                    font-size:8px;color:#444;text-align:center;
+                    border-top:1px solid #ccc;padding:3px 10mm;
+                    background:#fff;height:14mm;
+                    display:flex;align-items:center;justify-content:center;
+                  }
                   .header-table{width:100%;border-collapse:collapse;margin-bottom:8px;border:1px solid #999}
                   .header-table td{border:1px solid #999;padding:4px 7px;vertical-align:top}
                   .header-table .label{font-size:8px;color:#555;display:block}
                   .header-table .val{font-weight:700;font-size:10px}
                   .title-row{background:#e0e0e0}
-                  table{width:100%;border-collapse:collapse;font-size:9px}
-                  th{border:1px solid #999;padding:5px 7px;text-align:center;background:#d0d0d0;font-weight:700;font-size:9px}
-                  td{border:1px solid #999;padding:4px 7px}
+                  table.data-table{width:100%;border-collapse:collapse;font-size:9px}
+                  table.data-table th{border:1px solid #999;padding:5px 7px;text-align:center;background:#d0d0d0;font-weight:700;font-size:9px}
+                  table.data-table td{border:1px solid #999;padding:4px 7px}
                   @media print{
-                    @page{size:A4 landscape;margin:35mm 10mm 18mm 10mm}
-                    button{display:none}
-                    body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+                    @page{
+                      size:A4 landscape;
+                      margin:30mm 10mm 16mm 10mm;
+                      @bottom-center{counter-increment:page;content:'Page ' counter(page) ' / ' counter(pages);}
+                    }
+                    button{display:none!important}
+                    body{-webkit-print-color-adjust:exact;print-color-adjust:exact;counter-reset:page;}
                     .att-header{position:fixed;top:0;left:0;right:0;}
                     .att-footer{position:fixed;bottom:0;left:0;right:0;}
+                    .page-counter{display:none;}
                   }
                 </style></head><body>
                 <div class="att-header">
-                  ${s.logo ? '<img src="'+s.logo+'" style="height:45px;object-fit:contain;"/>' : '<div style="width:45px;height:45px;background:#C9A84C;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:#fff;">SM</div>'}
-                  <div style="flex:1;text-align:center;">
-                    <div style="font-size:15px;font-weight:900;">${s.nom||'SMERAV S.A.R.L.au'}</div>
-                    ${enTete ? '<div style="font-size:9px;font-style:italic;font-weight:700;color:#333;">'+enTete+'</div>' : ''}
+                  ${s.logo
+                    ? '<img src="'+s.logo+'" />'
+                    : '<div style="width:22mm;height:22mm;background:#C9A84C;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#fff;">SM</div>'
+                  }
+                  <div class="att-header-center">
+                    <div class="nom">${s.nom||'SMERAV S.A.R.L.au'}</div>
+                    ${enTete ? '<div class="entete">'+enTete+'</div>' : ''}
                   </div>
-                  <div class="page-num" id="pnum"></div>
+                  <div class="att-header-right" id="pnum">Page 1/1</div>
                 </div>
                 <div class="att-footer">${piedPage}</div>
                 <div class="att-content">
@@ -2559,7 +2583,7 @@ function renderAttachementsSection(p, updateProject){
                   </tr>
                 </table>
 
-                <table>
+                <table class="data-table">
                   <thead><tr>
                     <th style="width:60px">N° Prix</th>
                     <th>DESIGNATION DES ARTICLES</th>
@@ -2575,10 +2599,13 @@ function renderAttachementsSection(p, updateProject){
                 </div>
 
                 <script>
-                  (function(){
-                    var pages = Math.ceil(document.querySelector('.att-content').scrollHeight / (297*3.78));
-                    document.getElementById('pnum').textContent = 'Page 1 / ' + (pages||1);
-                  })();
+                  window.onload = function(){
+                    var content = document.querySelector('.att-content');
+                    var pageH = 210 * 3.7795; // A4 landscape height in px
+                    var total = Math.max(1, Math.ceil(content.scrollHeight / pageH));
+                    var pnum = document.getElementById('pnum');
+                    pnum.textContent = 'Page 1/' + total;
+                  };
                 <\/script>
                 </body></html>`);
                 win.document.close();
