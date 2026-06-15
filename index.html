@@ -2525,7 +2525,7 @@ function renderAttachementsSection(p, updateProject){
                     padding:0 8mm;border-top:1px solid #bbb;
                     background:#fff;font-size:8px;color:#444;
                   }
-                  .main{margin-top:18mm;margin-bottom:16mm;padding:2mm 8mm 6mm;}
+                  .main{margin-top:18mm;margin-bottom:14mm;padding:2mm 8mm 2mm;}
                   /* Tables */
                   .info-table{width:100%;border-collapse:collapse;margin-bottom:6px;}
                   .info-table td{border:1px solid #999;padding:3px 5px;vertical-align:top;}
@@ -2596,14 +2596,14 @@ function renderAttachementsSection(p, updateProject){
                   </table>
 
                   <!-- Zone de signature -->
-                  <div style="margin-top:20mm;display:flex;justify-content:space-between;padding:0 10mm;">
-                    <div style="text-align:center;width:35%;">
-                      <div style="font-weight:700;font-size:11px;border-bottom:1px solid #000;padding-bottom:2px;margin-bottom:15mm;">Maître d'ouvrage</div>
-                      <div style="font-size:10px;color:#555;">${p.maitreOuvrage||'SRM-FM'}</div>
+                  <div style="margin-top:12mm;page-break-inside:avoid;display:flex;justify-content:space-around;padding:0 5mm;">
+                    <div style="text-align:center;width:35%;border:1px solid #ccc;padding:4mm;border-radius:4px;">
+                      <div style="font-weight:700;font-size:10px;margin-bottom:18mm;">Maître d'ouvrage</div>
+                      <div style="font-size:10px;border-top:1px solid #000;padding-top:2mm;">${p.maitreOuvrage||'SRM-FM'}</div>
                     </div>
-                    <div style="text-align:center;width:35%;">
-                      <div style="font-weight:700;font-size:11px;border-bottom:1px solid #000;padding-bottom:2px;margin-bottom:15mm;">Titulaire du Marché</div>
-                      <div style="font-size:10px;color:#555;">${s.nom||'SMERAV S.A.R.L.au'}</div>
+                    <div style="text-align:center;width:35%;border:1px solid #ccc;padding:4mm;border-radius:4px;">
+                      <div style="font-weight:700;font-size:10px;margin-bottom:18mm;">Titulaire du Marché</div>
+                      <div style="font-size:10px;border-top:1px solid #000;padding-top:2mm;">${s.nom||'SMERAV S.A.R.L.au'}</div>
                     </div>
                   </div>
                 </div>
