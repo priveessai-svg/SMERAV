@@ -2518,14 +2518,14 @@ function renderAttachementsSection(p, updateProject){
                   .page-header .center{flex:1;text-align:center;}
                   .page-header .center .nom{font-size:13px;font-weight:900;}
                   .page-header .center .ent{font-size:8px;font-style:italic;color:#444;}
-                  .page-header .right{font-size:8px;font-weight:700;color:#333;}
+                  .page-header .right{font-size:8px;font-weight:700;color:#333;display:none;}
                   .page-footer{
                     position:fixed;bottom:0;left:0;right:0;height:10mm;
                     display:flex;align-items:center;justify-content:space-between;
                     padding:0 8mm;border-top:1px solid #bbb;
                     background:#fff;font-size:8px;color:#444;
                   }
-                  .main{margin-top:18mm;margin-bottom:12mm;padding:2mm 8mm;}
+                  .main{margin-top:18mm;margin-bottom:16mm;padding:2mm 8mm 6mm;}
                   /* Tables */
                   .info-table{width:100%;border-collapse:collapse;margin-bottom:6px;}
                   .info-table td{border:1px solid #999;padding:3px 5px;vertical-align:top;}
@@ -2551,12 +2551,12 @@ function renderAttachementsSection(p, updateProject){
                     <div class="nom">${s.nom||'SMERAV S.A.R.L.au'}</div>
                     ${enTete ? '<div class="ent">'+enTete+'</div>' : ''}
                   </div>
-                  <div class="right" id="pnum"></div>
+                  <div class="right" id="pnum" style="display:none;"></div>
                 </div>
 
                 <div class="page-footer">
-                  <span>${piedPage}</span>
-                  <span id="pnum2" style="font-weight:700;"></span>
+                  <span style="flex:1;text-align:center;">${piedPage}</span>
+                  <span id="pnum2" style="font-weight:700;white-space:nowrap;padding-left:10px;border-left:1px solid #ccc;margin-left:10px;"></span>
                 </div>
 
                 <div class="main">
