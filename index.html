@@ -2501,59 +2501,46 @@ function renderAttachementsSection(p, updateProject){
                 <style>
                   *{margin:0;padding:0;box-sizing:border-box}
                   body{font-family:Arial,sans-serif;font-size:10px;color:#000;}
-                  .att-header{
-                    display:flex;align-items:center;gap:16px;
-                    padding:5mm 10mm 4mm;
-                    border-bottom:2px solid #C9A84C;
-                    position:fixed;top:0;left:0;right:0;
-                    background:#fff;height:28mm;
-                  }
-                  .att-header img{height:22mm;width:auto;object-fit:contain;}
+                  .att-header{display:flex;align-items:center;gap:12px;padding:2mm 8mm 2mm;border-bottom:2px solid #C9A84C;position:fixed;top:0;left:0;right:0;background:#fff;height:16mm;}
+                  .att-header img{height:12mm;width:auto;object-fit:contain;}
                   .att-header-center{flex:1;text-align:center;}
-                  .att-header-center .nom{font-size:18px;font-weight:900;letter-spacing:0.5px;}
-                  .att-header-center .entete{font-size:9px;font-style:italic;font-weight:700;color:#333;margin-top:3px;}
-                  .att-header-right{font-size:9px;color:#555;text-align:right;white-space:nowrap;}
-                  .att-content{margin-top:30mm;margin-bottom:16mm;padding:4mm 10mm;}
-                  .att-footer{
-                    position:fixed;bottom:0;left:0;right:0;
-                    font-size:8px;color:#444;text-align:center;
-                    border-top:1px solid #ccc;padding:3px 10mm;
-                    background:#fff;height:14mm;
-                    display:flex;align-items:center;justify-content:center;
-                  }
-                  .header-table{width:100%;border-collapse:collapse;margin-bottom:8px;border:1px solid #999}
-                  .header-table td{border:1px solid #999;padding:4px 7px;vertical-align:top}
+                  .att-header-center .nom{font-size:13px;font-weight:900;}
+                  .att-header-center .entete{font-size:8px;font-style:italic;color:#333;margin-top:1px;}
+                  .att-header-right{font-size:8px;color:#555;text-align:right;white-space:nowrap;font-weight:700;}
+                  .att-footer{position:fixed;bottom:0;left:0;right:0;font-size:8px;color:#444;border-top:1px solid #ccc;padding:2px 8mm;background:#fff;height:10mm;display:flex;align-items:center;justify-content:space-between;}
+                  .att-content{margin-top:18mm;margin-bottom:12mm;padding:2mm 8mm;}
+                  .header-table{width:100%;border-collapse:collapse;margin-bottom:6px;border:1px solid #999}
+                  .header-table td{border:1px solid #999;padding:3px 5px;vertical-align:top}
                   .header-table .label{font-size:8px;color:#555;display:block}
                   .header-table .val{font-weight:700;font-size:10px}
                   .title-row{background:#e0e0e0}
                   table.data-table{width:100%;border-collapse:collapse;font-size:9px}
-                  table.data-table th{border:1px solid #999;padding:5px 7px;text-align:center;background:#d0d0d0;font-weight:700;font-size:9px}
-                  table.data-table td{border:1px solid #999;padding:4px 7px}
+                  table.data-table thead{display:table-header-group;}
+                  table.data-table th{border:1px solid #999;padding:4px 5px;text-align:center;background:#d0d0d0;font-weight:700;font-size:9px}
+                  table.data-table td{border:1px solid #999;padding:3px 5px;}
+                  table.data-table tr{page-break-inside:avoid;}
                   @media print{
-                    @page{
-                      size:A4 landscape;
-                      margin:30mm 10mm 16mm 10mm;
-                      @bottom-center{counter-increment:page;content:'Page ' counter(page) ' / ' counter(pages);}
-                    }
+                    @page{size:A4 landscape;margin:18mm 8mm 12mm 8mm;}
                     button{display:none!important}
-                    body{-webkit-print-color-adjust:exact;print-color-adjust:exact;counter-reset:page;}
-                    .att-header{position:fixed;top:0;left:0;right:0;}
-                    .att-footer{position:fixed;bottom:0;left:0;right:0;}
-                    .page-counter{display:none;}
+                    body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+                    .att-header{position:fixed;top:0;}
+                    .att-footer{position:fixed;bottom:0;}
+                    table.data-table thead{display:table-header-group;}
+                    table.data-table tr{page-break-inside:avoid;}
                   }
                 </style></head><body>
                 <div class="att-header">
-                  ${s.logo
-                    ? '<img src="'+s.logo+'" />'
-                    : '<div style="width:22mm;height:22mm;background:#C9A84C;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#fff;">SM</div>'
-                  }
+                  ${s.logo ? '<img src="'+s.logo+'" />' : '<div style="width:12mm;height:12mm;background:#C9A84C;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:#fff;">SM</div>'}
                   <div class="att-header-center">
                     <div class="nom">${s.nom||'SMERAV S.A.R.L.au'}</div>
                     ${enTete ? '<div class="entete">'+enTete+'</div>' : ''}
                   </div>
-                  <div class="att-header-right" id="pnum">Page 1/1</div>
+                  <div class="att-header-right" id="pnum"></div>
                 </div>
-                <div class="att-footer">${piedPage}</div>
+                <div class="att-footer">
+                  <span style="flex:1;text-align:center;">${piedPage}</span>
+                  <span style="font-weight:700;white-space:nowrap;margin-left:10px;" id="pnum2"></span>
+                </div>
                 <div class="att-content">
 
                 <table class="header-table">
@@ -2600,11 +2587,11 @@ function renderAttachementsSection(p, updateProject){
 
                 <script>
                   window.onload = function(){
-                    var content = document.querySelector('.att-content');
-                    var pageH = 210 * 3.7795; // A4 landscape height in px
-                    var total = Math.max(1, Math.ceil(content.scrollHeight / pageH));
-                    var pnum = document.getElementById('pnum');
-                    pnum.textContent = 'Page 1/' + total;
+                    var pageH = 210 * 3.7795;
+                    var total = Math.max(1, Math.ceil(document.body.scrollHeight / pageH));
+                    var txt = 'Page 1/' + total;
+                    document.getElementById('pnum').textContent = txt;
+                    document.getElementById('pnum2').textContent = txt;
                   };
                 <\/script>
                 </body></html>`);
