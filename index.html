@@ -339,6 +339,15 @@ function printDoc(htmlContent, title='Document'){
       `<div style="width:55px;height:55px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;">SM</div>`;
     const footerTxt = (s.piedPage||'').replace(/\n/g,'<br>');
     const enTeteTxt = (s.enTete||'').replace(/\n/g,'<br>');
+    const enTeteImgHTML = s.enTeteImg
+      ? `<div style="width:100%;margin-bottom:0;"><img src="${s.enTeteImg}" style="width:100%;max-height:35mm;object-fit:contain;display:block;"/></div>`
+      : `<div class="doc-header">
+          ${logoHTML}
+          <div style="flex:1;text-align:center;">
+            <div style="font-size:16px;font-weight:900;">${s.nom||'SMERAV S.A.R.L'}</div>
+            ${enTeteTxt ? '<div style="font-size:9px;font-style:italic;color:#333;">'+enTeteTxt+'</div>' : ''}
+          </div>
+        </div>`;
     const w = window.open('','_blank');
     if(!w){ alert('Activez les popups pour imprimer'); return; }
     w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
@@ -348,66 +357,42 @@ function printDoc(htmlContent, title='Document'){
       table{border-collapse:collapse;width:100%;}
       th,td{border:1px solid #000;padding:5px 8px;}
       th{background:#f5f5f5;font-weight:bold;text-align:center;}
-      @page{
-        size:A4;
-        margin:45mm 10mm 22mm 10mm;
-        @top-center{
-          content: element(pageHeader);
-        }
-        @bottom-center{
-          content: element(pageFooter);
-        }
-      }
+      thead{display:table-header-group;}
+      tr{page-break-inside:avoid;}
+      @page{size:A4;margin:10mm 10mm 16mm 10mm;}
       @media print{
         .no-print{display:none!important}
         body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-        .page-header-fixed{position:running(pageHeader);}
-        .page-footer-fixed{position:running(pageFooter);}
+        .doc-header{position:fixed;top:0;left:0;right:0;}
+        .doc-footer{position:fixed;bottom:0;left:0;right:0;}
       }
-      .page-header-fixed{
-        display:flex;align-items:center;gap:14px;
-        padding-bottom:8px;border-bottom:2px solid #C9A84C;
-        margin-bottom:10px;
-        position:fixed;top:0;left:10mm;right:10mm;
-        background:#fff;
+      .doc-header{
+        display:flex;align-items:center;gap:12px;
+        padding:3mm 10mm 2mm;
+        border-bottom:2px solid #C9A84C;
+        position:fixed;top:0;left:0;right:0;
+        background:#fff;height:15mm;
       }
-      .page-footer-fixed{
+      .doc-footer{
         position:fixed;bottom:0;left:0;right:0;
-        font-size:9px;color:#444;text-align:center;
-        border-top:1px solid #ccc;padding:5px 10mm;
-        background:#fff;
+        font-size:8.5px;color:#444;text-align:center;
+        border-top:1px solid #ccc;padding:3px 10mm;
+        background:#fff;height:13mm;
+        display:flex;align-items:center;justify-content:center;
       }
-      .page-num{
-        text-align:right;font-size:9px;color:#666;
-        padding-top:4px;
-      }
-      .content{margin-top:45mm;margin-bottom:22mm;}
-      .no-print-bar{text-align:center;padding:10px;background:#1A2540;position:sticky;top:0;z-index:100;}
+      .content{margin-bottom:15mm;}
+      .no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:100;}
     </style>
-    <script>
-      window.onload=function(){
-        var d=document,pages=d.querySelectorAll('.page-break');
-        var total=pages.length+1;
-        d.querySelectorAll('.page-num').forEach(function(el,i){el.textContent='Page : '+(i+1)+'/'+total;});
-      }
-    <\/script>
     </head><body>
     <div class="no-print no-print-bar">
       <button onclick="window.print()" style="background:#E8730A;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;margin-right:10px;">🖨 Imprimer / PDF</button>
       <button onclick="window.close()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">✕ Fermer</button>
     </div>
-    <div class="page-header-fixed">
-      ${logoHTML}
-      <div style="flex:1;text-align:center;">
-        <div style="font-size:18px;font-weight:900;">${s.nom||'SMERAV S.A.R.L'}</div>
-        <div style="font-size:10px;font-style:italic;font-weight:700;color:#333;">${enTeteTxt}</div>
-      </div>
-      <div class="page-num no-print"></div>
-    </div>
+    ${enTeteImgHTML}
+    <div class="doc-footer">${footerTxt}</div>
     <div class="content">
       ${htmlContent}
     </div>
-    <div class="page-footer-fixed">${footerTxt}</div>
     </body></html>`);
     w.document.close();
   } catch(e) { alert('Erreur impression: ' + e.message); }
@@ -944,7 +929,7 @@ function renderParametres(){
     );
        if(activeTab==='perso') return div({style:{padding:28,flex:1}},
       div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',letterSpacing:1,marginBottom:20}},'IDENTITÉ VISUELLE'),
-      div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:32}},
+      div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:32,marginBottom:28}},
         div({},
           el('label',{className:'lbl'},'LOGO OFFICIEL'),
           div({style:{width:'100%',height:150,border:'2px dashed #E5E9F2',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',background:'#F8FAFD',overflow:'hidden',marginBottom:10}},
@@ -964,9 +949,39 @@ function renderParametres(){
             Object.assign(el('input',{type:'color',value:s.couleur||'#C9A84C',style:{width:80,height:80,borderRadius:12,border:'2px solid #E5E9F2',cursor:'pointer',padding:4}}),{oninput:e=>{s.couleur=e.target.value;}}),
             div({style:{fontSize:11,color:'#6B7A99',lineHeight:'1.8'}},el('span',{},'Cette couleur sera utilisée'),el('br',{}),'pour les titres, les bordures',el('br',{}),'et les éléments graphiques',el('br',{}),'de vos documents PDF.')
           ),
-          el('label',{className:'lbl'},'EN-TÊTE (IMPRESSION)'),
+          el('label',{className:'lbl'},'EN-TÊTE TEXTE (IMPRESSION)'),
           Object.assign(el('textarea',{rows:3,style:{resize:'vertical',fontStyle:'italic',fontWeight:700,width:'100%'}},s.enTete||''),{oninput:e=>s.enTete=e.target.value})
         )
+      ),
+      div({style:{borderTop:'1px solid #E5E9F2',paddingTop:24}},
+        div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',letterSpacing:1,marginBottom:16}},'EN-TÊTE IMAGE — PAPIER À EN-TÊTE'),
+        div({style:{fontSize:12,color:'#6B7A99',marginBottom:14}},'Uploadez une photo de votre papier à en-tête. Elle sera affichée en haut de chaque document imprimé.'),
+        div({style:{width:'100%',border:'2px dashed #E5E9F2',borderRadius:12,background:'#F8FAFD',overflow:'hidden',marginBottom:12,minHeight:120,display:'flex',alignItems:'center',justifyContent:'center'}},
+          s.enTeteImg
+            ? div({style:{width:'100%',position:'relative'}},
+                Object.assign(el('img',{src:s.enTeteImg,style:{width:'100%',objectFit:'contain',maxHeight:200,display:'block'}})),
+                btn('✕ Supprimer','btn-red',()=>{s.enTeteImg=null;setState({settings:s});notify('Image supprimée');},{style:{position:'absolute',top:6,right:6,fontSize:11,padding:'3px 10px'}})
+              )
+            : div({style:{textAlign:'center',padding:24,color:'#6B7A99'}},
+                div({style:{fontSize:32,marginBottom:8}},'🖼️'),
+                div({style:{fontSize:12}},'Aucune image — cliquez pour uploader')
+              )
+        ),
+        el('label',{style:{cursor:'pointer',color:C.blue,fontSize:12,fontWeight:700,display:'inline-flex',alignItems:'center',gap:8,background:'#EFF6FF',padding:'8px 16px',borderRadius:8}},
+          '📤 Uploader image En-tête',
+          Object.assign(el('input',{type:'file',accept:'image/*',style:{display:'none'}}),{
+            onchange:e=>{
+              const file=e.target.files[0];
+              if(!file)return;
+              const r=new FileReader();
+              r.onload=ev=>{s.enTeteImg=ev.target.result;setState({settings:s});saveSettings();notify('Image en-tête enregistrée ✓');};
+              r.readAsDataURL(file);
+            }
+          })
+        ),
+        s.enTeteImg
+          ? div({style:{marginTop:10,fontSize:11,color:'#16a34a',fontWeight:700}},'✓ Image active — sera utilisée sur tous les documents')
+          : div({style:{marginTop:10,fontSize:11,color:'#6B7A99'}},'Sans image → le logo + nom seront utilisés comme en-tête')
       )
     );
     if(activeTab==='docs') return div({style:{padding:28,flex:1}},
