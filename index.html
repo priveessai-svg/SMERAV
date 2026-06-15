@@ -335,8 +335,8 @@ function labeledInput(lbl_text, inputEl){
 function printDoc(htmlContent, title='Document'){
   try {
     const s = getSettings();
-    const logoHTML = s.logo ? `<img src="${s.logo}" style="height:60px;object-fit:contain;"/>` :
-      `<div style="width:60px;height:60px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;">SM</div>`;
+    const logoHTML = s.logo ? `<img src="${s.logo}" style="height:55px;object-fit:contain;"/>` :
+      `<div style="width:55px;height:55px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;">SM</div>`;
     const footerTxt = (s.piedPage||'').replace(/\n/g,'<br>');
     const enTeteTxt = (s.enTete||'').replace(/\n/g,'<br>');
     const w = window.open('','_blank');
@@ -348,48 +348,66 @@ function printDoc(htmlContent, title='Document'){
       table{border-collapse:collapse;width:100%;}
       th,td{border:1px solid #000;padding:5px 8px;}
       th{background:#f5f5f5;font-weight:bold;text-align:center;}
-      @page{size:A4;margin:10mm 10mm 20mm 10mm;}
+      @page{
+        size:A4;
+        margin:45mm 10mm 22mm 10mm;
+        @top-center{
+          content: element(pageHeader);
+        }
+        @bottom-center{
+          content: element(pageFooter);
+        }
+      }
       @media print{
         .no-print{display:none!important}
         body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-        .page-footer{position:fixed;bottom:0;left:0;right:0;}
+        .page-header-fixed{position:running(pageHeader);}
+        .page-footer-fixed{position:running(pageFooter);}
       }
-      .page-wrapper{
-        width:210mm;min-height:297mm;margin:0 auto;
-        padding:10mm;position:relative;
-        display:flex;flex-direction:column;
-      }
-      .page-header{
+      .page-header-fixed{
         display:flex;align-items:center;gap:14px;
-        padding-bottom:10px;border-bottom:2px solid #E8730A;margin-bottom:14px;
+        padding-bottom:8px;border-bottom:2px solid #C9A84C;
+        margin-bottom:10px;
+        position:fixed;top:0;left:10mm;right:10mm;
+        background:#fff;
       }
-      .page-footer{
+      .page-footer-fixed{
         position:fixed;bottom:0;left:0;right:0;
         font-size:9px;color:#444;text-align:center;
         border-top:1px solid #ccc;padding:5px 10mm;
         background:#fff;
       }
-      .content{margin-bottom:25mm;}
-      .content{flex:1;}
+      .page-num{
+        text-align:right;font-size:9px;color:#666;
+        padding-top:4px;
+      }
+      .content{margin-top:45mm;margin-bottom:22mm;}
       .no-print-bar{text-align:center;padding:10px;background:#1A2540;position:sticky;top:0;z-index:100;}
-    </style></head><body>
+    </style>
+    <script>
+      window.onload=function(){
+        var d=document,pages=d.querySelectorAll('.page-break');
+        var total=pages.length+1;
+        d.querySelectorAll('.page-num').forEach(function(el,i){el.textContent='Page : '+(i+1)+'/'+total;});
+      }
+    <\/script>
+    </head><body>
     <div class="no-print no-print-bar">
       <button onclick="window.print()" style="background:#E8730A;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;margin-right:10px;">🖨 Imprimer / PDF</button>
       <button onclick="window.close()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">✕ Fermer</button>
     </div>
-    <div class="page-wrapper">
-      <div class="page-header">
-        ${logoHTML}
-        <div style="flex:1;text-align:center;">
-          <div style="font-size:20px;font-weight:900;">${s.nom||'SMERAV S.A.R.L'}</div>
-          <div style="font-size:11px;font-style:italic;font-weight:700;color:#333;">${enTeteTxt}</div>
-        </div>
+    <div class="page-header-fixed">
+      ${logoHTML}
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:18px;font-weight:900;">${s.nom||'SMERAV S.A.R.L'}</div>
+        <div style="font-size:10px;font-style:italic;font-weight:700;color:#333;">${enTeteTxt}</div>
       </div>
-      <div class="content">
-        ${htmlContent}
-      </div>
+      <div class="page-num no-print"></div>
     </div>
-    <div class="page-footer no-print-exclude">${footerTxt}</div>
+    <div class="content">
+      ${htmlContent}
+    </div>
+    <div class="page-footer-fixed">${footerTxt}</div>
     </body></html>`);
     w.document.close();
   } catch(e) { alert('Erreur impression: ' + e.message); }
@@ -2482,27 +2500,37 @@ function renderAttachementsSection(p, updateProject){
                 <title>Attachement N°${a.num}</title>
                 <style>
                   *{margin:0;padding:0;box-sizing:border-box}
-                  body{font-family:Arial,sans-serif;font-size:11px;color:#000;padding:10mm}
-                  .entete{white-space:pre-wrap;font-size:10px;margin-bottom:8px;text-align:center}
-                  .header-table{width:100%;border-collapse:collapse;margin-bottom:10px;border:1px solid #999}
-                  .header-table td{border:1px solid #999;padding:5px 8px;vertical-align:top}
-                  .header-table .label{font-size:9px;color:#555;display:block}
-                  .header-table .val{font-weight:700;font-size:11px}
+                  body{font-family:Arial,sans-serif;font-size:10px;color:#000;}
+                  .att-header{display:flex;align-items:center;gap:12px;padding:6mm 10mm 4mm;border-bottom:2px solid #C9A84C;position:fixed;top:0;left:0;right:0;background:#fff;}
+                  .att-content{margin-top:32mm;margin-bottom:20mm;padding:0 10mm;}
+                  .att-footer{position:fixed;bottom:0;left:0;right:0;font-size:8px;color:#444;text-align:center;border-top:1px solid #ccc;padding:4px 10mm;background:#fff;}
+                  .page-num{font-size:8px;color:#666;text-align:right;margin-left:auto;}
+                  .header-table{width:100%;border-collapse:collapse;margin-bottom:8px;border:1px solid #999}
+                  .header-table td{border:1px solid #999;padding:4px 7px;vertical-align:top}
+                  .header-table .label{font-size:8px;color:#555;display:block}
+                  .header-table .val{font-weight:700;font-size:10px}
                   .title-row{background:#e0e0e0}
-                  table{width:100%;border-collapse:collapse;font-size:10px}
-                  th{border:1px solid #999;padding:6px 8px;text-align:center;background:#d0d0d0;font-weight:700;font-size:10px}
-                  td{border:1px solid #999;padding:5px 8px}
-                  .pied{position:fixed;bottom:0;left:0;right:0;white-space:pre-wrap;font-size:9px;padding:5px 10mm;text-align:center;border-top:1px solid #ccc;background:#fff}
+                  table{width:100%;border-collapse:collapse;font-size:9px}
+                  th{border:1px solid #999;padding:5px 7px;text-align:center;background:#d0d0d0;font-weight:700;font-size:9px}
+                  td{border:1px solid #999;padding:4px 7px}
                   @media print{
-                    @page{size:A4 landscape;margin:10mm 10mm 20mm 10mm}
-                    @page :first { margin-top: 10mm; }
+                    @page{size:A4 landscape;margin:35mm 10mm 18mm 10mm}
                     button{display:none}
                     body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-                    .pied{position:fixed;bottom:0;left:0;right:0;}
+                    .att-header{position:fixed;top:0;left:0;right:0;}
+                    .att-footer{position:fixed;bottom:0;left:0;right:0;}
                   }
                 </style></head><body>
-
-                ${enTete ? '<div class="entete">'+enTete+'</div>' : ''}
+                <div class="att-header">
+                  ${s.logo ? '<img src="'+s.logo+'" style="height:45px;object-fit:contain;"/>' : '<div style="width:45px;height:45px;background:#C9A84C;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:#fff;">SM</div>'}
+                  <div style="flex:1;text-align:center;">
+                    <div style="font-size:15px;font-weight:900;">${s.nom||'SMERAV S.A.R.L.au'}</div>
+                    ${enTete ? '<div style="font-size:9px;font-style:italic;font-weight:700;color:#333;">'+enTete+'</div>' : ''}
+                  </div>
+                  <div class="page-num" id="pnum"></div>
+                </div>
+                <div class="att-footer">${piedPage}</div>
+                <div class="att-content">
 
                 <table class="header-table">
                   <tr>
@@ -2544,9 +2572,14 @@ function renderAttachementsSection(p, updateProject){
                   </tr></thead>
                   <tbody>${rows}</tbody>
                 </table>
+                </div>
 
-                <div class="pied">${piedPage}</div>
-
+                <script>
+                  (function(){
+                    var pages = Math.ceil(document.querySelector('.att-content').scrollHeight / (297*3.78));
+                    document.getElementById('pnum').textContent = 'Page 1 / ' + (pages||1);
+                  })();
+                <\/script>
                 </body></html>`);
                 win.document.close();
                 setTimeout(()=>win.print(),500);
