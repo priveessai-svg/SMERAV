@@ -339,8 +339,9 @@ function printDoc(htmlContent, title='Document'){
       `<div style="width:55px;height:55px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;">SM</div>`;
     const footerTxt = (s.piedPage||'').replace(/\n/g,'<br>');
     const enTeteTxt = (s.enTete||'').replace(/\n/g,'<br>');
+    const headerH = s.enTeteImg ? 'auto' : '15mm';
     const enTeteImgHTML = s.enTeteImg
-      ? `<div style="width:100%;margin-bottom:0;"><img src="${s.enTeteImg}" style="width:100%;max-height:35mm;object-fit:contain;display:block;"/></div>`
+      ? `<div class="doc-header" style="height:auto;padding:0;border-bottom:none;"><img src="${s.enTeteImg}" style="width:100%;max-height:40mm;object-fit:contain;display:block;"/></div>`
       : `<div class="doc-header">
           ${logoHTML}
           <div style="flex:1;text-align:center;">
@@ -879,7 +880,7 @@ function printFacture(f){
     <div style="font-style:italic;font-size:10px;margin-top:4px">${numToWords(f.montantTTC||0)}</div>
   </div>
   <div style="text-align:right;font-size:9px;color:#999;margin-top:8px">Page : 1/1</div>
-  ${footerHTML()}`;
+  `;
   printDoc(html, 'Facture '+f.num);
 }
 
@@ -1707,7 +1708,7 @@ function printDevis(d){
     <tr style="background:#fff3e0"><td style="border:none;font-weight:900">Total TTC</td><td style="border:none;text-align:right;font-weight:900;color:#E8730A">${fmtN(d.montantTTC||0)}</td></tr>
   </table>
   <div style="margin-top:12px;font-size:10px;color:#666">Validité du devis : ${d.validite||30} jours · ${numToWords(d.montantTTC||0)}</div>
-  ${footerHTML()}`;
+  `;
   printDoc(html,'Devis '+d.num);
 }
 
@@ -2569,19 +2570,22 @@ function renderAttachementsSection(p, updateProject){
                   </thead>
                   <tbody>
                     ${rows}
+                    <tr style="page-break-inside:avoid;page-break-before:avoid;">
+                      <td colspan="8" style="border:none;padding:8mm 5mm 4mm;">
+                        <div style="display:flex;justify-content:space-around;">
+                          <div style="text-align:center;width:38%;border:1px solid #ccc;padding:4mm;border-radius:4px;">
+                            <div style="font-weight:700;font-size:10px;margin-bottom:16mm;">Maître d'ouvrage</div>
+                            <div style="font-size:10px;border-top:1px solid #000;padding-top:2mm;">${p.maitreOuvrage||'SRM-FM'}</div>
+                          </div>
+                          <div style="text-align:center;width:38%;border:1px solid #ccc;padding:4mm;border-radius:4px;">
+                            <div style="font-weight:700;font-size:10px;margin-bottom:16mm;">Titulaire du Marché</div>
+                            <div style="font-size:10px;border-top:1px solid #000;padding-top:2mm;">${s.nom||'SMERAV S.A.R.L.au'}</div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
-
-                <div style="margin-top:16mm;display:flex;justify-content:space-around;">
-                  <div style="text-align:center;width:35%;border:1px solid #ccc;padding:4mm;border-radius:4px;">
-                    <div style="font-weight:700;font-size:10px;margin-bottom:18mm;">Maître d'ouvrage</div>
-                    <div style="font-size:10px;border-top:1px solid #000;padding-top:2mm;">${p.maitreOuvrage||'SRM-FM'}</div>
-                  </div>
-                  <div style="text-align:center;width:35%;border:1px solid #ccc;padding:4mm;border-radius:4px;">
-                    <div style="font-weight:700;font-size:10px;margin-bottom:18mm;">Titulaire du Marché</div>
-                    <div style="font-size:10px;border-top:1px solid #000;padding-top:2mm;">${s.nom||'SMERAV S.A.R.L.au'}</div>
-                  </div>
-                </div>
                 `;
                 printDoc(html, 'Attachement N°'+a.num)},{style:{padding:'4px 8px',fontSize:12}}),
               btn('✏️','btn-orange',()=>{
@@ -2816,7 +2820,7 @@ function printDecompte(att, p){
     <td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;text-decoration:underline">Représentant Entreprise</td></tr>
     <tr><td style="border:1px solid #ccc;height:60px"></td><td style="border:1px solid #ccc;text-align:center;font-weight:bold;color:#666">SMERAV</td></tr>
   </table>
-  ${footerHTML()}`;
+  `;
   printDoc(html,'Décompte N°'+att.num);
 }
 
