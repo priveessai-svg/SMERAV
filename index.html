@@ -339,7 +339,6 @@ function printDoc(htmlContent, title='Document'){
       `<div style="width:55px;height:55px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;">SM</div>`;
     const footerTxt = (s.piedPage||'').replace(/\n/g,'<br>');
     const enTeteTxt = (s.enTete||'').replace(/\n/g,'<br>');
-    const headerH = s.enTeteImg ? 'auto' : '15mm';
     const enTeteImgHTML = s.enTeteImg
       ? `<div class="doc-header" style="height:auto;padding:0;border-bottom:none;"><img src="${s.enTeteImg}" style="width:100%;max-height:40mm;object-fit:contain;display:block;"/></div>`
       : `<div class="doc-header">
@@ -349,9 +348,17 @@ function printDoc(htmlContent, title='Document'){
             ${enTeteTxt ? '<div style="font-size:9px;font-style:italic;color:#333;">'+enTeteTxt+'</div>' : ''}
           </div>
         </div>`;
-    const w = window.open('','_blank');
-    if(!w){ alert('Activez les popups pour imprimer'); return; }
-    w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+
+    // Utiliser iframe pour éviter le blocage des popups
+    const oldFrame = document.getElementById('__printFrame');
+    if(oldFrame) oldFrame.remove();
+    const iframe = document.createElement('iframe');
+    iframe.id = '__printFrame';
+    iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:99999;background:#fff;';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+
+    doc.write(`<!DOCTYPE html><html><head><title>${title}</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0;}
       body{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;}
@@ -372,16 +379,14 @@ function printDoc(htmlContent, title='Document'){
         padding:3mm 10mm 2mm;
         border-bottom:2px solid #C9A84C;
         position:fixed;top:0;left:0;right:0;
-        background:#fff;height:18mm;
-        z-index:100;
+        background:#fff;height:18mm;z-index:100;
       }
       .doc-footer{
         position:fixed;bottom:0;left:0;right:0;
         font-size:8.5px;color:#444;text-align:center;
         border-top:1px solid #ccc;padding:3px 10mm;
         background:#fff;height:13mm;
-        display:flex;align-items:center;justify-content:center;
-        z-index:100;
+        display:flex;align-items:center;justify-content:center;z-index:100;
       }
       .content{margin-top:20mm;margin-bottom:15mm;}
       .no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:100;}
@@ -389,7 +394,7 @@ function printDoc(htmlContent, title='Document'){
     </head><body>
     <div class="no-print no-print-bar">
       <button onclick="window.print()" style="background:#E8730A;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;margin-right:10px;">🖨 Imprimer / PDF</button>
-      <button onclick="window.close()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">✕ Fermer</button>
+      <button onclick="parent.document.getElementById('__printFrame').remove()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">✕ Fermer</button>
     </div>
     ${enTeteImgHTML}
     <div class="doc-footer">${footerTxt}</div>
@@ -397,7 +402,7 @@ function printDoc(htmlContent, title='Document'){
       ${htmlContent}
     </div>
     </body></html>`);
-    w.document.close();
+    doc.close();
   } catch(e) { alert('Erreur impression: ' + e.message); }
 }
 
