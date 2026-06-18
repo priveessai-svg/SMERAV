@@ -372,7 +372,8 @@ function printDoc(htmlContent, title='Document'){
         padding:3mm 10mm 2mm;
         border-bottom:2px solid #C9A84C;
         position:fixed;top:0;left:0;right:0;
-        background:#fff;height:15mm;
+        background:#fff;height:18mm;
+        z-index:100;
       }
       .doc-footer{
         position:fixed;bottom:0;left:0;right:0;
@@ -380,8 +381,9 @@ function printDoc(htmlContent, title='Document'){
         border-top:1px solid #ccc;padding:3px 10mm;
         background:#fff;height:13mm;
         display:flex;align-items:center;justify-content:center;
+        z-index:100;
       }
-      .content{margin-bottom:15mm;}
+      .content{margin-top:20mm;margin-bottom:15mm;}
       .no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:100;}
     </style>
     </head><body>
