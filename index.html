@@ -376,7 +376,7 @@ function printDoc(htmlContent, title='Document'){
         @top-right{content:''}
         @bottom-left{content:''}
         @bottom-right{content:''}
-        @bottom-center{content:'Page ' counter(page) ' / ' counter(pages);font-size:9px;font-family:Arial,sans-serif;color:#444;}
+        @bottom-center{content:''}
       }
       @media print{
         .no-print{display:none!important}
@@ -397,12 +397,13 @@ function printDoc(htmlContent, title='Document'){
       .doc-footer{
         position:fixed;bottom:0;left:0;right:0;
         font-size:8.5px;color:#444;
-        border-top:1px solid #ccc;padding:3px 10mm;
+        border-top:1px solid #ccc;padding:4px 10mm;
         background:#fff;height:16mm;
         display:flex;align-items:center;justify-content:space-between;
         z-index:100;
       }
-      .content{margin-top:22mm;margin-bottom:18mm;padding:0 10mm;}
+      .content{margin-top:22mm;margin-bottom:20mm;padding:0 10mm;}
+      tbody tr:last-child{page-break-after:avoid;}
       .no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:9999;}
     </style>
     </head><body>
@@ -425,8 +426,9 @@ function printDoc(htmlContent, title='Document'){
         document.querySelector('.content').style.marginTop=(hh+4)+'px';
         var pg=document.getElementById('pgnum');
         if(pg){
-          var pageH=1122;
-          var total=Math.max(1,Math.ceil(document.body.scrollHeight/pageH));
+          var pageH=1056;
+          var bodyH=document.querySelector('.content').scrollHeight;
+          var total=Math.max(1,Math.ceil(bodyH/pageH));
           pg.textContent='Page 1/'+total;
         }
       };
