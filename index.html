@@ -367,7 +367,7 @@ function printDoc(htmlContent, title='Document'){
       th{background:#f5f5f5;font-weight:bold;text-align:center;}
       thead{display:table-header-group;}
       tr{page-break-inside:avoid;}
-      @page{size:A4;margin:10mm 10mm 16mm 10mm;}
+      @page{size:A4;margin:20mm 10mm 16mm 10mm;}
       @media print{
         .no-print{display:none!important}
         body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
@@ -388,8 +388,8 @@ function printDoc(htmlContent, title='Document'){
         background:#fff;height:13mm;
         display:flex;align-items:center;justify-content:center;z-index:100;
       }
-      .content{margin-top:20mm;margin-bottom:15mm;}
-      .no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:100;}
+      .content{margin-top:20mm;margin-bottom:15mm;padding:0 10mm;}
+      .no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:9999;}
     </style>
     </head><body>
     <div class="no-print no-print-bar">
@@ -403,6 +403,10 @@ function printDoc(htmlContent, title='Document'){
     </div>
     </body></html>`);
     doc.close();
+    // Auto-trigger print after iframe loads
+    iframe.onload = function(){
+      try { iframe.contentWindow.focus(); } catch(e){}
+    };
   } catch(e) { alert('Erreur impression: ' + e.message); }
 }
 
