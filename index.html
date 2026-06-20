@@ -2582,46 +2582,46 @@ function renderAttachementsSection(p, updateProject){
                 const s = state.settings;
                 const rows = (a.lignes||[]).map((l,li)=>`
                   <tr style="background:${li%2===0?'#fff':'#f9f9f9'}">
-                    <td style="text-align:center;font-weight:700">${l.id||''}</td>
-                    <td>${l.designation||''}</td>
-                    <td style="text-align:center">${l.unite||''}</td>
-                    <td style="text-align:center">${l.qteBD||0}</td>
-                    <td style="text-align:center">${l.qtePrecedente||0}</td>
-                    <td style="text-align:center;font-weight:700">${l.qteMois||0}</td>
-                    <td style="text-align:center;font-weight:700">${l.cumul||0}</td>
-                    <td style="text-align:center">${l.pct||0}%</td>
+                    <td style="text-align:center;font-weight:700;padding:7px 6px;font-size:13px;">${l.id||''}</td>
+                    <td style="padding:7px 6px;font-size:13px;">${l.designation||''}</td>
+                    <td style="text-align:center;padding:7px 6px;font-size:13px;">${l.unite||''}</td>
+                    <td style="text-align:center;padding:7px 6px;font-size:13px;">${l.qteBD||0}</td>
+                    <td style="text-align:center;padding:7px 6px;font-size:13px;">${l.qtePrecedente||0}</td>
+                    <td style="text-align:center;font-weight:700;padding:7px 6px;font-size:13px;">${l.qteMois||0}</td>
+                    <td style="text-align:center;font-weight:700;padding:7px 6px;font-size:13px;">${l.cumul||0}</td>
+                    <td style="text-align:center;padding:7px 6px;font-size:13px;">${l.pct||0}%</td>
                   </tr>`).join('');
 
                 const html = `
-                <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:10px;">
+                <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:13px;">
                   <tr>
-                    <td style="border:1px solid #999;padding:4px 7px;width:30%;vertical-align:top">
+                    <td style="border:1px solid #999;padding:7px 10px;width:30%;vertical-align:top">
                       <span style="font-size:8px;color:#666;display:block">Maître d'ouvrage</span>
                       <span style="font-weight:700">${p.maitreOuvrage||p.client||''}</span>
                     </td>
-                    <td style="border:1px solid #999;padding:4px 7px;vertical-align:top">
+                    <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
                       <span style="font-size:8px;color:#666;display:block">Marché N°</span>
                       <span style="font-weight:700">${p.marcheNum||'—'}</span>
                     </td>
-                    <td style="border:1px solid #999;padding:4px 7px;vertical-align:top">
+                    <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
                       <span style="font-size:8px;color:#666;display:block">ORDRE DE SERVICE N°</span>
                       <span style="font-weight:700">${p.osNum||'—'}</span>
                     </td>
-                    <td style="border:1px solid #999;padding:4px 7px;vertical-align:top">
+                    <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
                       <span style="font-size:8px;color:#666;display:block">Date OS</span>
                       <span style="font-weight:700">${p.dateOS?new Date(p.dateOS).toLocaleDateString('fr-MA'):'—'}</span>
                     </td>
                   </tr>
                   <tr>
-                    <td style="border:1px solid #999;padding:4px 7px;vertical-align:top">
+                    <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
                       <span style="font-size:8px;color:#666;display:block">Titulaire du Marché</span>
                       <span style="font-weight:700">${s.titulaire||s.nom||'SMERAV S.A.R.L.au'}</span>
                     </td>
-                    <td style="border:1px solid #999;padding:4px 7px;vertical-align:top">
+                    <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
                       <span style="font-size:8px;color:#666;display:block">Travail N°</span>
                       <span style="font-weight:700">${a.travailNum||'—'}</span>
                     </td>
-                    <td colspan="2" style="border:1px solid #999;padding:4px 7px;vertical-align:top">
+                    <td colspan="2" style="border:1px solid #999;padding:7px 10px;vertical-align:top">
                       <span style="font-size:8px;color:#666;display:block">Travaux Attachés DU <strong>${a.du?new Date(a.du).toLocaleDateString('fr-MA'):'—'}</strong> AU <strong>${a.au?new Date(a.au).toLocaleDateString('fr-MA'):'—'}</strong></span>
                     </td>
                   </tr>
@@ -2641,14 +2641,14 @@ function renderAttachementsSection(p, updateProject){
                 <table style="width:100%;border-collapse:collapse;font-size:9px;">
                   <thead>
                     <tr style="background:#d0d0d0;">
-                      <th style="border:1px solid #999;padding:5px;width:55px;text-align:center">N° Prix</th>
-                      <th style="border:1px solid #999;padding:5px;text-align:center">DESIGNATION DES ARTICLES</th>
-                      <th style="border:1px solid #999;padding:5px;width:35px;text-align:center">Uté</th>
-                      <th style="border:1px solid #999;padding:5px;width:65px;text-align:center">Qté marché</th>
-                      <th style="border:1px solid #999;padding:5px;width:75px;text-align:center">Qté précédente</th>
-                      <th style="border:1px solid #999;padding:5px;width:65px;text-align:center">Qté du mois</th>
-                      <th style="border:1px solid #999;padding:5px;width:55px;text-align:center">Cumul</th>
-                      <th style="border:1px solid #999;padding:5px;width:40px;text-align:center">%</th>
+                      <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-size:13px;">N° Prix</th>
+                      <th style="border:1px solid #999;padding:8px 6px;text-align:center;font-size:13px;">DESIGNATION DES ARTICLES</th>
+                      <th style="border:1px solid #999;padding:8px 6px;width:40px;text-align:center;font-size:13px;">Uté</th>
+                      <th style="border:1px solid #999;padding:8px 6px;width:70px;text-align:center;font-size:13px;">Qté marché</th>
+                      <th style="border:1px solid #999;padding:8px 6px;width:80px;text-align:center;font-size:13px;">Qté précédente</th>
+                      <th style="border:1px solid #999;padding:8px 6px;width:70px;text-align:center;font-size:13px;">Qté du mois</th>
+                      <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-size:13px;">Cumul</th>
+                      <th style="border:1px solid #999;padding:8px 6px;width:45px;text-align:center;font-size:13px;">%</th>
                     </tr>
                   </thead>
                   <tbody>
