@@ -509,16 +509,13 @@ function printDoc(htmlContent, title){
 
     const doc = iframe.contentDocument || iframe.contentWindow.document;
 
-    // Build header HTML
-    var hdrHTML = '';
-    if(enTeteImgSrc){
-      hdrHTML = '<img src="'+enTeteImgSrc+'" style="width:100%;max-height:35mm;object-fit:contain;display:block;"/>';
-    } else {
-      var logoHTML = logoSrc
-        ? '<img src="'+logoSrc+'" style="height:45px;object-fit:contain;"/>'
-        : '<div style="width:45px;height:45px;background:#C9A84C;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;">SM</div>';
-      hdrHTML = '<div style="display:flex;align-items:center;gap:12px;">'+logoHTML+'<div style="flex:1;text-align:center;"><div style="font-size:18px;font-weight:900;">'+nom+'</div>'+(ent?'<div style="font-size:10px;font-style:italic;color:#444;margin-top:2px;">'+ent+'</div>':'')+'</div></div>';
-    }
+    var logoHTML = logoSrc
+      ? '<img src="'+logoSrc+'" style="height:40px;object-fit:contain;"/>'
+      : '<div style="width:40px;height:40px;background:#C9A84C;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:#fff;">SM</div>';
+
+    var hdrHTML = enTeteImgSrc
+      ? '<img src="'+enTeteImgSrc+'" style="width:100%;max-height:30mm;object-fit:contain;display:block;"/>'
+      : '<div style="display:flex;align-items:center;gap:10px;">'+logoHTML+'<div style="flex:1;text-align:center;"><div style="font-size:16px;font-weight:900;">'+nom+'</div>'+(ent?'<div style="font-size:9px;font-style:italic;color:#444;">'+ent+'</div>':'')+'</div></div>';
 
     doc.open();
     doc.write('<!DOCTYPE html><html><head><title>'+(title||'Document')+'</title>');
@@ -527,40 +524,32 @@ function printDoc(htmlContent, title){
     doc.write('body{font-family:Arial,sans-serif;font-size:12px;color:#000;}');
     doc.write('table{border-collapse:collapse;width:100%;}');
     doc.write('th{background:#f0f0f0;font-weight:bold;text-align:center;border:1px solid #333;padding:7px 8px;font-size:12px;}');
-    doc.write('td{border:1px solid #333;padding:7px 8px;font-size:12px;}');
-    doc.write('.no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:999;}');
-    // PAGE HEADER - fixed at top of every page
-    doc.write('.page-hdr{position:fixed;top:0;left:0;right:0;padding:6mm 15mm 3mm;background:#fff;border-bottom:2px solid #C9A84C;}');
-    // PAGE FOOTER - fixed at bottom of every page
-    doc.write('.page-ftr{position:fixed;bottom:0;left:0;right:0;padding:3mm 15mm;background:#fff;border-top:1px solid #ccc;font-size:9px;color:#444;display:flex;justify-content:space-between;align-items:center;}');
-    // CONTENT - margins to avoid overlap with header/footer
-    doc.write('.page-content{margin-top:28mm;margin-bottom:18mm;padding:0 15mm;}');
-    // PRINT
-    doc.write('@media print{');
-    doc.write('.no-print-bar{display:none!important}');
-    doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
-    doc.write('@page{size:A4;margin:0;}');
-    doc.write('table{page-break-inside:auto;}');
-    doc.write('tr{page-break-inside:avoid;}');
+    doc.write('td{border:1px solid #333;padding:7px 8px;font-size:12px;vertical-align:top;}');
     doc.write('thead{display:table-header-group;}');
+    doc.write('tr{page-break-inside:avoid;}');
+    doc.write('.no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:999;}');
+    doc.write('@media screen{.running-hdr,.running-ftr{display:none;}}');
+    doc.write('@media print{');
+    doc.write('.no-print-bar{display:none!important;}');
+    doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
+    doc.write('@page{');
+    doc.write('size:A4;');
+    doc.write('margin:32mm 15mm 22mm 15mm;');
     doc.write('}');
+    doc.write('.running-hdr{display:block;position:running(header);}');
+    doc.write('.running-ftr{display:block;position:running(footer);}');
+    doc.write('@page{@top-center{content:element(header);}@bottom-center{content:element(footer);}}');
+    doc.write('}');
+    doc.write('.running-hdr{border-bottom:2px solid #C9A84C;padding-bottom:4px;margin-bottom:0;}');
+    doc.write('.running-ftr{border-top:1px solid #ccc;padding-top:3px;font-size:9px;color:#444;display:flex;justify-content:space-between;width:100%;}');
     doc.write('</style></head><body>');
-
-    // Buttons
     doc.write('<div class="no-print-bar">');
     doc.write('<button onclick="window.print()" style="background:#E8730A;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;margin-right:10px;">&#128424; Imprimer / PDF</button>');
     doc.write('<button onclick="parent.document.getElementById(\'__printFrame\').remove()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">&#x2715; Fermer</button>');
     doc.write('</div>');
-
-    // Fixed header (appears on every page)
-    doc.write('<div class="page-hdr">'+hdrHTML+'</div>');
-
-    // Fixed footer (appears on every page)
-    doc.write('<div class="page-ftr"><span style="flex:1;text-align:center;">'+ftr+'</span></div>');
-
-    // Main content
-    doc.write('<div class="page-content">'+htmlContent+'</div>');
-
+    doc.write('<div class="running-hdr">'+hdrHTML+'</div>');
+    doc.write('<div class="running-ftr"><span style="flex:1;text-align:center;">'+ftr+'</span></div>');
+    doc.write('<div style="padding:4mm 0;">'+htmlContent+'</div>');
     doc.write('</body></html>');
     doc.close();
   }catch(e){alert('Erreur: '+e.message);}
