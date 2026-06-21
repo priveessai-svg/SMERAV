@@ -495,7 +495,7 @@ function printDoc(htmlContent, title){
     const s = getSettings();
     const nom = (s.nom||'SMERAV S.A.R.L').replace(/'/g,"\'");
     const ent = (s.enTete||'').replace(/\n/g,' ').replace(/'/g,"\'");
-    const ftr = (s.piedPage||'').replace(/\n/g,' ').replace(/'/g,"\'");
+    const ftr = (s.piedPage||'').replace(/\n/g,' ');
     const logoSrc = s.logo||'';
     const enTeteImgSrc = s.enTeteImg||'';
 
@@ -528,15 +528,11 @@ function printDoc(htmlContent, title){
     doc.write('thead{display:table-header-group;}');
     doc.write('tr{page-break-inside:avoid;}');
     doc.write('.no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:999;}');
-    doc.write('#hdr{position:fixed;top:0;left:0;right:0;background:#fff;padding:5mm 15mm 3mm;border-bottom:2px solid #C9A84C;z-index:100;}');
-    doc.write('#ftr{position:fixed;bottom:0;left:0;right:0;background:#fff;padding:3mm 15mm;border-top:1px solid #ccc;font-size:9px;color:#444;text-align:center;z-index:100;}');
-    doc.write('#main{margin:0 15mm;padding-top:28mm;padding-bottom:16mm;}');
+    doc.write('#main{margin:0;}');
     doc.write('@media print{');
     doc.write('.no-print-bar{display:none!important;}');
     doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
-    doc.write('@page{size:A4;margin:0;}');
-    doc.write('#hdr{position:fixed;top:0;}');
-    doc.write('#ftr{position:fixed;bottom:0;}');
+    doc.write('@page{size:A4;margin:15mm;}');
     doc.write('thead{display:table-header-group;}');
     doc.write('tr{page-break-inside:avoid;}');
     doc.write('table{page-break-inside:auto;}');
@@ -546,9 +542,7 @@ function printDoc(htmlContent, title){
     doc.write('<button onclick="window.print()" style="background:#E8730A;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;margin-right:10px;">&#128424; Imprimer / PDF</button>');
     doc.write('<button onclick="parent.document.getElementById(\'__printFrame\').remove()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">&#x2715; Fermer</button>');
     doc.write('</div>');
-    doc.write('<div id="hdr">'+hdrHTML+'</div>');
-    doc.write('<div id="ftr">'+ftr+'</div>');
-    doc.write('<div id="main">'+htmlContent+'</div>');
+    doc.write('<div id="main" style="padding:10mm 15mm;">'+htmlContent+'</div>');
     doc.write('</body></html>');
     doc.close();
   }catch(e){alert('Erreur: '+e.message);}
