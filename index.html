@@ -2677,12 +2677,10 @@ function renderAttachementsSection(p, updateProject){
                 `;
                 printDoc(html, 'Attachement N°'+a.num)},{style:{padding:'4px 8px',fontSize:12}}),
               btn('✏️','btn-orange',()=>{
-                // Open edit modal with full table
                 const editLignes = JSON.parse(JSON.stringify(a.lignes||[]));
-                const editForm = {du:a.du,au:a.au,date:a.date,num:a.num,travailNum:a.travailNum||'',signataires:JSON.parse(JSON.stringify(a.signataires||[])),sigHeight:a.sigHeight||35};
-
+                const editForm = {du:a.du,au:a.au,date:a.date,num:a.num,travailNum:a.travailNum||'',sigHeight:a.sigHeight||35};
+                const signataires = (a.signataires&&a.signataires.length>0) ? JSON.parse(JSON.stringify(a.signataires)) : [{nom:p.maitreOuvrage||'SRM-FM'},{nom:s.titulaire||s.nom||'SMERAV S.A.R.L.au'}];
                 const lignesContainer = div({});
-
                 function renderEditLignes(){
                   lignesContainer.innerHTML='';
                   lignesContainer.appendChild(
@@ -2724,28 +2722,6 @@ function renderAttachementsSection(p, updateProject){
                   );
                 }
                 renderEditLignes();
-
-                // Signature table config
-                const signataires = (editForm.signataires && editForm.signataires.length>0) ? editForm.signataires : [
-                  {nom:p.maitreOuvrage||'SRM-FM'},
-                  {nom:s.titulaire||s.nom||'SMERAV S.A.R.L.au'}
-                ];
-                editForm.signataires = signataires;
-                editForm.sigHeight = editForm.sigHeight || 35;
-
-                const sigContainer = div({});
-                function renderSigContainer(){
-                  sigContainer.innerHTML='';
-                  sigContainer.appendChild(div({style:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginTop:4}},
-                    ...signataires.map((sig,si)=>div({style:{display:'flex',alignItems:'center',gap:4,background:'#F8FAFD',border:'1px solid #E5E9F2',borderRadius:6,padding:'4px 8px'}},
-                      Object.assign(el('input',{value:sig.nom,placeholder:'Nom...',style:{width:140,fontSize:11}}),{oninput:e=>{signataires[si].nom=e.target.value;}}),
-                      btn('✕','btn-red',()=>{signataires.splice(si,1);renderSigContainer();},{style:{padding:'2px 6px',fontSize:10}})
-                    )),
-                    btn('+ Ajouter','btn-blue',()=>{signataires.push({nom:'Nouveau'});renderSigContainer();},{style:{fontSize:11,padding:'4px 10px'}})
-                  ));
-                }
-                renderSigContainer();
-
                 const formEl = div({style:{display:'flex',flexDirection:'column',gap:12}},
                   div({style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}},
                     div({},el('label',{className:'lbl'},'N° Attachement'),Object.assign(el('input',{value:editForm.num||'',style:{width:'100%'}}),{oninput:e=>editForm.num=e.target.value})),
@@ -2756,18 +2732,9 @@ function renderAttachementsSection(p, updateProject){
                     div({},el('label',{className:'lbl'},'Du'),Object.assign(el('input',{type:'date',value:editForm.du||'',style:{width:'100%'}}),{oninput:e=>editForm.du=e.target.value})),
                     div({},el('label',{className:'lbl'},'Au'),Object.assign(el('input',{type:'date',value:editForm.au||'',style:{width:'100%'}}),{oninput:e=>editForm.au=e.target.value}))
                   ),
-                  div({style:{background:'#F8FAFD',border:'1px solid #E5E9F2',borderRadius:8,padding:12}},
-                    div({style:{fontSize:11,fontWeight:700,color:'#1A2540',marginBottom:8}},'✍️ Tableau de signatures'),
-                    div({style:{display:'flex',alignItems:'center',gap:12,marginBottom:8}},
-                      el('label',{style:{fontSize:11,color:'#6B7A99'}},'Hauteur (mm) :'),
-                      Object.assign(el('input',{type:'number',value:editForm.sigHeight||35,min:15,max:80,style:{width:70,fontSize:11}}),{oninput:e=>editForm.sigHeight=parseInt(e.target.value)||35})
-                    ),
-                    sigContainer
-                  ),
                   div({style:{overflowX:'auto'}},lignesContainer),
                   btn('💾 Enregistrer','btn-green',()=>{
                     const total = editLignes.reduce((s,l)=>s+(l.qteMois||0)*(l.pu||0),0);
-                    editForm.signataires = signataires;
                     const updated = atts.map((x,xi)=>xi===i?{...x,...editForm,lignes:editLignes,total}:x);
                     updateProject({attachements:updated});
                     setState({modal:null});
