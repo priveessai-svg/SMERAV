@@ -343,7 +343,7 @@ let state = {
   cheques: [], ouvriers: [],
   specialites: ['Plombier','Maçon','Electricien','Conducteur','Manoeuvre'],
   stock: [], paiementsClients: [], paiementsFourn: [],
-  modal: null, selProject: null, ficheSection: 'info', notif: null, syncing: false,
+  modal: null, selProject: null, ficheSection: 'info', notif: null, syncing: false, expandedNav: {},
 };
 
 // Load from Supabase on start
@@ -446,66 +446,7 @@ function footerHTML(){
 }
 
 // ══════════════════════════════════════════
-// PRINT DOC
-// ══════════════════════════════════════════
-function printDoc(htmlContent, title){
-  try{
-    const s = getSettings();
-    const logoHTML = s.logo ? '<img src="'+s.logo+'" style="height:40px;object-fit:contain;"/>' : '<div style="width:40px;height:40px;background:#C9A84C;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:#fff;">SM</div>';
-    const nom = (s.nom||'SMERAV S.A.R.L').replace(/'/g,"\'");
-    const ent = (s.enTete||'').replace(/\n/g,' ').replace(/'/g,"\'");
-    const ftr = (s.piedPage||'').replace(/\n/g,' ').replace(/'/g,"\'");
-    const hdrInner = s.enTeteImg
-      ? '<img src="'+s.enTeteImg+'" style="width:100%;max-height:35mm;object-fit:contain;display:block;"/>'
-      : '<div style="display:flex;align-items:center;gap:10px;padding:2mm 0;">'+logoHTML+'<div style="flex:1;text-align:center;"><div style="font-size:15px;font-weight:900;">'+nom+'</div>'+(ent?'<div style="font-size:9px;font-style:italic;color:#333;">'+ent+'</div>':'')+'</div></div>';
-    const old2 = document.getElementById('__printFrame');
-    if(old2) old2.remove();
-    const iframe = document.createElement('iframe');
-    iframe.id = '__printFrame';
-    iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:99999;background:#fff;';
-    document.body.appendChild(iframe);
-    const doc = iframe.contentDocument || iframe.contentWindow.document;
-    const css = '@page{size:A4;margin:15mm 18mm;}@media print{.no-print{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}.page-block{page-break-after:always;}.page-block:last-child{page-break-after:avoid;}}body{font-family:Arial,sans-serif;font-size:13px;margin:0;padding:0;}*{box-sizing:border-box;}table.main-table{border-collapse:collapse;width:100%;}table.main-table th,table.main-table td{border:1px solid #000;padding:7px 10px;}table.main-table th{background:#f5f5f5;font-weight:bold;text-align:center;}table.data-table{border-collapse:collapse;width:100%;}table.data-table th,table.data-table td{border:1px solid #000;padding:7px 10px;}table.data-table th{background:#f5f5f5;font-weight:bold;text-align:center;}.no-print-bar{text-align:center;padding:8px;background:#1A2540;}.page-header{border-bottom:2px solid #C9A84C;margin-bottom:10px;padding-bottom:5px;font-size:14px;}.page-footer{border-top:1px solid #ccc;margin-top:10px;padding-top:5px;font-size:9.5px;color:#444;display:flex;justify-content:space-between;align-items:center;}.page-block{padding:4mm 6mm;min-height:267mm;display:flex;flex-direction:column;}.page-footer{margin-top:auto!important;}';
-    doc.open();
-    doc.write('<!DOCTYPE html><html><head><title>'+(title||'Document')+'</title><style>'+css+'</style></head><body>');
-    doc.write('<div class="no-print no-print-bar"><button onclick="window.print()" style="background:#E8730A;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;margin-right:10px;">Imprimer/PDF</button><button onclick="parent.document.getElementById(\'__printFrame\').remove()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">Fermer</button></div>');
-    doc.write('<div id="dc">'+htmlContent+'</div>');
-    doc.write('</body></html>');
-    doc.close();
-    setTimeout(function(){
-      try{
-        var d=iframe.contentDocument;
-        var cont=d.getElementById('dc');
-        if(!cont)return;
-        var mainTable=cont.querySelector('table.main-table,table.data-table,table[class]');
-        if(!mainTable){
-          cont.innerHTML='<div class="page-block"><div class="page-header">'+hdrInner+'</div>'+cont.innerHTML+'<div class="page-footer"><span style="flex:1;text-align:center;">'+ftr+'</span><span style="font-weight:700;">Page 1 / 1</span></div></div>';
-          return;
-        }
-        var allRows=Array.from(mainTable.querySelectorAll('tbody tr'));
-        var RPP=15;
-        var total=Math.max(1,Math.ceil(allRows.length/RPP));
-        var thead=mainTable.querySelector('thead')?mainTable.querySelector('thead').outerHTML:'';
-        var preHTML='';
-        var node=cont.firstChild;
-        while(node&&node!==mainTable){preHTML+=(node.outerHTML||node.textContent||'');node=node.nextSibling;}
-        var sigHTML='';
-        node=mainTable.nextSibling;
-        while(node){sigHTML+=(node.outerHTML||node.textContent||'');node=node.nextSibling;}
-        var html='';
-        for(var p=0;p<total;p++){
-          var rows=allRows.slice(p*RPP,(p+1)*RPP);
-          var tClass=mainTable.className||'main-table';
-          html+='<div class="page-block"><div class="page-header">'+hdrInner+'</div>'+(p===0?preHTML:'')+'<table class="'+tClass+'">'+thead+'<tbody>'+rows.map(function(r){return r.outerHTML;}).join('')+'</tbody></table>'+(p===total-1?sigHTML:'')+'<div class="page-footer"><span style="flex:1;text-align:center;">'+ftr+'</span><span style="font-weight:700;white-space:nowrap;border-left:1px solid #ccc;padding-left:8px;margin-left:8px;">Page '+(p+1)+' / '+total+'</span></div></div>';
-        }
-        cont.innerHTML=html;
-      }catch(e){console.error(e);}
-    },300);
-  }catch(e){alert('Erreur: '+e.message);}
-}
-
-// ══════════════════════════════════════════
-// SIDEBAR
+// SIDEBAR NAV
 // ══════════════════════════════════════════
 const NAV = [
   {key:'dashboard',icon:'⊞',label:'Tableau de bord',section:'GÉRER'},
@@ -513,35 +454,156 @@ const NAV = [
     {key:'liste-projets',label:'Liste des projets'},
     {key:'nouveau-projet',label:'Nouveau projet'},
   ]},
-  {key:'clients',icon:'👥',label:'Clients',children:[
+  {key:'clients',icon:'👤',label:'Clients',children:[
     {key:'liste-clients',label:'Clients'},
-    {key:'devis',label:'Devis'},
+    {key:'liste-devis',label:'Devis'},
     {key:'bons-livraison',label:'Bons de livraison'},
-    {key:'factures',label:'Factures'},
+    {key:'liste-factures',label:'Factures'},
     {key:'paiements-clients',label:'Paiements Clients'},
   ]},
-  {key:'rh',icon:'👷',label:'RH',children:[
-    {key:'ouvriers',label:'Ouvriers'},
-    {key:'specialites',label:'Spécialités'},
+  {key:'rh',icon:'👥',label:'RH',children:[
+    {key:'employes',label:'Employés'},
+    {key:'conges',label:'Congés'},
+    {key:'paie',label:'Fiches de paie'},
   ]},
-  {key:'achats',icon:'🛒',label:'Achats',section:'CHANTIER & OPÉRATIONS',children:[
+  {section:'CHANTIER & OPÉRATIONS'},
+  {key:'achats',icon:'🛒',label:'Achats',children:[
     {key:'fournisseurs',label:'Fournisseurs'},
     {key:'bons-commande',label:'Bons de commande'},
     {key:'bons-reception',label:'Bons de réception'},
     {key:'factures-achat',label:'Factures d\'achat'},
-    {key:'paiements-fourn',label:'Paiements Fournisseurs'},
+    {key:'paiements-fournisseurs',label:'Paiements Fournisseurs'},
   ]},
   {key:'stock',icon:'📦',label:'Stock & Matériel',children:[
-    {key:'materiaux',label:'Matériaux'},
+    {key:'stock-materiel',label:'Stock & Matériel'},
+    {key:'engins',label:'Engins'},
   ]},
-  {key:'depenses',icon:'💳',label:'Dépenses',children:[
-    {key:'cheques',label:'Chèques & Avances'},
+  {key:'depenses',icon:'💸',label:'Dépenses',children:[
+    {key:'liste-depenses',label:'Liste des dépenses'},
   ]},
-  {key:'profil',icon:'👤',label:'Mon Profil',section:'COMPTE'},
+  {section:'COMPTE'},
+  {key:'profil',icon:'👤',label:'Mon Profil'},
   {key:'parametres',icon:'⚙',label:'Paramètres'},
+  {key:'logout',icon:'→',label:'Déconnexion'},
 ];
 
-let expandedNav = {projets:true,clients:true,achats:false,rh:false,stock:false,depenses:false};
+// ══════════════════════════════════════════
+// PRINT DOC
+// ══════════════════════════════════════════
+function printDoc(htmlContent, title){
+  try{
+    const s = getSettings();
+    const logoHTML = s.logo
+      ? '<img src="'+s.logo+'" style="height:45px;object-fit:contain;"/>'
+      : '<div style="width:45px;height:45px;background:#C9A84C;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;">SM</div>';
+    const nom = (s.nom||'SMERAV S.A.R.L').replace(/'/g,"\'");
+    const ent = (s.enTete||'').replace(/\n/g,' ').replace(/'/g,"\'");
+    const ftr = (s.piedPage||'').replace(/\n/g,' ').replace(/'/g,"\'");
+    const hdrInner = s.enTeteImg
+      ? '<img src="'+s.enTeteImg+'" style="width:100%;max-height:35mm;object-fit:contain;display:block;"/>'
+      : '<div style="display:flex;align-items:center;gap:12px;padding:3mm 0 2mm;">'+logoHTML+'<div style="flex:1;text-align:center;"><div style="font-size:18px;font-weight:900;letter-spacing:0.5px;">'+nom+'</div>'+(ent?'<div style="font-size:10px;font-style:italic;color:#444;margin-top:3px;">'+ent+'</div>':'')+'</div></div>';
+
+    const old2 = document.getElementById('__printFrame');
+    if(old2) old2.remove();
+
+    const iframe = document.createElement('iframe');
+    iframe.id = '__printFrame';
+    iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:99999;background:#fff;';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+
+    const css = [
+      '@page{size:A4;margin:15mm 18mm;}',
+      '@media print{',
+        '.no-print{display:none!important}',
+        'body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}',
+        '.page-block{page-break-after:always;}',
+        '.page-block:last-child{page-break-after:avoid;}',
+      '}',
+      'body{font-family:Arial,sans-serif;font-size:12px;margin:0;padding:0;}',
+      '*{box-sizing:border-box;}',
+      '.no-print-bar{text-align:center;padding:8px;background:#1A2540;}',
+      '.page-block{min-height:267mm;display:flex;flex-direction:column;padding:0;}',
+      '.page-header{border-bottom:2px solid #C9A84C;margin-bottom:8px;padding-bottom:4px;}',
+      '.page-content{flex:1;}',
+      '.page-footer{margin-top:auto;border-top:1px solid #ccc;padding-top:4px;font-size:9px;color:#444;display:flex;justify-content:space-between;align-items:center;}',
+      'table{border-collapse:collapse;width:100%;}',
+      'th{background:#f0f0f0;font-weight:bold;text-align:center;border:1px solid #333;padding:7px 8px;font-size:12px;}',
+      'td{border:1px solid #333;padding:7px 8px;font-size:12px;}',
+    ].join('');
+
+    doc.open();
+    doc.write('<!DOCTYPE html><html><head><title>'+(title||'Document')+'</title><style>'+css+'</style></head><body>');
+    doc.write('<div class="no-print no-print-bar">');
+    doc.write('<button onclick="window.print()" style="background:#E8730A;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;margin-right:10px;">&#128424; Imprimer / PDF</button>');
+    doc.write('<button onclick="parent.document.getElementById(\'__printFrame\').remove()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">&#x2715; Fermer</button>');
+    doc.write('</div>');
+    doc.write('<div id="dc">'+htmlContent+'</div>');
+    doc.write('</body></html>');
+    doc.close();
+
+    setTimeout(function(){
+      try{
+        var d = iframe.contentDocument;
+        var cont = d.getElementById('dc');
+        if(!cont) return;
+
+        // Find the main data table (last table in content)
+        var tables = cont.querySelectorAll('table');
+        var mainTable = tables.length ? tables[tables.length-1] : null;
+
+        if(!mainTable){
+          cont.innerHTML = '<div class="page-block"><div class="page-header">'+hdrInner+'</div><div class="page-content">'+cont.innerHTML+'</div><div class="page-footer"><span style="flex:1;text-align:center;">'+ftr+'</span><span style="font-weight:700;white-space:nowrap;">Page 1 / 1</span></div></div>';
+          return;
+        }
+
+        var allRows = Array.from(mainTable.querySelectorAll('tbody tr'));
+        var thead = mainTable.querySelector('thead') ? mainTable.querySelector('thead').outerHTML : '';
+        var tStyle = mainTable.getAttribute('style') || '';
+        var tClass = mainTable.className || '';
+
+        // Calculate rows per page dynamically
+        var rowH = allRows.length ? allRows[0].offsetHeight : 35;
+        if(rowH < 10) rowH = 35;
+        var pageUsableH = 700; // px approx usable height per page
+        var RPP = Math.max(5, Math.floor(pageUsableH / rowH));
+
+        var total = Math.max(1, Math.ceil(allRows.length / RPP));
+
+        // pre-table content
+        var preHTML = '';
+        var node = cont.firstChild;
+        while(node && node !== mainTable){ preHTML += (node.outerHTML||node.textContent||''); node = node.nextSibling; }
+
+        // post-table content (signatures)
+        var sigHTML = '';
+        node = mainTable.nextSibling;
+        while(node){ sigHTML += (node.outerHTML||node.textContent||''); node = node.nextSibling; }
+
+        var html = '';
+        for(var p=0;p<total;p++){
+          var rows = allRows.slice(p*RPP,(p+1)*RPP);
+          var isLast = (p===total-1);
+          html += '<div class="page-block">';
+          html += '<div class="page-header">'+hdrInner+'</div>';
+          html += '<div class="page-content">';
+          if(p===0) html += preHTML;
+          html += '<table'+(tClass?' class="'+tClass+'"':'')+(tStyle?' style="'+tStyle+'"':'')+'>'
+                + thead
+                + '<tbody>'+rows.map(function(r){return r.outerHTML;}).join('')+'</tbody>'
+                + '</table>';
+          if(isLast) html += sigHTML;
+          html += '</div>';
+          html += '<div class="page-footer"><span style="flex:1;text-align:center;">'+ftr+'</span><span style="font-weight:700;white-space:nowrap;border-left:1px solid #ccc;padding-left:8px;margin-left:8px;">Page '+(p+1)+' / '+total+'</span></div>';
+          html += '</div>';
+        }
+        cont.innerHTML = html;
+      }catch(e){console.error('printDoc error:',e);}
+    },400);
+  }catch(e){alert('Erreur: '+e.message);}
+}
+
 
 function renderSidebar(){
   const s = div({className:'sidebar no-print'});
@@ -559,10 +621,10 @@ function renderSidebar(){
       navEl.appendChild(div({className:'section'},item.section));
     }
     if(item.children){
-      const isExp = expandedNav[item.key];
+      const isExp = state.expandedNav[item.key];
       const parentEl = div({
         className:'nav-item'+(state.page===item.key?' active':''),
-        onclick:()=>{ expandedNav[item.key]=!isExp; render(); }
+        onclick:()=>{ state.expandedNav[item.key]=!isExp; render(); }
       },
         span({style:{fontSize:16}},item.icon),
         span({style:{flex:1}},item.label),
