@@ -2679,7 +2679,7 @@ function renderAttachementsSection(p, updateProject){
               btn('✏️','btn-orange',()=>{
                 // Open edit modal with full table
                 const editLignes = JSON.parse(JSON.stringify(a.lignes||[]));
-                const editForm = {du:a.du,au:a.au,date:a.date,num:a.num,travailNum:a.travailNum||''};
+                const editForm = {du:a.du,au:a.au,date:a.date,num:a.num,travailNum:a.travailNum||'',signataires:JSON.parse(JSON.stringify(a.signataires||[])),sigHeight:a.sigHeight||35};
 
                 const lignesContainer = div({});
 
@@ -2726,7 +2726,7 @@ function renderAttachementsSection(p, updateProject){
                 renderEditLignes();
 
                 // Signature table config
-                const signataires = editForm.signataires || [
+                const signataires = (editForm.signataires && editForm.signataires.length>0) ? editForm.signataires : [
                   {nom:p.maitreOuvrage||'SRM-FM'},
                   {nom:s.titulaire||s.nom||'SMERAV S.A.R.L.au'}
                 ];
