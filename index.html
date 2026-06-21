@@ -524,7 +524,7 @@ function printDoc(htmlContent, title){
       'body{font-family:Arial,sans-serif;font-size:12px;margin:0;padding:0;}',
       '*{box-sizing:border-box;}',
       '.no-print-bar{text-align:center;padding:8px;background:#1A2540;}',
-      '.page-block{height:267mm;display:flex;flex-direction:column;padding:0;overflow:hidden;}',
+      '.page-block{min-height:267mm;display:flex;flex-direction:column;padding:0;}',
       '.page-header{border-bottom:2px solid #C9A84C;margin-bottom:8px;padding-bottom:4px;}',
       '.page-content{flex:1;}',
       '.page-footer{margin-top:auto;border-top:1px solid #ccc;padding-top:4px;font-size:9px;color:#444;display:flex;justify-content:space-between;align-items:center;}',
@@ -595,6 +595,7 @@ function printDoc(htmlContent, title){
                 + '</table>';
           if(isLast) html += sigHTML;
           html += '</div>';
+          html += '<div style="height:20mm;"></div>';
           html += '<div class="page-footer"><span style="flex:1;text-align:center;">'+ftr+'</span><span style="font-weight:700;white-space:nowrap;border-left:1px solid #ccc;padding-left:8px;margin-left:8px;">Page '+(p+1)+' / '+total+'</span></div>';
           html += '</div>';
         }
