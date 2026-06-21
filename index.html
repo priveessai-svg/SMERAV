@@ -493,18 +493,14 @@ const NAV = [
 function printDoc(htmlContent, title){
   try{
     const s = getSettings();
-    const logoHTML = s.logo
-      ? '<img src="'+s.logo+'" style="height:45px;object-fit:contain;"/>'
-      : '<div style="width:45px;height:45px;background:#C9A84C;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;">SM</div>';
     const nom = (s.nom||'SMERAV S.A.R.L').replace(/'/g,"\'");
     const ent = (s.enTete||'').replace(/\n/g,' ').replace(/'/g,"\'");
     const ftr = (s.piedPage||'').replace(/\n/g,' ').replace(/'/g,"\'");
-    const hdrInner = s.enTeteImg
-      ? '<img src="'+s.enTeteImg+'" style="width:100%;max-height:35mm;object-fit:contain;display:block;"/>'
-      : '<div style="display:flex;align-items:center;gap:12px;padding:3mm 0 2mm;">'+logoHTML+'<div style="flex:1;text-align:center;"><div style="font-size:18px;font-weight:900;letter-spacing:0.5px;">'+nom+'</div>'+(ent?'<div style="font-size:10px;font-style:italic;color:#444;margin-top:3px;">'+ent+'</div>':'')+'</div></div>';
+    const logoSrc = s.logo||'';
+    const enTeteImgSrc = s.enTeteImg||'';
 
-    const old2 = document.getElementById('__printFrame');
-    if(old2) old2.remove();
+    const prev = document.getElementById('__printFrame');
+    if(prev) prev.remove();
 
     const iframe = document.createElement('iframe');
     iframe.id = '__printFrame';
@@ -513,95 +509,60 @@ function printDoc(htmlContent, title){
 
     const doc = iframe.contentDocument || iframe.contentWindow.document;
 
-    const css = [
-      '@page{size:A4;margin:15mm 18mm;}',
-      '@media print{',
-        '.no-print{display:none!important}',
-        'body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}',
-        '.page-block{page-break-after:always;}',
-        '.page-block:last-child{page-break-after:avoid;}',
-      '}',
-      'body{font-family:Arial,sans-serif;font-size:12px;margin:0;padding:0;}',
-      '*{box-sizing:border-box;}',
-      '.no-print-bar{text-align:center;padding:8px;background:#1A2540;}',
-      '.page-block{min-height:267mm;display:flex;flex-direction:column;padding:0;}',
-      '.page-header{border-bottom:2px solid #C9A84C;margin-bottom:8px;padding-bottom:4px;}',
-      '.page-content{flex:1;}',
-      '.page-footer{margin-top:auto;border-top:1px solid #ccc;padding-top:4px;font-size:9px;color:#444;display:flex;justify-content:space-between;align-items:center;}',
-      'table{border-collapse:collapse;width:100%;}',
-      'th{background:#f0f0f0;font-weight:bold;text-align:center;border:1px solid #333;padding:7px 8px;font-size:12px;}',
-      'td{border:1px solid #333;padding:7px 8px;font-size:12px;}',
-    ].join('');
+    // Build header HTML
+    var hdrHTML = '';
+    if(enTeteImgSrc){
+      hdrHTML = '<img src="'+enTeteImgSrc+'" style="width:100%;max-height:35mm;object-fit:contain;display:block;"/>';
+    } else {
+      var logoHTML = logoSrc
+        ? '<img src="'+logoSrc+'" style="height:45px;object-fit:contain;"/>'
+        : '<div style="width:45px;height:45px;background:#C9A84C;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;">SM</div>';
+      hdrHTML = '<div style="display:flex;align-items:center;gap:12px;">'+logoHTML+'<div style="flex:1;text-align:center;"><div style="font-size:18px;font-weight:900;">'+nom+'</div>'+(ent?'<div style="font-size:10px;font-style:italic;color:#444;margin-top:2px;">'+ent+'</div>':'')+'</div></div>';
+    }
 
     doc.open();
-    doc.write('<!DOCTYPE html><html><head><title>'+(title||'Document')+'</title><style>'+css+'</style></head><body>');
-    doc.write('<div class="no-print no-print-bar">');
+    doc.write('<!DOCTYPE html><html><head><title>'+(title||'Document')+'</title>');
+    doc.write('<style>');
+    doc.write('*{box-sizing:border-box;margin:0;padding:0;}');
+    doc.write('body{font-family:Arial,sans-serif;font-size:12px;color:#000;}');
+    doc.write('table{border-collapse:collapse;width:100%;}');
+    doc.write('th{background:#f0f0f0;font-weight:bold;text-align:center;border:1px solid #333;padding:7px 8px;font-size:12px;}');
+    doc.write('td{border:1px solid #333;padding:7px 8px;font-size:12px;}');
+    doc.write('.no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:999;}');
+    // PAGE HEADER - fixed at top of every page
+    doc.write('.page-hdr{position:fixed;top:0;left:0;right:0;padding:6mm 15mm 3mm;background:#fff;border-bottom:2px solid #C9A84C;}');
+    // PAGE FOOTER - fixed at bottom of every page
+    doc.write('.page-ftr{position:fixed;bottom:0;left:0;right:0;padding:3mm 15mm;background:#fff;border-top:1px solid #ccc;font-size:9px;color:#444;display:flex;justify-content:space-between;align-items:center;}');
+    // CONTENT - margins to avoid overlap with header/footer
+    doc.write('.page-content{margin-top:28mm;margin-bottom:18mm;padding:0 15mm;}');
+    // PRINT
+    doc.write('@media print{');
+    doc.write('.no-print-bar{display:none!important}');
+    doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
+    doc.write('@page{size:A4;margin:0;}');
+    doc.write('table{page-break-inside:auto;}');
+    doc.write('tr{page-break-inside:avoid;}');
+    doc.write('thead{display:table-header-group;}');
+    doc.write('}');
+    doc.write('</style></head><body>');
+
+    // Buttons
+    doc.write('<div class="no-print-bar">');
     doc.write('<button onclick="window.print()" style="background:#E8730A;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;margin-right:10px;">&#128424; Imprimer / PDF</button>');
     doc.write('<button onclick="parent.document.getElementById(\'__printFrame\').remove()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">&#x2715; Fermer</button>');
     doc.write('</div>');
-    doc.write('<div id="dc">'+htmlContent+'</div>');
+
+    // Fixed header (appears on every page)
+    doc.write('<div class="page-hdr">'+hdrHTML+'</div>');
+
+    // Fixed footer (appears on every page)
+    doc.write('<div class="page-ftr"><span style="flex:1;text-align:center;">'+ftr+'</span></div>');
+
+    // Main content
+    doc.write('<div class="page-content">'+htmlContent+'</div>');
+
     doc.write('</body></html>');
     doc.close();
-
-    setTimeout(function(){
-      try{
-        var d = iframe.contentDocument;
-        var cont = d.getElementById('dc');
-        if(!cont) return;
-
-        // Find the main data table (last table in content)
-        var tables = cont.querySelectorAll('table');
-        var mainTable = tables.length ? tables[tables.length-1] : null;
-
-        if(!mainTable){
-          cont.innerHTML = '<div class="page-block"><div class="page-header">'+hdrInner+'</div><div class="page-content">'+cont.innerHTML+'</div><div class="page-footer"><span style="flex:1;text-align:center;">'+ftr+'</span><span style="font-weight:700;white-space:nowrap;">Page 1 / 1</span></div></div>';
-          return;
-        }
-
-        var allRows = Array.from(mainTable.querySelectorAll('tbody tr'));
-        var thead = mainTable.querySelector('thead') ? mainTable.querySelector('thead').outerHTML : '';
-        var tStyle = mainTable.getAttribute('style') || '';
-        var tClass = mainTable.className || '';
-
-        // Calculate rows per page dynamically
-        var rowH = allRows.length ? allRows[0].offsetHeight : 35;
-        if(rowH < 10) rowH = 35;
-        var pageUsableH = 700; // px approx usable height per page
-        var RPP = Math.max(5, Math.floor(pageUsableH / rowH));
-
-        var total = Math.max(1, Math.ceil(allRows.length / RPP));
-
-        // pre-table content
-        var preHTML = '';
-        var node = cont.firstChild;
-        while(node && node !== mainTable){ preHTML += (node.outerHTML||node.textContent||''); node = node.nextSibling; }
-
-        // post-table content (signatures)
-        var sigHTML = '';
-        node = mainTable.nextSibling;
-        while(node){ sigHTML += (node.outerHTML||node.textContent||''); node = node.nextSibling; }
-
-        var html = '';
-        for(var p=0;p<total;p++){
-          var rows = allRows.slice(p*RPP,(p+1)*RPP);
-          var isLast = (p===total-1);
-          html += '<div class="page-block">';
-          html += '<div class="page-header">'+hdrInner+'</div>';
-          html += '<div class="page-content">';
-          if(p===0) html += preHTML;
-          html += '<table'+(tClass?' class="'+tClass+'"':'')+(tStyle?' style="'+tStyle+'"':'')+'>'
-                + thead
-                + '<tbody>'+rows.map(function(r){return r.outerHTML;}).join('')+'</tbody>'
-                + '</table>';
-          if(isLast) html += sigHTML;
-          html += '</div>';
-          html += '<div style="height:20mm;"></div>';
-          html += '<div class="page-footer"><span style="flex:1;text-align:center;">'+ftr+'</span><span style="font-weight:700;white-space:nowrap;border-left:1px solid #ccc;padding-left:8px;margin-left:8px;">Page '+(p+1)+' / '+total+'</span></div>';
-          html += '</div>';
-        }
-        cont.innerHTML = html;
-      }catch(e){console.error('printDoc error:',e);}
-    },400);
   }catch(e){alert('Erreur: '+e.message);}
 }
 
