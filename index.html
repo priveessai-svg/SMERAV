@@ -2678,8 +2678,7 @@ function renderAttachementsSection(p, updateProject){
                 printDoc(html, 'Attachement N°'+a.num)},{style:{padding:'4px 8px',fontSize:12}}),
               btn('✏️','btn-orange',()=>{
                 const editLignes = JSON.parse(JSON.stringify(a.lignes||[]));
-                const editForm = {du:a.du,au:a.au,date:a.date,num:a.num,travailNum:a.travailNum||'',sigHeight:a.sigHeight||35};
-                const signataires = (a.signataires&&a.signataires.length>0) ? JSON.parse(JSON.stringify(a.signataires)) : [{nom:p.maitreOuvrage||'SRM-FM'},{nom:s.titulaire||s.nom||'SMERAV S.A.R.L.au'}];
+                const editForm = {du:a.du,au:a.au,date:a.date,num:a.num,travailNum:a.travailNum||''};
                 const lignesContainer = div({});
                 function renderEditLignes(){
                   lignesContainer.innerHTML='';
@@ -2692,19 +2691,19 @@ function renderAttachementsSection(p, updateProject){
                       el('tbody',{},...editLignes.map((l,li)=>{
                         const inp = el('input',{type:'number',min:0,step:0.01,value:l.qteMois||0,
                           style:{width:70,textAlign:'right',border:'2px solid #E8730A',borderRadius:6,padding:'3px 6px',fontSize:11}});
-                        inp.oninput = e => {
-                          editLignes[li].qteMois = parseFloat(e.target.value)||0;
-                          editLignes[li].cumul = (editLignes[li].qtePrecedente||0) + editLignes[li].qteMois;
-                          editLignes[li].pct = editLignes[li].qteBD>0 ? Math.round(editLignes[li].cumul/editLignes[li].qteBD*1000)/10 : 0;
+                        inp.oninput = e=>{
+                          editLignes[li].qteMois=parseFloat(e.target.value)||0;
+                          editLignes[li].cumul=(editLignes[li].qtePrecedente||0)+editLignes[li].qteMois;
+                          editLignes[li].pct=editLignes[li].qteBD>0?Math.round(editLignes[li].cumul/editLignes[li].qteBD*1000)/10:0;
                           renderEditLignes();
                         };
-                        inp.onkeydown = e => {
+                        inp.onkeydown=e=>{
                           if(e.key==='Enter'){
                             e.preventDefault();
-                            const allInps = lignesContainer.querySelectorAll('input[type=number]');
-                            const arr = Array.from(allInps);
-                            const idx2 = arr.indexOf(e.target);
-                            if(idx2 >= 0 && idx2 < arr.length-1){ arr[idx2+1].focus(); arr[idx2+1].select(); }
+                            const allInps=lignesContainer.querySelectorAll('input[type=number]');
+                            const arr=Array.from(allInps);
+                            const idx2=arr.indexOf(e.target);
+                            if(idx2>=0&&idx2<arr.length-1){arr[idx2+1].focus();arr[idx2+1].select();}
                           }
                         };
                         return el('tr',{style:{background:li%2===0?'#fff':'#F8FAFD'}},
@@ -2722,22 +2721,6 @@ function renderAttachementsSection(p, updateProject){
                   );
                 }
                 renderEditLignes();
-
-                // Signature section
-                const sigContainer = div({});
-                function renderSigContainer(){
-                  sigContainer.innerHTML='';
-                  const items = signataires.map(function(sig,si){
-                    const inp2 = el('input',{value:sig.nom,placeholder:'Nom...',style:{width:140,fontSize:11}});
-                    inp2.oninput = function(e){signataires[si].nom=e.target.value;};
-                    const delBtn2 = btn('✕','btn-red',function(){signataires.splice(si,1);renderSigContainer();},{style:{padding:'2px 6px',fontSize:10}});
-                    return div({style:{display:'flex',alignItems:'center',gap:4,background:'#F8FAFD',border:'1px solid #E5E9F2',borderRadius:6,padding:'4px 8px'}},inp2,delBtn2);
-                  });
-                  const addBtn2 = btn('+ Ajouter','btn-blue',function(){signataires.push({nom:'Nouveau'});renderSigContainer();},{style:{fontSize:11,padding:'4px 10px'}});
-                  sigContainer.appendChild(div({style:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginTop:4}},...items,addBtn2));
-                }
-                renderSigContainer();
-
                 const formEl = div({style:{display:'flex',flexDirection:'column',gap:12}},
                   div({style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}},
                     div({},el('label',{className:'lbl'},'N° Attachement'),Object.assign(el('input',{value:editForm.num||'',style:{width:'100%'}}),{oninput:e=>editForm.num=e.target.value})),
@@ -2749,17 +2732,9 @@ function renderAttachementsSection(p, updateProject){
                     div({},el('label',{className:'lbl'},'Au'),Object.assign(el('input',{type:'date',value:editForm.au||'',style:{width:'100%'}}),{oninput:e=>editForm.au=e.target.value}))
                   ),
                   div({style:{overflowX:'auto'}},lignesContainer),
-                  div({style:{background:'#F8FAFD',border:'1px solid #E5E9F2',borderRadius:8,padding:12,marginTop:4}},
-                    div({style:{fontSize:11,fontWeight:700,color:'#1A2540',marginBottom:8}},'✍️ Tableau de signatures'),
-                    div({style:{display:'flex',alignItems:'center',gap:12,marginBottom:8}},
-                      el('label',{style:{fontSize:11,color:'#6B7A99'}},'Hauteur (mm) :'),
-                      Object.assign(el('input',{type:'number',value:editForm.sigHeight||35,min:15,max:80,style:{width:70,fontSize:11}}),{oninput:e=>editForm.sigHeight=parseInt(e.target.value)||35})
-                    ),
-                    sigContainer
-                  ),
                   btn('💾 Enregistrer','btn-green',()=>{
-                    const total = editLignes.reduce((s,l)=>s+(l.qteMois||0)*(l.pu||0),0);
-                    const updated = atts.map((x,xi)=>xi===i?{...x,...editForm,signataires:signataires,lignes:editLignes,total}:x);
+                    const total=editLignes.reduce((s,l)=>s+(l.qteMois||0)*(l.pu||0),0);
+                    const updated=atts.map((x,xi)=>xi===i?{...x,...editForm,lignes:editLignes,total}:x);
                     updateProject({attachements:updated});
                     setState({modal:null});
                     notify('Attachement mis à jour ✓');
