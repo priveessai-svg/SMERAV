@@ -2722,6 +2722,22 @@ function renderAttachementsSection(p, updateProject){
                   );
                 }
                 renderEditLignes();
+
+                // Signature section
+                const sigContainer = div({});
+                function renderSigContainer(){
+                  sigContainer.innerHTML='';
+                  const items = signataires.map(function(sig,si){
+                    const inp2 = el('input',{value:sig.nom,placeholder:'Nom...',style:{width:140,fontSize:11}});
+                    inp2.oninput = function(e){signataires[si].nom=e.target.value;};
+                    const delBtn2 = btn('✕','btn-red',function(){signataires.splice(si,1);renderSigContainer();},{style:{padding:'2px 6px',fontSize:10}});
+                    return div({style:{display:'flex',alignItems:'center',gap:4,background:'#F8FAFD',border:'1px solid #E5E9F2',borderRadius:6,padding:'4px 8px'}},inp2,delBtn2);
+                  });
+                  const addBtn2 = btn('+ Ajouter','btn-blue',function(){signataires.push({nom:'Nouveau'});renderSigContainer();},{style:{fontSize:11,padding:'4px 10px'}});
+                  sigContainer.appendChild(div({style:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginTop:4}},...items,addBtn2));
+                }
+                renderSigContainer();
+
                 const formEl = div({style:{display:'flex',flexDirection:'column',gap:12}},
                   div({style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}},
                     div({},el('label',{className:'lbl'},'N° Attachement'),Object.assign(el('input',{value:editForm.num||'',style:{width:'100%'}}),{oninput:e=>editForm.num=e.target.value})),
@@ -2733,9 +2749,17 @@ function renderAttachementsSection(p, updateProject){
                     div({},el('label',{className:'lbl'},'Au'),Object.assign(el('input',{type:'date',value:editForm.au||'',style:{width:'100%'}}),{oninput:e=>editForm.au=e.target.value}))
                   ),
                   div({style:{overflowX:'auto'}},lignesContainer),
+                  div({style:{background:'#F8FAFD',border:'1px solid #E5E9F2',borderRadius:8,padding:12,marginTop:4}},
+                    div({style:{fontSize:11,fontWeight:700,color:'#1A2540',marginBottom:8}},'✍️ Tableau de signatures'),
+                    div({style:{display:'flex',alignItems:'center',gap:12,marginBottom:8}},
+                      el('label',{style:{fontSize:11,color:'#6B7A99'}},'Hauteur (mm) :'),
+                      Object.assign(el('input',{type:'number',value:editForm.sigHeight||35,min:15,max:80,style:{width:70,fontSize:11}}),{oninput:e=>editForm.sigHeight=parseInt(e.target.value)||35})
+                    ),
+                    sigContainer
+                  ),
                   btn('💾 Enregistrer','btn-green',()=>{
                     const total = editLignes.reduce((s,l)=>s+(l.qteMois||0)*(l.pu||0),0);
-                    const updated = atts.map((x,xi)=>xi===i?{...x,...editForm,lignes:editLignes,total}:x);
+                    const updated = atts.map((x,xi)=>xi===i?{...x,...editForm,signataires:signataires,lignes:editLignes,total}:x);
                     updateProject({attachements:updated});
                     setState({modal:null});
                     notify('Attachement mis à jour ✓');
