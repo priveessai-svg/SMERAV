@@ -2732,9 +2732,33 @@ function renderAttachementsSection(p, updateProject){
                     div({},el('label',{className:'lbl'},'Au'),Object.assign(el('input',{type:'date',value:editForm.au||'',style:{width:'100%'}}),{oninput:e=>editForm.au=e.target.value}))
                   ),
                   div({style:{overflowX:'auto'}},lignesContainer),
+                  (()=>{
+                    const sigDiv = div({style:{background:'#F8FAFD',border:'1px solid #E5E9F2',borderRadius:8,padding:12,marginTop:4}});
+                    editForm.signataires = (a.signataires&&a.signataires.length>0) ? JSON.parse(JSON.stringify(a.signataires)) : [{nom:p.maitreOuvrage||'SRM-FM'},{nom:s.titulaire||s.nom||'SMERAV S.A.R.L.au'}];
+                    editForm.sigHeight = a.sigHeight||35;
+                    function renderSig(){
+                      sigDiv.innerHTML='';
+                      const rows = editForm.signataires.map(function(sig,si){
+                        const nm = el('input',{value:sig.nom,style:{width:130,fontSize:11,marginRight:4}});
+                        nm.oninput=function(e){editForm.signataires[si].nom=e.target.value;};
+                        const del = btn('✕','btn-red',function(){editForm.signataires.splice(si,1);renderSig();},{style:{padding:'2px 6px',fontSize:10}});
+                        return div({style:{display:'inline-flex',alignItems:'center',gap:4,background:'#fff',border:'1px solid #E5E9F2',borderRadius:6,padding:'3px 6px',margin:'0 4px 4px 0'}},nm,del);
+                      });
+                      const add = btn('+ Ajouter','btn-blue',function(){editForm.signataires.push({nom:'Nouveau'});renderSig();},{style:{fontSize:11,padding:'4px 10px'}});
+                      const hRow = div({style:{display:'flex',alignItems:'center',gap:10,marginBottom:8}},
+                        el('label',{style:{fontSize:11,color:'#6B7A99'}},'Hauteur (mm):'),
+                        Object.assign(el('input',{type:'number',value:editForm.sigHeight,min:15,max:80,style:{width:60,fontSize:11}}),{oninput:e=>editForm.sigHeight=parseInt(e.target.value)||35})
+                      );
+                      sigDiv.appendChild(div({style:{fontSize:11,fontWeight:700,color:'#1A2540',marginBottom:6}},'✍️ Tableau de signatures'));
+                      sigDiv.appendChild(hRow);
+                      sigDiv.appendChild(div({style:{display:'flex',flexWrap:'wrap',alignItems:'center'}},...rows,add));
+                    }
+                    renderSig();
+                    return sigDiv;
+                  })(),
                   btn('💾 Enregistrer','btn-green',()=>{
                     const total=editLignes.reduce((s,l)=>s+(l.qteMois||0)*(l.pu||0),0);
-                    const updated=atts.map((x,xi)=>xi===i?{...x,...editForm,lignes:editLignes,total}:x);
+                    const updated=atts.map((x,xi)=>xi===i?{...x,...editForm,signataires:editForm.signataires||(a.signataires||[]),sigHeight:editForm.sigHeight||(a.sigHeight||35),lignes:editLignes,total}:x);
                     updateProject({attachements:updated});
                     setState({modal:null});
                     notify('Attachement mis à jour ✓');
