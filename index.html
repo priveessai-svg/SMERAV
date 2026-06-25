@@ -1451,8 +1451,30 @@ function renderProjetInfoEdit(p, updateProject){
       el('label',{className:'lbl'},'Objet du marché'),
       Object.assign(el('textarea',{rows:3,style:{width:'100%',resize:'vertical'}},f.objet||''),{oninput:e=>f.objet=e.target.value})
     ),
+    div({style:{borderTop:'1px solid #E5E9F2',paddingTop:14,marginTop:4,marginBottom:14}},
+      div({style:{fontWeight:800,color:'#2563EB',marginBottom:12,fontSize:12}},'✍️ TABLEAU DE SIGNATURES'),
+      div({style:{display:'flex',alignItems:'center',gap:10,marginBottom:10}},
+        el('label',{className:'lbl',style:{margin:0}},'Hauteur des cases (mm) :'),
+        Object.assign(el('input',{type:'number',value:f.sigHeight||35,min:10,max:100,style:{width:70}}),{oninput:e=>f.sigHeight=parseInt(e.target.value)||35})
+      ),
+      div({id:'sig-names-wrap',style:{display:'flex',flexWrap:'wrap',gap:6,alignItems:'center'}},
+        ...((f.signataires&&f.signataires.length?f.signataires:[{nom:f.maitreOuvrage||'SRM-FM'},{nom:'SMERAV S.A.R.L.au'}]).map((sig,si)=>{
+          f.signataires = f.signataires||[{nom:f.maitreOuvrage||'SRM-FM'},{nom:'SMERAV S.A.R.L.au'}];
+          return div({style:{display:'flex',alignItems:'center',gap:4,background:'#fff',border:'1px solid #ddd',borderRadius:6,padding:'4px 6px'}},
+            Object.assign(el('input',{value:sig.nom,style:{width:120,fontSize:11}}),{oninput:e=>f.signataires[si].nom=e.target.value}),
+            btn('✕','btn-red',()=>{f.signataires.splice(si,1);setState({});},{style:{padding:'2px 6px',fontSize:10}})
+          );
+        })),
+        btn('+ Ajouter','btn-blue',()=>{
+          if(!f.signataires||!f.signataires.length) f.signataires=[{nom:f.maitreOuvrage||'SRM-FM'},{nom:'SMERAV S.A.R.L.au'}];
+          f.signataires.push({nom:'Nouveau'});
+          setState({});
+        },{style:{fontSize:11,padding:'5px 12px'}})
+      )
+    ),
     div({style:{display:'flex',gap:10}},
       btn('💾 Enregistrer','btn-green',()=>{
+        if(!f.signataires||!f.signataires.length) f.signataires=[{nom:f.maitreOuvrage||'SRM-FM'},{nom:'SMERAV S.A.R.L.au'}];
         updateProject(f);
         setState({ficheSection:'info'});
         notify('Projet mis à jour ✓');
