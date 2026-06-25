@@ -1451,27 +1451,37 @@ function renderProjetInfoEdit(p, updateProject){
       el('label',{className:'lbl'},'Objet du marché'),
       Object.assign(el('textarea',{rows:3,style:{width:'100%',resize:'vertical'}},f.objet||''),{oninput:e=>f.objet=e.target.value})
     ),
-    div({style:{borderTop:'1px solid #E5E9F2',paddingTop:14,marginTop:4,marginBottom:14}},
-      div({style:{fontWeight:800,color:'#2563EB',marginBottom:12,fontSize:12}},'✍️ TABLEAU DE SIGNATURES'),
-      div({style:{display:'flex',alignItems:'center',gap:10,marginBottom:10}},
-        el('label',{className:'lbl',style:{margin:0}},'Hauteur des cases (mm) :'),
-        Object.assign(el('input',{type:'number',value:f.sigHeight||35,min:10,max:100,style:{width:70}}),{oninput:e=>f.sigHeight=parseInt(e.target.value)||35})
-      ),
-      div({id:'sig-names-wrap',style:{display:'flex',flexWrap:'wrap',gap:6,alignItems:'center'}},
-        ...((f.signataires&&f.signataires.length?f.signataires:[{nom:f.maitreOuvrage||'SRM-FM'},{nom:'SMERAV S.A.R.L.au'}]).map((sig,si)=>{
-          f.signataires = f.signataires||[{nom:f.maitreOuvrage||'SRM-FM'},{nom:'SMERAV S.A.R.L.au'}];
-          return div({style:{display:'flex',alignItems:'center',gap:4,background:'#fff',border:'1px solid #ddd',borderRadius:6,padding:'4px 6px'}},
-            Object.assign(el('input',{value:sig.nom,style:{width:120,fontSize:11}}),{oninput:e=>f.signataires[si].nom=e.target.value}),
-            btn('✕','btn-red',()=>{f.signataires.splice(si,1);setState({});},{style:{padding:'2px 6px',fontSize:10}})
-          );
-        })),
-        btn('+ Ajouter','btn-blue',()=>{
-          if(!f.signataires||!f.signataires.length) f.signataires=[{nom:f.maitreOuvrage||'SRM-FM'},{nom:'SMERAV S.A.R.L.au'}];
-          f.signataires.push({nom:'Nouveau'});
-          setState({});
-        },{style:{fontSize:11,padding:'5px 12px'}})
-      )
-    ),
+    (()=>{
+      if(!f.signataires||!f.signataires.length) f.signataires=[{nom:f.maitreOuvrage||'SRM-FM'},{nom:'SMERAV S.A.R.L.au'}];
+      if(!f.sigHeight) f.sigHeight=35;
+      const sigWrap = el('div');
+      sigWrap.style.cssText='border-top:1px solid #E5E9F2;padding-top:14px;margin-top:4px;margin-bottom:14px;';
+      const sigTitle = el('div'); sigTitle.style.cssText='font-weight:800;color:#2563EB;margin-bottom:12px;font-size:12px;'; sigTitle.textContent='✍️ TABLEAU DE SIGNATURES';
+      sigWrap.appendChild(sigTitle);
+      const hRow = el('div'); hRow.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:10px;';
+      const hLbl = el('label'); hLbl.textContent='Hauteur des cases (mm) :'; hLbl.style.cssText='font-size:11px;font-weight:700;color:#6B7A99;';
+      const hInp = el('input'); hInp.type='number'; hInp.value=f.sigHeight; hInp.min=10; hInp.max=100; hInp.style.cssText='width:70px;';
+      hInp.oninput=e=>{f.sigHeight=parseInt(e.target.value)||35;};
+      hRow.appendChild(hLbl); hRow.appendChild(hInp); sigWrap.appendChild(hRow);
+      const namesRow = el('div'); namesRow.style.cssText='display:flex;flex-wrap:wrap;gap:6px;align-items:center;';
+      const renderNames=()=>{
+        namesRow.innerHTML='';
+        f.signataires.forEach((sig,si)=>{
+          const w=el('div'); w.style.cssText='display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #ddd;border-radius:6px;padding:4px 6px;';
+          const i2=el('input'); i2.value=sig.nom; i2.style.cssText='width:120px;font-size:11px;border:1px solid #E5E9F2;border-radius:4px;padding:3px 6px;';
+          i2.oninput=e=>{f.signataires[si].nom=e.target.value;};
+          const d=el('button'); d.textContent='✕'; d.style.cssText='background:#FEE2E2;color:#EF4444;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;';
+          d.onclick=()=>{f.signataires.splice(si,1);renderNames();};
+          w.appendChild(i2); w.appendChild(d); namesRow.appendChild(w);
+        });
+        const a2=el('button'); a2.textContent='+ Ajouter'; a2.style.cssText='background:#2563EB;color:#fff;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:700;';
+        a2.onclick=()=>{f.signataires.push({nom:'Nouveau'});renderNames();};
+        namesRow.appendChild(a2);
+      };
+      renderNames();
+      sigWrap.appendChild(namesRow);
+      return sigWrap;
+    })(),
     div({style:{display:'flex',gap:10}},
       btn('💾 Enregistrer','btn-green',()=>{
         if(!f.signataires||!f.signataires.length) f.signataires=[{nom:f.maitreOuvrage||'SRM-FM'},{nom:'SMERAV S.A.R.L.au'}];
