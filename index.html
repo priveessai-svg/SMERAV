@@ -1451,38 +1451,6 @@ function renderProjetInfoEdit(p, updateProject){
       el('label',{className:'lbl'},'Objet du marché'),
       Object.assign(el('textarea',{rows:3,style:{width:'100%',resize:'vertical'}},f.objet||''),{oninput:e=>f.objet=e.target.value})
     ),
-    div({style:{borderTop:'1px solid #E5E9F2',paddingTop:14,marginTop:14,fontWeight:800,color:'#2563EB',fontSize:12,marginBottom:12}},'✍️ TABLEAU DE SIGNATURES'),
-    (() => {
-      if(!f.signataires || !f.signataires.length) f.signataires = [{nom:f.maitreOuvrage||'SRM-FM'},{nom:s.titulaire||s.nom||'SMERAV S.A.R.L.au'}];
-      if(!f.sigHeight) f.sigHeight = 35;
-      const sigBox = el('div');
-      sigBox.style.cssText = 'background:#F8FAFD;border:1px solid #E5E9F2;border-radius:8px;padding:12px;margin-bottom:14px;';
-      const buildSig = () => {
-        sigBox.innerHTML = '';
-        const hrow = el('div'); hrow.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:10px;';
-        const hlbl = el('label'); hlbl.style.cssText='font-size:11px;color:#6B7A99;font-weight:700;'; hlbl.textContent='Hauteur des cases (mm):';
-        const hinp = el('input'); hinp.type='number'; hinp.value=f.sigHeight; hinp.min=10; hinp.max=100; hinp.style.cssText='width:65px;font-size:11px;';
-        hinp.oninput = e => { f.sigHeight = parseInt(e.target.value)||35; };
-        hrow.appendChild(hlbl); hrow.appendChild(hinp);
-        sigBox.appendChild(hrow);
-        const nrow = el('div'); nrow.style.cssText='display:flex;flex-wrap:wrap;gap:6px;align-items:center;';
-        f.signataires.forEach((sig, si) => {
-          const wrap = el('div'); wrap.style.cssText='display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #ddd;border-radius:6px;padding:4px 6px;';
-          const inp2 = el('input'); inp2.value=sig.nom; inp2.style.cssText='width:120px;font-size:11px;border:1px solid #E5E9F2;border-radius:4px;padding:3px 6px;background:#fff;';
-          inp2.oninput = e => { f.signataires[si].nom=e.target.value; };
-          const delbtn = el('button'); delbtn.textContent='✕'; delbtn.style.cssText='background:#FEE2E2;color:#EF4444;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;';
-          delbtn.onclick = (idx3 => () => { f.signataires.splice(idx3,1); buildSig(); })(si);
-          wrap.appendChild(inp2); wrap.appendChild(delbtn);
-          nrow.appendChild(wrap);
-        });
-        const addbtn = el('button'); addbtn.textContent='+ Ajouter'; addbtn.style.cssText='background:#2563EB;color:#fff;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:700;';
-        addbtn.onclick = () => { f.signataires.push({nom:'Nouveau'}); buildSig(); };
-        nrow.appendChild(addbtn);
-        sigBox.appendChild(nrow);
-      };
-      buildSig();
-      return sigBox;
-    })(),
     div({style:{display:'flex',gap:10}},
       btn('💾 Enregistrer','btn-green',()=>{
         updateProject(f);
