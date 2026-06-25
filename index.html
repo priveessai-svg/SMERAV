@@ -1467,15 +1467,35 @@ function renderProjetInfoEdit(p, updateProject){
       const renderNames=()=>{
         namesRow.innerHTML='';
         f.signataires.forEach((sig,si)=>{
-          const w=el('div'); w.style.cssText='display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #ddd;border-radius:6px;padding:4px 6px;';
-          const i2=el('input'); i2.value=sig.nom; i2.style.cssText='width:120px;font-size:11px;border:1px solid #E5E9F2;border-radius:4px;padding:3px 6px;';
-          i2.oninput=e=>{f.signataires[si].nom=e.target.value;};
-          const d=el('button'); d.textContent='✕'; d.style.cssText='background:#FEE2E2;color:#EF4444;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;';
+          const w=el('div'); w.style.cssText='display:flex;flex-direction:column;gap:4px;background:#fff;border:1px solid #ddd;border-radius:8px;padding:8px;min-width:160px;';
+          // Titre
+          const tLbl=el('div'); tLbl.style.cssText='font-size:10px;color:#6B7A99;font-weight:700;'; tLbl.textContent='Titre:';
+          const tInp=el('input'); tInp.value=sig.titre||''; tInp.placeholder='ex: Maître d\'ouvrage'; tInp.style.cssText='width:100%;font-size:11px;border:1px solid #E5E9F2;border-radius:4px;padding:3px 6px;';
+          tInp.oninput=e=>{f.signataires[si].titre=e.target.value;};
+          // Nom
+          const nLbl=el('div'); nLbl.style.cssText='font-size:10px;color:#6B7A99;font-weight:700;'; nLbl.textContent='Nom:';
+          const nInp=el('input'); nInp.value=sig.nom||''; nInp.placeholder='ex: SRM-FM'; nInp.style.cssText='width:100%;font-size:11px;border:1px solid #E5E9F2;border-radius:4px;padding:3px 6px;';
+          nInp.oninput=e=>{f.signataires[si].nom=e.target.value;};
+          // Hauteur + Largeur
+          const hlRow=el('div'); hlRow.style.cssText='display:flex;gap:6px;align-items:center;';
+          const hhLbl=el('div'); hhLbl.style.cssText='font-size:10px;color:#6B7A99;'; hhLbl.textContent='H(mm):';
+          const hhInp=el('input'); hhInp.type='number'; hhInp.value=sig.height||f.sigHeight||35; hhInp.min=10; hhInp.max=200; hhInp.style.cssText='width:55px;font-size:11px;border:1px solid #E5E9F2;border-radius:4px;padding:3px 6px;';
+          hhInp.oninput=e=>{f.signataires[si].height=parseInt(e.target.value)||35;};
+          const wLbl=el('div'); wLbl.style.cssText='font-size:10px;color:#6B7A99;'; wLbl.textContent='L(%):';
+          const wInp=el('input'); wInp.type='number'; wInp.value=sig.width||Math.round(100/f.signataires.length); wInp.min=5; wInp.max=100; wInp.style.cssText='width:50px;font-size:11px;border:1px solid #E5E9F2;border-radius:4px;padding:3px 6px;';
+          wInp.oninput=e=>{f.signataires[si].width=parseInt(e.target.value)||50;};
+          hlRow.appendChild(hhLbl); hlRow.appendChild(hhInp); hlRow.appendChild(wLbl); hlRow.appendChild(wInp);
+          // Delete btn
+          const d=el('button'); d.textContent='✕ Supprimer'; d.style.cssText='background:#FEE2E2;color:#EF4444;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:10px;font-weight:700;margin-top:2px;';
           d.onclick=()=>{f.signataires.splice(si,1);renderNames();};
-          w.appendChild(i2); w.appendChild(d); namesRow.appendChild(w);
+          w.appendChild(tLbl); w.appendChild(tInp);
+          w.appendChild(nLbl); w.appendChild(nInp);
+          w.appendChild(hlRow);
+          w.appendChild(d);
+          namesRow.appendChild(w);
         });
-        const a2=el('button'); a2.textContent='+ Ajouter'; a2.style.cssText='background:#2563EB;color:#fff;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:700;';
-        a2.onclick=()=>{f.signataires.push({nom:'Nouveau'});renderNames();};
+        const a2=el('button'); a2.textContent='+ Ajouter colonne'; a2.style.cssText='background:#2563EB;color:#fff;border:none;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:11px;font-weight:700;align-self:flex-start;';
+        a2.onclick=()=>{f.signataires.push({titre:'',nom:'Nouveau',height:f.sigHeight||35,width:Math.round(100/(f.signataires.length+1))});renderNames();};
         namesRow.appendChild(a2);
       };
       renderNames();
@@ -2694,12 +2714,12 @@ function renderAttachementsSection(p, updateProject){
                     ${rows}
                     <tr style="page-break-inside:avoid;page-break-before:avoid;">
                       <td colspan="8" style="border:none;padding:0;">
-                        <table style="width:100%;border-collapse:collapse;">
+                        <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
                           <tr>
-                            ${(p.signataires||a.signataires||[{nom:p.maitreOuvrage||'SRM-FM'},{nom:s.titulaire||s.nom||'SMERAV S.A.R.L.au'}]).map(sig=>'<td style="border:1px solid #333;padding:4px 8px;font-weight:700;font-size:12px;text-align:center;background:#f0f0f0;">'+sig.nom+'</td>').join('')}
+                            ${(p.signataires||a.signataires||[{titre:'Maître d\'ouvrage',nom:p.maitreOuvrage||'SRM-FM'},{titre:'Titulaire du Marché',nom:s.titulaire||s.nom||'SMERAV S.A.R.L.au'}]).map(sig=>'<td style="border:1px solid #333;padding:4px 8px;font-size:10px;text-align:center;background:#f0f0f0;width:'+(sig.width||Math.round(100/(p.signataires||[1,2]).length))+'%;"><div style=\"font-size:9px;color:#666;margin-bottom:2px;\">'+(sig.titre||'')+'</div><div style=\"font-weight:700;font-size:12px;\">'+sig.nom+'</div></td>').join('')}
                           </tr>
                           <tr>
-                            ${(p.signataires||a.signataires||[{nom:''},{nom:''}]).map(()=>'<td style="border:1px solid #333;padding:0;height:'+(p.sigHeight||a.sigHeight||35)+'mm;vertical-align:bottom;text-align:center;"><div style="border-top:1px solid #999;margin:0 15mm;padding-top:2mm;font-size:9px;color:#666;">Signature et cachet</div></td>').join('')}
+                            ${(p.signataires||a.signataires||[{},{} ]).map(sig=>'<td style="border:1px solid #333;padding:0;height:'+(sig.height||p.sigHeight||a.sigHeight||35)+'mm;vertical-align:bottom;text-align:center;width:'+(sig.width||50)+'%;"><div style=\"border-top:1px solid #999;margin:0 15mm;padding-top:2mm;font-size:9px;color:#666;\">Signature et cachet</div></td>').join('')}
                           </tr>
                         </table>
                       </td>
