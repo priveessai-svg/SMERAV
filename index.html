@@ -2732,42 +2732,6 @@ function renderAttachementsSection(p, updateProject){
                     div({},el('label',{className:'lbl'},'Au'),Object.assign(el('input',{type:'date',value:editForm.au||'',style:{width:'100%'}}),{oninput:e=>editForm.au=e.target.value}))
                   ),
                   div({style:{overflowX:'auto'}},lignesContainer),
-                  (() => {
-                    editForm.signataires = JSON.parse(JSON.stringify(a.signataires && a.signataires.length ? a.signataires : [{nom:p.maitreOuvrage||'SRM-FM'},{nom:s.titulaire||s.nom||'SMERAV S.A.R.L.au'}]));
-                    editForm.sigHeight = a.sigHeight||35;
-                    const sigBox = el('div');
-                    sigBox.style.cssText = 'background:#F8FAFD;border:1px solid #E5E9F2;border-radius:8px;padding:12px;margin-top:4px;';
-                    const rebuild = () => {
-                      sigBox.innerHTML = '';
-                      // Title
-                      const title = el('div'); title.style.cssText='font-size:11px;font-weight:700;color:#1A2540;margin-bottom:8px;'; title.textContent='✍️ Tableau de signatures';
-                      sigBox.appendChild(title);
-                      // Height row
-                      const hrow = el('div'); hrow.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:10px;';
-                      const hlbl = el('label'); hlbl.style.cssText='font-size:11px;color:#6B7A99;'; hlbl.textContent='Hauteur (mm):';
-                      const hinp = el('input'); hinp.type='number'; hinp.value=editForm.sigHeight; hinp.min=10; hinp.max=100; hinp.style.cssText='width:65px;font-size:11px;';
-                      hinp.oninput = e => { editForm.sigHeight = parseInt(e.target.value)||35; };
-                      hrow.appendChild(hlbl); hrow.appendChild(hinp);
-                      sigBox.appendChild(hrow);
-                      // Names row
-                      const nrow = el('div'); nrow.style.cssText='display:flex;flex-wrap:wrap;gap:6px;align-items:center;';
-                      editForm.signataires.forEach((sig, si) => {
-                        const wrap = el('div'); wrap.style.cssText='display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #ddd;border-radius:6px;padding:4px 6px;';
-                        const inp = el('input'); inp.value=sig.nom; inp.style.cssText='width:120px;font-size:11px;border:1px solid #E5E9F2;border-radius:4px;padding:3px 6px;background:#fff;';
-                        inp.oninput = e => { editForm.signataires[si].nom=e.target.value; };
-                        const delbtn = el('button'); delbtn.textContent='✕'; delbtn.style.cssText='background:#FEE2E2;color:#EF4444;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;';
-                        delbtn.onclick = (idx3 => () => { editForm.signataires.splice(idx3,1); rebuild(); })(si);
-                        wrap.appendChild(inp); wrap.appendChild(delbtn);
-                        nrow.appendChild(wrap);
-                      });
-                      const addbtn = el('button'); addbtn.textContent='+ Ajouter'; addbtn.style.cssText='background:#2563EB;color:#fff;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:700;';
-                      addbtn.onclick = () => { editForm.signataires.push({nom:'Nouveau'}); rebuild(); };
-                      nrow.appendChild(addbtn);
-                      sigBox.appendChild(nrow);
-                    };
-                    rebuild();
-                    return sigBox;
-                  })(),
                   btn('💾 Enregistrer','btn-green',()=>{
                     const total=editLignes.reduce((s,l)=>s+(l.qteMois||0)*(l.pu||0),0);
                     const updated=atts.map((x,xi)=>xi===i?{...x,...editForm,lignes:editLignes,total}:x);
