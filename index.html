@@ -2564,14 +2564,16 @@ function renderAttachementsSection(p, updateProject){
   const inp = el('input',{type:'text',inputmode:'decimal',value:l.qteMois||'',
     'data-idx':i,
     style:{width:70,textAlign:'right',border:'2px solid #E8730A60',borderRadius:6,padding:'4px 6px',fontSize:11,background:'#FFF8F0'}});
-  inp.oninput = e => updateLigne(i, e.target.value);
+  inp.onchange = e => updateLigne(i, e.target.value);
+  inp.onblur = e => updateLigne(i, e.target.value);
   inp.onkeydown = e => {
     if(e.key === 'Enter'){
       e.preventDefault();
+      updateLigne(i, e.target.value);
       const allInputs = document.querySelectorAll('input[data-idx]');
       const arr = Array.from(allInputs);
-      const idx = arr.indexOf(e.target);
-      if(idx >= 0 && idx < arr.length - 1){ arr[idx+1].focus(); arr[idx+1].select(); }
+      const idx2 = arr.indexOf(e.target);
+      if(idx2 >= 0 && idx2 < arr.length - 1){ arr[idx2+1].focus(); arr[idx2+1].select(); }
     }
   };
   return inp;
