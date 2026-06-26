@@ -2536,12 +2536,18 @@ function renderAttachementsSection(p, updateProject){
         const totalDiv = div({style:{textAlign:'right',padding:'10px 0',fontWeight:900,fontSize:16,color:'#E8730A'}});
 
         function updateLigne(i, qteMois){
-          lignes[i].qteMois = parseFloat(qteMois)||0;
+          lignes[i].qteMois = parseFloat(String(qteMois).replace(',','.'))||0;
           lignes[i].cumul = lignes[i].qtePrecedente + lignes[i].qteMois;
           lignes[i].pct = lignes[i].qteBD>0?Math.round(lignes[i].cumul/lignes[i].qteBD*1000)/10:0;
           formData.lignes = lignes;
           totalDiv.textContent = 'Total HT: '+fmt(lignes.reduce((s,l)=>s+l.qteMois*(l.pu||0),0));
-          renderLignes();
+          // Update only the read-only cells without re-rendering the inputs
+          const row = document.querySelector('input[data-idx="'+i+'"]');
+          if(row && row.parentNode && row.parentNode.parentNode){
+            const tds = row.parentNode.parentNode.querySelectorAll('td');
+            if(tds[5]) tds[5].textContent = fmtN(lignes[i].cumul);
+            if(tds[6]) tds[6].textContent = fmtN(lignes[i].pct)+'%';
+          }
         }
 
         function renderLignes(){
