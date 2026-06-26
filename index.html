@@ -2557,7 +2557,7 @@ function renderAttachementsSection(p, updateProject){
               el('td',{style:{padding:'6px 8px',textAlign:'right',color:'#6B7A99'}},fmtN(l.qteBD)),
               el('td',{style:{padding:'6px 8px',textAlign:'right',color:'#6B7A99'}},fmtN(l.qtePrecedente)),
               el('td',{style:{padding:'4px'}},(()=>{
-  const inp = el('input',{type:'number',min:0,step:0.01,value:l.qteMois||'',
+  const inp = el('input',{type:'text',inputmode:'decimal',value:l.qteMois||'',
     'data-idx':i,
     style:{width:70,textAlign:'right',border:'2px solid #E8730A60',borderRadius:6,padding:'4px 6px',fontSize:11,background:'#FFF8F0'}});
   inp.oninput = e => updateLigne(i, e.target.value);
@@ -2743,7 +2743,7 @@ function renderAttachementsSection(p, updateProject){
                           el('th',{style:{padding:'6px 8px',fontWeight:700,fontSize:10}},h))
                       )),
                       el('tbody',{},...editLignes.map((l,li)=>{
-                        const inp = el('input',{type:'number',min:0,step:0.01,value:l.qteMois||0,
+                        const inp = el('input',{type:'text',inputmode:'decimal',value:l.qteMois||0,
                           style:{width:70,textAlign:'right',border:'2px solid #E8730A',borderRadius:6,padding:'3px 6px',fontSize:11}});
                         inp.oninput = e=>{
                           editLignes[li].qteMois=parseFloat(e.target.value)||0;
