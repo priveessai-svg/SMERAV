@@ -539,9 +539,11 @@ function printDoc(htmlContent, title){
     doc.write('}');
     doc.write('</style></head><body>');
     doc.write('<div class="no-print-bar">');
-    doc.write('<button onclick="window.print()" style="background:#E8730A;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;margin-right:10px;">&#128424; Imprimer / PDF</button>');
+    doc.write('<button onclick="window.print()" style="background:#E8730A;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;margin-right:6px;">&#128424; Imprimer</button>');
+    doc.write('<button onclick="saveExcel()" style="background:#16A34A;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;margin-right:6px;">&#128202; Excel</button>');
     doc.write('<button onclick="parent.document.getElementById(\'__printFrame\').remove()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">&#x2715; Fermer</button>');
     doc.write('</div>');
+    doc.write('<script>function saveExcel(){var main=document.getElementById("main");if(!main){alert("Pas de contenu");return;}var wb="<html xmlns:o=\'urn:schemas-microsoft-com:office:office\' xmlns:x=\'urn:schemas-microsoft-com:office:excel\'><head><meta charset=\'UTF-8\'><style>table{border-collapse:collapse;}td,th{border:1px solid #000;padding:5px 8px;font-size:11pt;}th{background:#f0f0f0;font-weight:bold;}</style></head><body>"+main.innerHTML+"</body></html>";var b=new Blob([wb],{type:"application/vnd.ms-excel;charset=utf-8"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="Attachement.xls";document.body.appendChild(a);a.click();document.body.removeChild(a);}<\/script>');
     doc.write('<div id="main" style="padding:0;">'+htmlContent+'</div>');
     doc.write('<style>@page{@bottom-right{content:"Page " counter(page) " / " counter(pages);font-size:9px;font-family:Arial;color:#444;}}</style>');
     doc.write('</body></html>');
@@ -2786,7 +2788,19 @@ function renderAttachementsSection(p, updateProject){
                   div({style:{overflowX:'auto'}},lignesContainer),
                   btn('💾 Enregistrer','btn-green',()=>{
                     const total=editLignes.reduce((s,l)=>s+(l.qteMois||0)*(l.pu||0),0);
-                    const updated=atts.map((x,xi)=>xi===i?{...x,...editForm,lignes:editLignes,total}:x);
+                    let updated=atts.map((x,xi)=>xi===i?{...x,...editForm,lignes:editLignes,total}:x);
+                    // Recalcul automatique des attachements suivants
+                    for(let ai=i+1;ai<updated.length;ai++){
+                      const recalcLg=(updated[ai].lignes||[]).map(l=>{
+                        let qteP=0;
+                        for(let pi=0;pi<ai;pi++){const pl=(updated[pi].lignes||[]).find(x=>x.id===l.id);if(pl)qteP+=(pl.qteMois||0);}
+                        const cumul=qteP+(l.qteMois||0);
+                        const pct=l.qteBD>0?Math.round(cumul/l.qteBD*1000)/10:0;
+                        return {...l,qtePrecedente:qteP,cumul,pct};
+                      });
+                      const recalcTotal=recalcLg.reduce((s,l)=>s+(l.qteMois||0)*(l.pu||0),0);
+                      updated[ai]={...updated[ai],lignes:recalcLg,total:recalcTotal};
+                    }
                     updateProject({attachements:updated});
                     setState({modal:null});
                     notify('Attachement mis à jour ✓');
