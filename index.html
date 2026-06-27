@@ -2751,16 +2751,23 @@ function renderAttachementsSection(p, updateProject){
                       el('tbody',{},...editLignes.map((l,li)=>{
                         const inp = el('input',{type:'text',inputmode:'decimal',value:l.qteMois||0,
                           style:{width:70,textAlign:'right',border:'2px solid #E8730A',borderRadius:6,padding:'3px 6px',fontSize:11}});
-                        inp.oninput = e=>{
-                          editLignes[li].qteMois=parseFloat(e.target.value)||0;
-                          editLignes[li].cumul=(editLignes[li].qtePrecedente||0)+editLignes[li].qteMois;
+                        const cTd = el('td',{style:{padding:'5px 8px',textAlign:'center',fontWeight:700,color:'#2563EB'}},editLignes[li].cumul||0);
+                        const pTd = el('td',{style:{padding:'5px 8px',textAlign:'center',color:'#10B981',fontWeight:700}},(editLignes[li].pct||0)+'%');
+                        const updateCalc = ()=>{
+                          const v=parseFloat(String(inp.value).replace(',','.'))||0;
+                          editLignes[li].qteMois=v;
+                          editLignes[li].cumul=(editLignes[li].qtePrecedente||0)+v;
                           editLignes[li].pct=editLignes[li].qteBD>0?Math.round(editLignes[li].cumul/editLignes[li].qteBD*1000)/10:0;
-                          renderEditLignes();
+                          cTd.textContent=editLignes[li].cumul;
+                          pTd.textContent=editLignes[li].pct+'%';
                         };
+                        inp.onchange = updateCalc;
+                        inp.onblur = updateCalc;
                         inp.onkeydown=e=>{
                           if(e.key==='Enter'){
                             e.preventDefault();
-                            const allInps=lignesContainer.querySelectorAll('input[type=number]');
+                            updateCalc();
+                            const allInps=lignesContainer.querySelectorAll('input');
                             const arr=Array.from(allInps);
                             const idx2=arr.indexOf(e.target);
                             if(idx2>=0&&idx2<arr.length-1){arr[idx2+1].focus();arr[idx2+1].select();}
@@ -2773,8 +2780,8 @@ function renderAttachementsSection(p, updateProject){
                           el('td',{style:{padding:'5px 8px',textAlign:'center'}},l.qteBD||0),
                           el('td',{style:{padding:'5px 8px',textAlign:'center'}},l.qtePrecedente||0),
                           el('td',{style:{padding:'3px 6px'}},inp),
-                          el('td',{style:{padding:'5px 8px',textAlign:'center',fontWeight:700,color:'#2563EB'}},editLignes[li].cumul||0),
-                          el('td',{style:{padding:'5px 8px',textAlign:'center',color:'#10B981',fontWeight:700}},(editLignes[li].pct||0)+'%')
+                          cTd,
+                          pTd
                         );
                       }))
                     )
