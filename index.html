@@ -2998,6 +2998,7 @@ function printDecompte(att, p){
   doc2.write('<tr>'+sigs2.map(sig=>'<td style="border:1px solid #333;padding:4px 8px;text-align:center;background:#f0f0f0;width:'+(sig.width||Math.round(100/sigs2.length))+'%;"><div style=\"font-size:9px;color:#666;\">'+(sig.titre||'')+'</div><div style=\"font-weight:700;font-size:12px;\">'+sig.nom+'</div></td>').join('')+'</tr>');
   doc2.write('<tr>'+sigs2.map(sig=>'<td style="border:1px solid #333;height:'+(sig.height||35)+'mm;vertical-align:bottom;text-align:center;"><div style=\"border-top:1px solid #999;margin:0 15mm;padding-top:2mm;font-size:9px;color:#666;\">Signature et cachet</div></td>').join('')+'</tr>');
   doc2.write('</table>');
+  doc2.write('<script>window.onload=function(){var pageH=1122;var total=Math.max(1,Math.ceil(document.body.scrollHeight/pageH));document.querySelectorAll(".pgnum").forEach(function(el,i){el.textContent="Page "+(i+1)+" / "+total;});}<\/script>');
   doc2.write('</div></body></html>');
   doc2.close();
 }
