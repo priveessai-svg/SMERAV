@@ -2943,11 +2943,12 @@ function printDecompte(att, p){
     <td style="text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
   </tr>`).join('');
   // Build HTML like attachement - using iframe directly without header/footer
+  document.querySelectorAll('iframe').forEach(f=>f.remove());
   const prev = document.getElementById('__printFrame');
   if(prev) prev.remove();
   const iframe = document.createElement('iframe');
   iframe.id = '__printFrame';
-  iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:99999;background:#fff;';
+  iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:999999;background:#fff;';
   document.body.appendChild(iframe);
   const doc2 = iframe.contentDocument || iframe.contentWindow.document;
   doc2.open();
