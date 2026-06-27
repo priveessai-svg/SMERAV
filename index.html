@@ -529,13 +529,16 @@ function printDoc(htmlContent, title){
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('.no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:999;}');
     doc.write('#main{margin:0;}');
+    doc.write('.print-page-header{display:none;}');
     doc.write('@media print{');
     doc.write('.no-print-bar{display:none!important;}');
     doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
-    doc.write('@page{size:A4;margin:30mm 15mm 30mm 15mm;}');
+    doc.write('@page{size:A4;margin:38mm 15mm 30mm 15mm;}');
     doc.write('thead{display:table-header-group;}');
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('table{page-break-inside:auto;}');
+    doc.write('.print-page-header{display:flex!important;position:fixed;top:0;left:0;right:0;background:#fff;padding:5px 15mm;border-bottom:2px solid #E8730A;align-items:center;gap:10px;z-index:9999;}');
+    doc.write('.doc-header-inline{display:none!important;}');
     doc.write('}');
     doc.write('</style></head><body>');
     doc.write('<div class="no-print-bar">');
@@ -544,6 +547,7 @@ function printDoc(htmlContent, title){
     doc.write('<button onclick="parent.document.getElementById(\'__printFrame\').remove()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">&#x2715; Fermer</button>');
     doc.write('</div>');
     doc.write('<script>function saveExcel(){var main=document.getElementById("main");if(!main){alert("Pas de contenu");return;}var wb="<html xmlns:o=\'urn:schemas-microsoft-com:office:office\' xmlns:x=\'urn:schemas-microsoft-com:office:excel\'><head><meta charset=\'UTF-8\'><style>table{border-collapse:collapse;}td,th{border:1px solid #000;padding:5px 8px;font-size:11pt;}th{background:#f0f0f0;font-weight:bold;}</style></head><body>"+main.innerHTML+"</body></html>";var b=new Blob([wb],{type:"application/vnd.ms-excel;charset=utf-8"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="Attachement.xls";document.body.appendChild(a);a.click();document.body.removeChild(a);}<\/script>');
+    doc.write('<div class="print-page-header">'+logoHTML+'<div style="flex:1;text-align:center;"><div style="font-size:14px;font-weight:900;">'+nom+'</div>'+(ent?'<div style="font-size:8px;font-style:italic;color:#444;">'+ent+'</div>':'')+'</div></div>');
     doc.write('<div id="main" style="padding:0;">'+htmlContent+'</div>');
     doc.write('<style>@page{@bottom-right{content:"Page " counter(page) " / " counter(pages);font-size:9px;font-family:Arial;color:#444;}}</style>');
     doc.write('</body></html>');
@@ -2966,7 +2970,7 @@ function printDecompte(att, p){
     <td style="text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
   </tr>`).join('');
   const html=`
-  <div style="display:flex;align-items:center;gap:12px;padding-bottom:8px;border-bottom:2px solid #E8730A;margin-bottom:10px;">
+  <div class="doc-header-inline" style="display:flex;align-items:center;gap:12px;padding-bottom:8px;border-bottom:2px solid #E8730A;margin-bottom:10px;">
     ${logoHTML}
     <div style="flex:1"><div style="font-size:16px;font-weight:900">${s.nom}</div>
     <div style="font-size:10px;color:#666;font-style:italic">${s.enTete||''}</div></div>
