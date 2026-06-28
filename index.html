@@ -3313,7 +3313,7 @@ function renderRapportSection(p, updateProject){
               <th style="padding:9px 10px;color:#6A8099;font-weight:700;font-size:10px;text-align:center">Jours</th>
               ${bd.map(b=>`<th style="padding:9px 6px;color:#E8730A;font-weight:700;font-size:10px;text-align:center">${b.id}</th>`).join('')}
               <th style="padding:9px 10px;color:#6A8099;font-weight:700;font-size:10px;text-align:right">Total</th>
-            </tr></thead><tbody>${rowsH}</tbody></table>`+sig;
+            </tr></thead><tbody>${rowsH}${(()=>{const tot={};bd.forEach(b=>{tot[b.id]=wkRows.reduce((s,w)=>s+(w.qtes[b.id]||0),0);});const totT=bd.reduce((s,b)=>s+(tot[b.id]||0),0);return `<tr style="background:#0F1628"><td style="padding:8px 10px;font-weight:900;color:#fff;font-size:12px">TOTAL</td><td style="padding:8px 10px;text-align:center;font-weight:900;color:#fff;font-size:12px">${wkRows.reduce((s,w)=>s+w.days.size,0)} j.</td>${bd.map(b=>`<td style="padding:8px 6px;text-align:center;font-weight:900;color:#E8730A;font-size:12px">${tot[b.id]>0?fmtN(tot[b.id]):'-'}</td>`).join('')}<td style="padding:8px 10px;text-align:right;font-weight:900;color:#E8730A;font-size:12px">${totT>0?fmtN(totT):'-'}</td></tr>`;})()} </tbody></table>`+sig;
           printDoc(html,'Rapport Hebdomadaire '+getML(selMonth),{landscape:true});
         } else if(tab==='mensuel'){
           const mT={};bd.forEach(b=>{mT[b.id]=getTotal(b.id,allLignes);});
@@ -3326,7 +3326,7 @@ function renderRapportSection(p, updateProject){
               <th style="padding:9px 10px;color:#6A8099;font-weight:700;font-size:10px;text-align:left">Mois</th>
               ${bd.map(b=>`<th style="padding:9px 6px;color:#E8730A;font-weight:700;font-size:10px;text-align:center">${b.id}</th>`).join('')}
               <th style="padding:9px 10px;color:#6A8099;font-weight:700;font-size:10px;text-align:right">Total</th>
-            </tr></thead><tbody>${rowM}</tbody></table>`+sig;
+            </tr></thead><tbody>${rowM}<tr style="background:#0F1628"><td style="padding:8px 10px;font-weight:900;color:#fff;font-size:12px">TOTAL</td>${bd.map(b=>`<td style="padding:8px 6px;text-align:center;font-weight:900;color:#E8730A;font-size:12px">${mT[b.id]>0?fmtN(mT[b.id]):'-'}</td>`).join('')}<td style="padding:8px 10px;text-align:right;font-weight:900;color:#E8730A;font-size:12px">${mTot>0?fmtN(mTot):'-'}</td></tr></tbody></table>`+sig;
           printDoc(html,'Rapport Mensuel '+getML(selMonth),{landscape:true});
         } else {
           const rowsHTML=lignes.map((l,li)=>{const rt=bd.reduce((s,b)=>s+(parseFloat(l.qtes&&l.qtes[b.id])||0),0);
@@ -3479,7 +3479,13 @@ function renderRapportSection(p, updateProject){
               el('td',{style:{padding:'9px 10px',textAlign:'right',fontWeight:900,color:total>0?'#E8730A':'#6B7A99',fontSize:12}},total>0?fmtN(total):'-')
             );
           }),
-          lignes.length===0?el('tr',{},el('td',{colSpan:bd.length+3,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune donnée')):null
+          lignes.length===0?el('tr',{},el('td',{colSpan:bd.length+3,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune donnée')):null,
+          lignes.length>0?el('tr',{style:{background:'#0F1628'}},
+            el('td',{style:{padding:'8px 10px',fontWeight:900,color:'#fff',fontSize:12}},'TOTAL'),
+            el('td',{style:{padding:'8px 10px',textAlign:'center',fontWeight:900,color:'#fff',fontSize:12}},getWeekRows().reduce((s,w)=>s+w.days.size,0)+' j.'),
+            ...bd.map(b=>el('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:900,color:'#E8730A',fontSize:12}},getTotal(b.id,lignes)>0?fmtN(getTotal(b.id,lignes)):'-')),
+            el('td',{style:{padding:'8px 10px',textAlign:'right',fontWeight:900,color:'#E8730A',fontSize:12}},fmtN(bd.reduce((s,b)=>s+getTotal(b.id,lignes),0)))
+          ):null
           )
         )
       )
@@ -3500,7 +3506,12 @@ function renderRapportSection(p, updateProject){
               ...bd.map(b=>el('td',{style:{padding:'12px 6px',textAlign:'center',fontWeight:700,color:monthTotals[b.id]>0?'#E8730A':'#6B7A99',fontSize:13}},monthTotals[b.id]>0?fmtN(monthTotals[b.id]):'-')),
               el('td',{style:{padding:'12px 10px',textAlign:'right',fontWeight:900,color:monthTotal>0?'#E8730A':'#6B7A99',fontSize:13}},monthTotal>0?fmtN(monthTotal):'-')
             ),
-            lignes.length===0?el('tr',{},el('td',{colSpan:bd.length+2,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune donnée')):null
+            lignes.length===0?el('tr',{},el('td',{colSpan:bd.length+2,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune donnée')):null,
+            lignes.length>0?el('tr',{style:{background:'#0F1628'}},
+              el('td',{style:{padding:'8px 10px',fontWeight:900,color:'#fff',fontSize:12}},'TOTAL'),
+              ...bd.map(b=>el('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:900,color:'#E8730A',fontSize:12}},monthTotals[b.id]>0?fmtN(monthTotals[b.id]):'-')),
+              el('td',{style:{padding:'8px 10px',textAlign:'right',fontWeight:900,color:'#E8730A',fontSize:12}},monthTotal>0?fmtN(monthTotal):'-')
+            ):null
           )
         )
       )
