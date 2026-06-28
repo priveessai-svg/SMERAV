@@ -3051,7 +3051,7 @@ function printDecompte(att, p){
     </thead>
     <tbody>${rowsHTML}</tbody>
   </table>
-  <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;">
+  <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;page-break-inside:avoid;">
     <tr>
       <td style="border:1px solid #999;padding:6px 12px;text-align:center;font-weight:700;">TOTAL EN DH HT</td>
       <td style="border:1px solid #999;padding:6px 12px;text-align:right;font-weight:700;">${fmtN(totalHT)}</td>
@@ -3076,12 +3076,10 @@ function printDecompte(att, p){
       <td style="border:2px solid #333;padding:8px 12px;text-align:center;font-weight:900;font-size:13px;">NET À PAYER (DÉCOMPTE N° ${att.num})</td>
       <td style="border:2px solid #333;padding:8px 12px;text-align:right;font-weight:900;font-size:13px;">${fmtN(n2)}</td>
     </tr>
-    <tr>
-      <td colspan="2" style="border:1px solid #999;padding:8px 12px;font-style:italic;font-size:11px;">
-        Arrêté le présent décompte à la somme de : <strong>${numToWords(n2)}</strong>
-      </td>
-    </tr>
   </table>
+  <div style="margin-top:8px;font-style:italic;font-size:11px;">
+    Arrêté le présent décompte à la somme de : <strong>${numToWords(n2)}</strong>
+  </div>
   `;
   printDoc(html,'Décompte N°'+att.num);
 }
