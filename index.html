@@ -490,7 +490,7 @@ const NAV = [
 // ══════════════════════════════════════════
 // PRINT DOC
 // ══════════════════════════════════════════
-function printDoc(htmlContent, title, orient='portrait'){
+function printDoc(htmlContent, title){
   try{
     const s = getSettings();
     const nom = (s.nom||'SMERAV S.A.R.L').replace(/'/g,"\'");
@@ -504,10 +504,7 @@ function printDoc(htmlContent, title, orient='portrait'){
 
     const iframe = document.createElement('iframe');
     iframe.id = '__printFrame';
-    const iframeStyle = orient==='landscape'
-      ? 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:99999;background:#e0e0e0;overflow:auto;'
-      : 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:99999;background:#e0e0e0;overflow:auto;';
-    iframe.style.cssText = iframeStyle;
+    iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:99999;background:#fff;';
     document.body.appendChild(iframe);
 
     const doc = iframe.contentDocument || iframe.contentWindow.document;
@@ -524,36 +521,21 @@ function printDoc(htmlContent, title, orient='portrait'){
     doc.write('<!DOCTYPE html><html><head><title>'+(title||'Document')+'</title>');
     doc.write('<style>');
     doc.write('*{box-sizing:border-box;margin:0;padding:0;}');
-    const bodyStyle = orient==='landscape'
-      ? 'body{font-family:Arial,sans-serif;font-size:12px;color:#000;width:277mm;margin:0 auto;padding:10mm;}'
-      : 'body{font-family:Arial,sans-serif;font-size:12px;color:#000;width:180mm;margin:0 auto;padding:15mm;}';
-    doc.write(bodyStyle);
+    doc.write('body{font-family:Arial,sans-serif;font-size:12px;color:#000;}');
     doc.write('table{border-collapse:collapse;width:100%;}');
     doc.write('th{background:#f0f0f0;font-weight:bold;text-align:center;border:1px solid #333;padding:7px 8px;font-size:12px;}');
     doc.write('td{border:1px solid #333;padding:7px 8px;font-size:12px;vertical-align:top;}');
     doc.write('thead{display:table-header-group;}');
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('.no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:999;}');
-    doc.write('#main{margin:0;overflow-x:auto;}');
-    doc.write('body{min-width:'+(orient==='landscape'?'270':'180')+'mm;width:'+(orient==='landscape'?'270':'180')+'mm;}');
+    doc.write('#main{margin:0;}');
     doc.write('@media print{');
     doc.write('.no-print-bar{display:none!important;}');
     doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
-    if(orient==='landscape'){
-      doc.write('@page{size:297mm 210mm;margin:8mm;}');
-    } else {
-      doc.write('@page{size:210mm 297mm;margin:15mm 10mm;}');
-    }
+    doc.write('@page{size:A4;margin:30mm 15mm 30mm 15mm;}');
     doc.write('thead{display:table-header-group;}');
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('table{page-break-inside:auto;}');
-    if(orient==='landscape'){
-      doc.write('@page{size:297mm 210mm;margin:5mm;}');
-      doc.write('html,body{width:287mm!important;margin:0!important;}');
-      doc.write('#main{width:287mm!important;transform-origin:top left;}');
-      doc.write('table{font-size:8px!important;width:100%!important;}');
-      doc.write('th,td{padding:2px 3px!important;}');
-    }
     doc.write('}');
     doc.write('</style></head><body>');
     doc.write('<div class="no-print-bar">');
@@ -901,8 +883,6 @@ function showFactureForm(facture=null, idx=null){
     div({style:{borderTop:'1px solid #eee',paddingTop:12}},
       div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}},
         div({style:{fontWeight:800,fontSize:13}},'Détail de la facture'),
-        btn('🖨 Imprimer','btn-blue',()=>printRapport(p,selMonth,lignes,bd,getML,getWO,DAYS,fmtN,fmtDate,getTotal,weeks,'landscape'),{style:{fontSize:12}}),
-        
         btn('+ Ajouter ligne','btn-orange',()=>{f.lignes.push({ref:'',designation:'',qte:1,unite:'U',pu:0});calcTotal();},{style:{padding:'6px 14px',fontSize:12}})
       ),
       lignesContainer
@@ -2961,21 +2941,18 @@ function printDecompte(att, p){
   const lignes=att.lignes||[];
   const totalHT=lignes.reduce((s,l)=>s+l.qteMois*(l.pu||0),0);
   const tva=totalHT*TVA,ttc=totalHT+tva;
-  // RG = 10% du Total TTC
-  const rg=ttc*RG;
-  // Net après RG = TTC - RG
-  const netApresRG=ttc-rg;
-  // A déduire = somme des Net à payer des décomptes précédents
+  const totalMarche=p.budget||0;
+  const rgCap=totalMarche*0.07;
   const atts2=p.attachements||[];
   const attIdx=atts2.indexOf(att);
-  const aDeduire=atts2.slice(0,attIdx).reduce((s,a2)=>{
+  const rgDejaRetenu=atts2.slice(0,attIdx).reduce((s,a2)=>{
     const th2=(a2.lignes||[]).reduce((ss,l)=>ss+(l.qteMois||0)*(l.pu||0),0);
-    const ttc2=th2*(1+TVA);
-    const rg2=ttc2*RG;
-    return s+(ttc2-rg2);
+    return s+th2*(1+TVA)*RG;
   },0);
-  // Net à payer = (TTC - RG) - A Déduire
-  const n2=netApresRG-aDeduire;
+  const rgBrut=ttc*RG;
+  const rgRestant=Math.max(0,rgCap-rgDejaRetenu);
+  const rg=Math.min(rgBrut,rgRestant);
+  const n2=ttc-rg;
   const cumHT=lignes.reduce((s,l)=>s+(l.cumul||0)*(l.pu||0),0);
   const s=getSettings();
   const logoHTML=s.logo?`<img src="${s.logo}" style="width:50px;height:50px;object-fit:contain;"/>`:
@@ -2989,233 +2966,46 @@ function printDecompte(att, p){
     <td style="text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
   </tr>`).join('');
   const html=`
-  <table style="width:100%;border-collapse:collapse;margin-bottom:6px;font-size:11px;">
-    <tr>
-      <td colspan="2" style="border:1px solid #999;padding:6px 10px;">
-        <div style="font-weight:900;font-size:13px;">${s.nom||'SMERAV S.A.R.L.au'}</div>
-        <div style="margin-top:2px;">${s.adresse||''}</div>
-      </td>
-    </tr>
-    <tr>
-      <td style="border:1px solid #999;padding:5px 10px;width:50%;">R.C : <strong>${s.rc||'—'}</strong> &nbsp;&nbsp; Patente : <strong>${s.tp||'—'}</strong></td>
-      <td style="border:1px solid #999;padding:5px 10px;">I.F : <strong>${s.if_||'—'}</strong> &nbsp;&nbsp; CNSS : <strong>${s.cnss||'—'}</strong></td>
-    </tr>
-    <tr>
-      <td colspan="2" style="border:1px solid #999;padding:5px 10px;">ICE : <strong>${s.ice||'—'}</strong></td>
-    </tr>
-    <tr>
-      <td style="border:1px solid #999;padding:6px 10px;width:50%;">
-        <span style="font-size:8px;color:#666;display:block">Maître d'ouvrage</span>
-        <span style="font-weight:700">${p.maitreOuvrage||p.client||'—'}</span>
-      </td>
-      <td style="border:1px solid #999;padding:6px 10px;">
-        <span style="font-size:8px;color:#666;display:block">ICE</span>
-        <span style="font-weight:700">${(state.clients||[]).find(c=>c.nom===p.maitreOuvrage||c.nom===p.client)?.ice||'—'}</span>
-      </td>
-    </tr>
+  <table style="margin-bottom:8px;border:none;">
+    <tr><td style="border:none"><strong>Maître d'ouvrage:</strong> ${p.maitreOuvrage||'—'}</td>
+    <td style="border:none"><strong>Marché N°:</strong> ${p.marcheNum||'—'}</td>
+    <td style="border:none"><strong>Ordre de Service N°:</strong> ${p.ordreService||'—'}</td></tr>
+    <tr><td style="border:none"><strong>Titulaire:</strong> Sté SMERAV sarl</td>
+    <td style="border:none"><strong>Date OS:</strong> ${fmtDate(p.dateOS)}</td>
+    <td style="border:none"><strong>Travaux Du:</strong> ${fmtDate(att.du)} <strong>Au:</strong> ${fmtDate(att.au)}</td></tr>
+    <tr><td colspan="3" style="border:none"><strong>Objet:</strong> ${p.objet||p.nom}</td></tr>
   </table>
-  <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px;">
-    <tr>
-      <td style="border:1px solid #999;padding:6px 10px;width:35%;vertical-align:top">
-        <span style="font-size:8px;color:#666;display:block">Maître d'ouvrage</span>
-        <span style="font-weight:700">${p.maitreOuvrage||p.client||'—'}</span>
-      </td>
-      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
-        <span style="font-size:8px;color:#666;display:block">Marché N°</span>
-        <span style="font-weight:700">${p.marcheNum||'—'}</span>
-      </td>
-      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
-        <span style="font-size:8px;color:#666;display:block">ORDRE DE SERVICE N°</span>
-        <span style="font-weight:700">${p.osNum||p.ordreService||'—'}</span>
-      </td>
-    </tr>
-    <tr>
-      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
-        <span style="font-size:8px;color:#666;display:block">Titulaire du Marché</span>
-        <span style="font-weight:700">${s.titulaire||s.nom||'SMERAV S.A.R.L.au'}</span>
-      </td>
-      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
-        <span style="font-size:8px;color:#666;display:block">Date OS</span>
-        <span style="font-weight:700">${p.dateOS?new Date(p.dateOS).toLocaleDateString('fr-MA'):'—'}</span>
-      </td>
-      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
-        <span style="font-size:8px;color:#666;display:block">Travaux Du <strong>${att.du?new Date(att.du).toLocaleDateString('fr-MA'):'—'}</strong> Au <strong>${att.au?new Date(att.au).toLocaleDateString('fr-MA'):'—'}</strong></span>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="3" style="border:1px solid #999;padding:6px 10px;">
-        <span style="font-size:8px;color:#666;display:block">Objet</span>
-        <span style="font-weight:700">${p.objet||p.nom||''}</span>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="3" style="border:1px solid #999;padding:7px;text-align:center;font-weight:900;font-size:13px;background:#e0e0e0;letter-spacing:0.5px;">
-        DÉCOMPTE PROVISOIRE N° ${att.num}/${p.marcheNum||'—'}
-      </td>
-    </tr>
-  </table>
-  <div style="overflow-x:auto;width:100%;"><table style="border-collapse:collapse;font-size:9px;table-layout:auto;white-space:nowrap;">
-    <thead>
-      <tr style="background:#d0d0d0;">
-        <th style="border:1px solid #999;padding:8px 6px;width:55px;text-align:center;font-size:12px;font-weight:900;">N° Prix</th>
-        <th style="border:1px solid #999;padding:8px 6px;text-align:center;font-size:12px;font-weight:900;">DÉSIGNATION DES ARTICLES</th>
-        <th style="border:1px solid #999;padding:8px 6px;width:35px;text-align:center;font-size:12px;font-weight:900;">Uté</th>
-        <th style="border:1px solid #999;padding:8px 6px;width:65px;text-align:center;font-size:12px;font-weight:900;">Qté Marché</th>
-        <th style="border:1px solid #999;padding:8px 6px;width:65px;text-align:center;font-size:12px;font-weight:900;">Qté Préc.</th>
-        <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-size:12px;font-weight:900;background:#E8730A;color:#fff;">Qté Mois</th>
-        <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-size:12px;font-weight:900;">Cumul</th>
-        <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-size:12px;font-weight:900;">PU HT</th>
-        <th style="border:1px solid #999;padding:8px 6px;width:80px;text-align:center;font-size:12px;font-weight:900;">Total TTC Mois</th>
-        <th style="border:1px solid #999;padding:8px 6px;width:80px;text-align:center;font-size:12px;font-weight:900;">Total HT Cumul</th>
-      </tr>
-    </thead>
+  <div style="font-weight:900;font-size:13px;color:#1A2540;margin-bottom:8px;padding:6px 10px;background:#f0f4ff;border-left:4px solid #2563EB;">
+    DÉCOMPTE PROVISOIRE N° ${att.num}/${p.marcheNum||'—'}
+  </div>
+  <table>
+    <thead><tr style="background:#1A2540;color:white">
+      <th style="color:white">N° Prix</th><th style="color:white">Désignation</th><th style="color:white">Uté</th>
+      <th style="color:white">Qté Marché</th><th style="color:white">Qté Préc.</th><th style="color:white;background:#E8730A">Qté Mois</th>
+      <th style="color:white">Cumul</th><th style="color:white">PU HT</th>
+      <th style="color:white">Total TTC Mois</th><th style="color:white">Total HT Cumul</th>
+    </tr></thead>
     <tbody>${rowsHTML}</tbody>
   </table>
-  <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;page-break-inside:avoid;">
-    <tr>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:center;font-weight:700;">TOTAL EN DH HT</td>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:right;font-weight:700;">${fmtN(totalHT)}</td>
-    </tr>
-    <tr>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:center;">TVA 20%</td>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:right;">${fmtN(tva)}</td>
-    </tr>
-    <tr>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:center;font-weight:700;">TOTAL TTC</td>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:right;font-weight:700;">${fmtN(ttc)}</td>
-    </tr>
-    <tr>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:center;">RETENUE DE GARANTIE (10%)</td>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:right;">${fmtN(rg)}</td>
-    </tr>
-    <tr>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:center;">A DÉDUIRE DÉCOMPTES PRÉCÉDENTS</td>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:right;">${fmtN(aDeduire)}</td>
-    </tr>
-    <tr style="background:#f5f5f5;">
-      <td style="border:2px solid #333;padding:8px 12px;text-align:center;font-weight:900;font-size:13px;">NET À PAYER (DÉCOMPTE N° ${att.num})</td>
-      <td style="border:2px solid #333;padding:8px 12px;text-align:right;font-weight:900;font-size:13px;">${fmtN(n2)}</td>
-    </tr>
-  </table>
-  <div style="margin-top:8px;font-style:italic;font-size:11px;">
-    Arrêté le présent décompte à la somme de : <strong>${numToWords(n2)}</strong>
+  <div style="display:flex;justify-content:flex-end;margin-top:10px;">
+    <table style="width:300px;">
+      <tr><td style="border:1px solid #ccc;padding:5px 8px">Total HT</td><td style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-weight:bold">${fmtN(totalHT)}</td></tr>
+      <tr><td style="border:1px solid #ccc;padding:5px 8px">TVA 20%</td><td style="border:1px solid #ccc;padding:5px 8px;text-align:right">${fmtN(tva)}</td></tr>
+      <tr><td style="border:1px solid #ccc;padding:5px 8px">Total TTC</td><td style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-weight:bold;color:#E8730A">${fmtN(ttc)}</td></tr>
+      <tr><td style="border:1px solid #ccc;padding:5px 8px">Retenu Garantie 5%</td><td style="border:1px solid #ccc;padding:5px 8px;text-align:right;color:#EF4444">${fmtN(rg)}</td></tr>
+      <tr style="background:#F0FFF4"><td style="border:1px solid #10B981;padding:5px 8px;font-weight:900">Total N2</td><td style="border:1px solid #10B981;padding:5px 8px;text-align:right;font-weight:900;font-size:14px;color:#10B981">${fmtN(n2)}</td></tr>
+    </table>
   </div>
+  <table style="margin-top:14px;border-collapse:collapse;width:100%">
+    <tr><td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;text-decoration:underline;width:50%">${p.maitreOuvrage||'R.A.D.E.E.F'} (Chargé de suivi)</td>
+    <td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;text-decoration:underline">Représentant Entreprise</td></tr>
+    <tr><td style="border:1px solid #ccc;height:60px"></td><td style="border:1px solid #ccc;text-align:center;font-weight:bold;color:#666">SMERAV</td></tr>
+  </table>
   `;
   printDoc(html,'Décompte N°'+att.num);
 }
 
 // ── RAPPORT CHANTIER ─────────────────────
-function printRapport(p, selMonth, lignes, bd, getML, getWO, DAYS, fmtN, fmtDate, getTotal, weeks, orient='portrait'){
-  const s = getSettings();
-  const type = p._rapportType||'Mensuel';
-  const logoHTML = s.logo?`<img src="${s.logo}" style="height:40px;object-fit:contain;"/>`:`<div style="font-weight:900;font-size:13px;">SM</div>`;
-
-  // Filter lignes based on type
-  let filteredLignes = lignes;
-  let titre = '';
-  if(type==='Journalier'){
-    // Get today or last entry date
-    const lastDate = lignes.length>0?lignes[lignes.length-1].date:'';
-    filteredLignes = lignes.filter(l=>l.date===lastDate);
-    titre = 'RAPPORT JOURNALIER DU '+lastDate;
-  } else if(type==='Hebdomadaire'){
-    const lastWk = weeks.length>0?weeks[weeks.length-1]:1;
-    filteredLignes = lignes.filter(l=>getWO(l.date)===lastWk);
-    titre = 'RAPPORT HEBDOMADAIRE — SEMAINE '+lastWk;
-  } else {
-    titre = 'RAPPORT MENSUEL — '+getML(selMonth).toUpperCase();
-  }
-
-  const headerRows = filteredLignes.map((l,li)=>{
-    const rt=bd.reduce((s,b)=>s+(parseFloat(l.qtes&&l.qtes[b.id])||0),0);
-    return `<tr style="background:${li%2===0?'#fff':'#f9f9f9'}">
-      <td style="padding:6px 8px;font-weight:700;color:#2563EB;white-space:nowrap;">${fmtDate(l.date)}</td>
-      <td style="padding:6px 8px;">${l.secteur||''}</td>
-      <td style="padding:6px 8px;min-width:200px;">${l.adresse||''}</td>
-      <td style="padding:6px 8px;">${l.piecesReparer||''}</td>
-      ${bd.map(b=>`<td style="padding:3px 2px;text-align:center;font-size:10px;width:32px;font-weight:${l.qtes&&l.qtes[b.id]>0?'700':'400'};color:${l.qtes&&l.qtes[b.id]>0?'#E8730A':'#999'};">${l.qtes&&l.qtes[b.id]>0?fmtN(l.qtes[b.id]):'-'}</td>`).join('')}
-      <td style="padding:6px 8px;text-align:right;font-weight:800;color:${rt>0?'#E8730A':'#999'}">${rt>0?fmtN(rt):'-'}</td>
-    </tr>`;
-  }).join('');
-
-  // Weekly totals (only for mensuel)
-  const weekRows = type==='Mensuel' ? weeks.map(wk=>{
-    const wkL=lignes.filter(l=>getWO(l.date)===wk);
-    const wkT=bd.map(b=>getTotal(b.id,wkL));
-    return `<tr style="background:#FFF3E0;border-top:2px solid #E8730A40;">
-      <td colspan="4" style="padding:3px 4px;font-weight:800;color:#E8730A;font-size:8px;">∑ Sem ${wk} (${wkL.length}j.)</td>
-      ${wkT.map(t=>`<td style="padding:3px 2px;text-align:center;font-size:10px;width:32px;font-weight:800;color:${t>0?'#E8730A':'#999'}">${t>0?fmtN(t):'-'}</td>`).join('')}
-      <td style="padding:7px 8px;text-align:right;font-weight:900;color:#E8730A">${fmtN(wkT.reduce((s,t)=>s+t,0))}</td>
-    </tr>`;
-  }).join('') : '';
-
-  const totalRow = `<tr style="background:#0F1628;">
-    <td colspan="4" style="padding:4px;font-weight:900;color:#fff;font-size:8px;">TOTAL ${type==='Journalier'?'JOURNALIER':type==='Hebdomadaire'?'HEBDOMADAIRE':'MENSUEL'}</td>
-    ${bd.map(b=>`<td style="padding:9px 5px;text-align:center;font-weight:900;color:#E8730A;">${fmtN(getTotal(b.id,filteredLignes))||'-'}</td>`).join('')}
-    <td style="padding:9px 8px;text-align:right;font-weight:900;color:#E8730A;">${fmtN(bd.reduce((s,b)=>s+getTotal(b.id,filteredLignes),0))}</td>
-  </tr>`;
-
-  const html = `
-  <div style="min-width:${80+200+120+120+(bd.length*34)+80}px;">
-  <div style="display:flex;align-items:center;gap:8px;padding-bottom:6px;border-bottom:2px solid #E8730A;margin-bottom:8px;">
-    ${logoHTML}
-    <div style="flex:1">
-      <div style="font-size:12px;font-weight:900;">${s.nom||'SMERAV S.A.R.L.au'}</div>
-      <div style="font-size:8px;color:#666;">${s.adresse||''}</div>
-    </div>
-  </div>
-  <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:11px;">
-    <tr>
-      <td style="border:1px solid #999;padding:5px 10px;width:40%;vertical-align:top">
-        <span style="font-size:8px;color:#666;display:block">Maître d'ouvrage</span>
-        <span style="font-weight:700">${p.maitreOuvrage||'—'}</span>
-      </td>
-      <td style="border:1px solid #999;padding:5px 10px;vertical-align:top">
-        <span style="font-size:8px;color:#666;display:block">Marché N°</span>
-        <span style="font-weight:700">${p.marcheNum||'—'}</span>
-      </td>
-      <td style="border:1px solid #999;padding:5px 10px;vertical-align:top">
-        <span style="font-size:8px;color:#666;display:block">Objet</span>
-        <span style="font-weight:700">${p.objet||p.nom||''}</span>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="3" style="border:1px solid #999;padding:7px;text-align:center;font-weight:900;font-size:13px;background:#e0e0e0;">
-        ${titre}
-      </td>
-    </tr>
-  </table>
-  <table style="width:100%;border-collapse:collapse;font-size:9px;table-layout:fixed;">
-    <thead>
-      <tr style="background:#0F1628;">
-        <th style="padding:4px;color:#6A8099;text-align:left;width:18mm;">DATE</th>
-        <th style="padding:4px;color:#6A8099;text-align:left;width:20mm;">SECTEUR</th>
-        <th style="padding:4px;color:#6A8099;text-align:left;width:30mm;">ADRESSE</th>
-        <th style="padding:4px;color:#6A8099;text-align:left;width:25mm;">PIÈCES</th>
-        ${bd.map(b=>`<th style="padding:2px 1px;color:#E8730A;text-align:center;font-size:7px;overflow:hidden;">${b.id.slice(-3)}</th>`).join('')}
-        <th style="padding:4px 2px;color:#6A8099;text-align:right;width:14mm;">TOT</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${headerRows}
-      ${weekRows}
-      ${totalRow}
-    </tbody>
-  </table></div>
-  <table style="margin-top:20px;border-collapse:collapse;width:100%">
-    <tr>
-      <td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;text-decoration:underline;width:50%">${p.maitreOuvrage||''} (Chargé de suivi)</td>
-      <td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;text-decoration:underline">Représentant Entreprise</td>
-    </tr>
-    <tr>
-      <td style="border:1px solid #ccc;height:60px;"></td>
-      <td style="border:1px solid #ccc;text-align:center;font-weight:700;color:#666;">${s.nom||'SMERAV'}</td>
-    </tr>
-  </table>`;
-
-  printDoc(html, titre, orient);
-}
-
 function renderRapportSection(p, updateProject){
   const rapports2 = p.rapports2||{};
   const bd = p.bordereau||[];
@@ -3275,16 +3065,9 @@ function renderRapportSection(p, updateProject){
   return div({},
     btn('← Rapports','btn-gray',()=>{p._rapportView='months';updateProject({});},{style:{marginBottom:16}}),
     div({style:{background:'#fff',borderRadius:14,padding:'14px 18px',border:'1px solid #E5E9F2',marginBottom:14}}),
-    // Rapport type selector
-    div({style:{display:'flex',gap:8,marginBottom:12}},
-      ...['Journalier','Hebdomadaire','Mensuel'].map(type=>
-        btn(type, p._rapportType===type?'btn-orange':'btn-gray', ()=>{p._rapportType=type;updateProject({});},{style:{fontSize:12,fontWeight:p._rapportType===type?900:400}})
-      )
-    ),
     div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,flexWrap:'wrap',gap:8}},
       div({style:{fontWeight:800,fontSize:16}},getML(selMonth)),
       div({style:{display:'flex',gap:8,flexWrap:'wrap'}},
-        btn('🖨 Imprimer','btn-blue',()=>printRapport(p,selMonth,lignes,bd,getML,getWO,DAYS,fmtN,fmtDate,getTotal,weeks),{style:{fontSize:12}}),
         btn('→ Transférer Attachement','btn-green',()=>{
           const totaux={};
           bd.forEach(b=>{totaux[b.id]=getTotal(b.id,lignes);});
