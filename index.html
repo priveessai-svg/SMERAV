@@ -2980,6 +2980,16 @@ function printDecompte(att, p){
     <tr>
       <td colspan="2" style="border:1px solid #999;padding:5px 10px;">ICE : <strong>${s.ice||'—'}</strong></td>
     </tr>
+    <tr>
+      <td style="border:1px solid #999;padding:6px 10px;width:50%;">
+        <span style="font-size:8px;color:#666;display:block">Maître d'ouvrage</span>
+        <span style="font-weight:700">${p.maitreOuvrage||p.client||'—'}</span>
+      </td>
+      <td style="border:1px solid #999;padding:6px 10px;">
+        <span style="font-size:8px;color:#666;display:block">ICE</span>
+        <span style="font-weight:700">${(state.clients||[]).find(c=>c.nom===p.maitreOuvrage||c.nom===p.client)?.ice||'—'}</span>
+      </td>
+    </tr>
   </table>
   <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px;">
     <tr>
