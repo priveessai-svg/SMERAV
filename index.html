@@ -1376,7 +1376,7 @@ function renderFicheProjet(){
     // Tabs
     div({style:{display:'flex',gap:6,marginBottom:20,flexWrap:'wrap'}},
       ...tabs.map(([key,label])=>
-        btn(label, sec===key?'btn-orange':'btn-gray', ()=>setState({ficheSection:key}),
+        btn(label, sec===key?'btn-orange':'btn-gray', ()=>{if(key==='rapport'){p._rapportView='months';p._selMonth=null;}setState({ficheSection:key});},
           {style:{fontSize:12,padding:'7px 14px'}})
       )
     ),
@@ -3085,9 +3085,7 @@ function renderRapportSection(p, updateProject){
   const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 
   if(!p._rapportTab) p._rapportTab='journalier';
-  // Toujours liste des mois si pas de mois selectionne
-  if(!p._selMonth) p._rapportView='months';
-  else if(!p._rapportView) p._rapportView='months';
+  if(!p._rapportView) p._rapportView='months';
 
   const saveRapport=(month,data)=>{
     const r2={...rapports2,[month]:data};
