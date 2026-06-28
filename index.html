@@ -535,22 +535,23 @@ function printDoc(htmlContent, title, orient='portrait'){
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('.no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:999;}');
     doc.write('#main{margin:0;overflow-x:auto;}');
-    doc.write('body{min-width:'+(orient==='landscape'?'270':'180')+'mm;}');
+    doc.write('body{min-width:'+(isLandscape?'270':'180')+'mm;width:'+(isLandscape?'270':'180')+'mm;}');
     doc.write('@media print{');
     doc.write('.no-print-bar{display:none!important;}');
     doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
-    if(orient==='landscape'){
-      doc.write('@page{size:landscape;margin:10mm;}');
+    if(isLandscape){
+      doc.write('@page{size:297mm 210mm;margin:8mm;}');
     } else {
-      doc.write('@page{size:portrait;margin:15mm 10mm;}');
+      doc.write('@page{size:210mm 297mm;margin:15mm 10mm;}');
     }
     doc.write('thead{display:table-header-group;}');
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('table{page-break-inside:auto;}');
-    if(orient==='landscape'){
-      doc.write('@page{size:landscape;margin:10mm;}');
-      doc.write('html,body{width:297mm!important;}');
-      doc.write('#main{width:270mm!important;}');
+    if(isLandscape){
+      doc.write('@page{size:297mm 210mm;margin:8mm;}');
+      doc.write('html,body{width:277mm!important;}');
+      doc.write('#main{width:277mm!important;}');
+      doc.write('table{font-size:9px!important;}');
     }
     doc.write('}');
     doc.write('</style></head><body>');
@@ -3052,7 +3053,7 @@ function printDecompte(att, p){
       </td>
     </tr>
   </table>
-  <table style="width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed;">
+  <div style="overflow-x:auto;width:100%;"><table style="border-collapse:collapse;font-size:9px;table-layout:auto;white-space:nowrap;">
     <thead>
       <tr style="background:#d0d0d0;">
         <th style="border:1px solid #999;padding:8px 6px;width:55px;text-align:center;font-size:12px;font-weight:900;">N° Prix</th>
@@ -3199,8 +3200,7 @@ function printRapport(p, selMonth, lignes, bd, getML, getWO, DAYS, fmtN, fmtDate
       ${weekRows}
       ${totalRow}
     </tbody>
-  </table>
-  </div>
+  </table></div>
   <table style="margin-top:20px;border-collapse:collapse;width:100%">
     <tr>
       <td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;text-decoration:underline;width:50%">${p.maitreOuvrage||''} (Chargé de suivi)</td>
