@@ -2967,8 +2967,11 @@ function printDecompte(att, p){
     <td style="text-align:right;font-weight:bold">${fmtN(l.qteMois*(l.pu||0)*(1+TVA))}</td>
     <td style="text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
   </tr>`).join('');
-  const clientInfo = (p.clients && p.clients[0]) || {};
-  const clientICE = clientInfo.ice || p.clientIce || '';
+  const allClients = (typeof state !== 'undefined' && state.clients) || [];
+  const clientInfo = allClients.find(c => c.nom === p.client) || {};
+  const clientICE = clientInfo.ice || '';
+  const clientRC = clientInfo.rc || '';
+  const clientIF = clientInfo.if_ || '';
   const html=`
   <table style="width:100%;border-collapse:collapse;margin-bottom:0;font-size:11px;">
     <tr>
