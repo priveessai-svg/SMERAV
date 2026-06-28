@@ -532,10 +532,11 @@ function printDoc(htmlContent, title, orient='portrait'){
     doc.write('@media print{');
     doc.write('.no-print-bar{display:none!important;}');
     doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
-    doc.write('@page{size:A4 '+orient+';margin:'+(orient==='landscape'?'10mm 10mm 10mm 10mm':'15mm 10mm 15mm 10mm')+';}');
+    if(orient==='landscape') doc.write('@page{size:landscape;margin:10mm;}'); else doc.write('@page{size:portrait;margin:15mm 10mm;}');
     doc.write('thead{display:table-header-group;}');
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('table{page-break-inside:auto;}');
+    if(orient==='landscape') doc.write('@page{size:landscape;margin:10mm;}');
     doc.write('}');
     doc.write('</style></head><body>');
     doc.write('<div class="no-print-bar">');
@@ -3116,7 +3117,7 @@ function printRapport(p, selMonth, lignes, bd, getML, getWO, DAYS, fmtN, fmtDate
     return `<tr style="background:${li%2===0?'#fff':'#f9f9f9'}">
       <td style="padding:6px 8px;font-weight:700;color:#2563EB;white-space:nowrap;">${fmtDate(l.date)}</td>
       <td style="padding:6px 8px;">${l.secteur||''}</td>
-      <td style="padding:6px 8px;min-width:120px;">${l.adresse||''}</td>
+      <td style="padding:6px 8px;min-width:200px;">${l.adresse||''}</td>
       <td style="padding:6px 8px;">${l.piecesReparer||''}</td>
       ${bd.map(b=>`<td style="padding:3px 2px;text-align:center;font-size:10px;width:32px;font-weight:${l.qtes&&l.qtes[b.id]>0?'700':'400'};color:${l.qtes&&l.qtes[b.id]>0?'#E8730A':'#999'};">${l.qtes&&l.qtes[b.id]>0?fmtN(l.qtes[b.id]):'-'}</td>`).join('')}
       <td style="padding:6px 8px;text-align:right;font-weight:800;color:${rt>0?'#E8730A':'#999'}">${rt>0?fmtN(rt):'-'}</td>
