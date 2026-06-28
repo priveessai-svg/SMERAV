@@ -504,7 +504,10 @@ function printDoc(htmlContent, title, orient='portrait'){
 
     const iframe = document.createElement('iframe');
     iframe.id = '__printFrame';
-    iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:99999;background:#fff;';
+    const iframeStyle = orient==='landscape'
+      ? 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:99999;background:#e0e0e0;overflow:auto;'
+      : 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:99999;background:#e0e0e0;overflow:auto;';
+    iframe.style.cssText = iframeStyle;
     document.body.appendChild(iframe);
 
     const doc = iframe.contentDocument || iframe.contentWindow.document;
@@ -521,14 +524,18 @@ function printDoc(htmlContent, title, orient='portrait'){
     doc.write('<!DOCTYPE html><html><head><title>'+(title||'Document')+'</title>');
     doc.write('<style>');
     doc.write('*{box-sizing:border-box;margin:0;padding:0;}');
-    doc.write('body{font-family:Arial,sans-serif;font-size:12px;color:#000;}');
+    const bodyStyle = orient==='landscape'
+      ? 'body{font-family:Arial,sans-serif;font-size:12px;color:#000;width:277mm;margin:0 auto;padding:10mm;}'
+      : 'body{font-family:Arial,sans-serif;font-size:12px;color:#000;width:180mm;margin:0 auto;padding:15mm;}';
+    doc.write(bodyStyle);
     doc.write('table{border-collapse:collapse;width:100%;}');
     doc.write('th{background:#f0f0f0;font-weight:bold;text-align:center;border:1px solid #333;padding:7px 8px;font-size:12px;}');
     doc.write('td{border:1px solid #333;padding:7px 8px;font-size:12px;vertical-align:top;}');
     doc.write('thead{display:table-header-group;}');
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('.no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:999;}');
-    doc.write('#main{margin:0;}');
+    doc.write('#main{margin:0;overflow-x:auto;}');
+    doc.write('body{min-width:'+(orient==='landscape'?'270':'180')+'mm;}');
     doc.write('@media print{');
     doc.write('.no-print-bar{display:none!important;}');
     doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
@@ -3045,7 +3052,7 @@ function printDecompte(att, p){
       </td>
     </tr>
   </table>
-  <table style="width:100%;border-collapse:collapse;font-size:11px;">
+  <table style="width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed;">
     <thead>
       <tr style="background:#d0d0d0;">
         <th style="border:1px solid #999;padding:8px 6px;width:55px;text-align:center;font-size:12px;font-weight:900;">N° Prix</th>
@@ -3147,6 +3154,7 @@ function printRapport(p, selMonth, lignes, bd, getML, getWO, DAYS, fmtN, fmtDate
   </tr>`;
 
   const html = `
+  <div style="min-width:${80+200+120+120+(bd.length*34)+80}px;">
   <div style="display:flex;align-items:center;gap:12px;padding-bottom:8px;border-bottom:2px solid #E8730A;margin-bottom:10px;">
     ${logoHTML}
     <div style="flex:1">
@@ -3192,6 +3200,7 @@ function printRapport(p, selMonth, lignes, bd, getML, getWO, DAYS, fmtN, fmtDate
       ${totalRow}
     </tbody>
   </table>
+  </div>
   <table style="margin-top:20px;border-collapse:collapse;width:100%">
     <tr>
       <td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;text-decoration:underline;width:50%">${p.maitreOuvrage||''} (Chargé de suivi)</td>
