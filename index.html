@@ -883,6 +883,8 @@ function showFactureForm(facture=null, idx=null){
     div({style:{borderTop:'1px solid #eee',paddingTop:12}},
       div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}},
         div({style:{fontWeight:800,fontSize:13}},'Détail de la facture'),
+        btn('🖨 Imprimer','btn-blue',()=>printRapport(p,selMonth,lignes,bd,getML,getWO,DAYS,fmtN,fmtDate,getTotal,weeks),{style:{fontSize:12}}),
+        
         btn('+ Ajouter ligne','btn-orange',()=>{f.lignes.push({ref:'',designation:'',qte:1,unite:'U',pu:0});calcTotal();},{style:{padding:'6px 14px',fontSize:12}})
       ),
       lignesContainer
@@ -3085,6 +3087,116 @@ function printDecompte(att, p){
 }
 
 // ── RAPPORT CHANTIER ─────────────────────
+function printRapport(p, selMonth, lignes, bd, getML, getWO, DAYS, fmtN, fmtDate, getTotal, weeks, toExcel=false){
+  const s = getSettings();
+  const type = p._rapportType||'Mensuel';
+  const logoHTML = s.logo?`<img src="${s.logo}" style="height:40px;object-fit:contain;"/>`:`<div style="font-weight:900;font-size:13px;">SM</div>`;
+
+  // Filter lignes based on type
+  let filteredLignes = lignes;
+  let titre = '';
+  if(type==='Journalier'){
+    // Get today or last entry date
+    const lastDate = lignes.length>0?lignes[lignes.length-1].date:'';
+    filteredLignes = lignes.filter(l=>l.date===lastDate);
+    titre = 'RAPPORT JOURNALIER DU '+lastDate;
+  } else if(type==='Hebdomadaire'){
+    const lastWk = weeks.length>0?weeks[weeks.length-1]:1;
+    filteredLignes = lignes.filter(l=>getWO(l.date)===lastWk);
+    titre = 'RAPPORT HEBDOMADAIRE — SEMAINE '+lastWk;
+  } else {
+    titre = 'RAPPORT MENSUEL — '+getML(selMonth).toUpperCase();
+  }
+
+  const headerRows = filteredLignes.map((l,li)=>{
+    const rt=bd.reduce((s,b)=>s+(parseFloat(l.qtes&&l.qtes[b.id])||0),0);
+    return `<tr style="background:${li%2===0?'#fff':'#f9f9f9'}">
+      <td style="padding:6px 8px;font-weight:700;color:#2563EB;white-space:nowrap;">${DAYS[new Date(l.date).getDay()]+' '+fmtDate(l.date)}</td>
+      <td style="padding:6px 8px;">${l.secteur||''}</td>
+      <td style="padding:6px 8px;">${l.adresse||''}</td>
+      <td style="padding:6px 8px;">${l.piecesReparer||''}</td>
+      ${bd.map(b=>`<td style="padding:6px 5px;text-align:center;font-weight:${l.qtes&&l.qtes[b.id]>0?'700':'400'};color:${l.qtes&&l.qtes[b.id]>0?'#E8730A':'#999'};">${l.qtes&&l.qtes[b.id]>0?fmtN(l.qtes[b.id]):'-'}</td>`).join('')}
+      <td style="padding:6px 8px;text-align:right;font-weight:800;color:${rt>0?'#E8730A':'#999'}">${rt>0?fmtN(rt):'-'}</td>
+    </tr>`;
+  }).join('');
+
+  // Weekly totals (only for mensuel)
+  const weekRows = type==='Mensuel' ? weeks.map(wk=>{
+    const wkL=lignes.filter(l=>getWO(l.date)===wk);
+    const wkT=bd.map(b=>getTotal(b.id,wkL));
+    return `<tr style="background:#FFF3E0;border-top:2px solid #E8730A40;">
+      <td colspan="4" style="padding:7px 8px;font-weight:800;color:#E8730A;">∑ Semaine ${wk} (${wkL.length}j.)</td>
+      ${wkT.map(t=>`<td style="padding:7px 5px;text-align:center;font-weight:800;color:${t>0?'#E8730A':'#999'}">${t>0?fmtN(t):'-'}</td>`).join('')}
+      <td style="padding:7px 8px;text-align:right;font-weight:900;color:#E8730A">${fmtN(wkT.reduce((s,t)=>s+t,0))}</td>
+    </tr>`;
+  }).join('') : '';
+
+  const totalRow = `<tr style="background:#0F1628;">
+    <td colspan="4" style="padding:9px 8px;font-weight:900;color:#fff;">TOTAL ${type==='Journalier'?'JOURNALIER':type==='Hebdomadaire'?'HEBDOMADAIRE':'MENSUEL'}</td>
+    ${bd.map(b=>`<td style="padding:9px 5px;text-align:center;font-weight:900;color:#E8730A;">${fmtN(getTotal(b.id,filteredLignes))||'-'}</td>`).join('')}
+    <td style="padding:9px 8px;text-align:right;font-weight:900;color:#E8730A;">${fmtN(bd.reduce((s,b)=>s+getTotal(b.id,filteredLignes),0))}</td>
+  </tr>`;
+
+  const html = `
+  <div style="display:flex;align-items:center;gap:12px;padding-bottom:8px;border-bottom:2px solid #E8730A;margin-bottom:10px;">
+    ${logoHTML}
+    <div style="flex:1">
+      <div style="font-size:15px;font-weight:900;">${s.nom||'SMERAV S.A.R.L.au'}</div>
+      <div style="font-size:9px;color:#666;">${s.adresse||''}</div>
+    </div>
+  </div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:11px;">
+    <tr>
+      <td style="border:1px solid #999;padding:5px 10px;width:40%;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Maître d'ouvrage</span>
+        <span style="font-weight:700">${p.maitreOuvrage||'—'}</span>
+      </td>
+      <td style="border:1px solid #999;padding:5px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Marché N°</span>
+        <span style="font-weight:700">${p.marcheNum||'—'}</span>
+      </td>
+      <td style="border:1px solid #999;padding:5px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Objet</span>
+        <span style="font-weight:700">${p.objet||p.nom||''}</span>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="3" style="border:1px solid #999;padding:7px;text-align:center;font-weight:900;font-size:13px;background:#e0e0e0;">
+        ${titre}
+      </td>
+    </tr>
+  </table>
+  <table style="width:100%;border-collapse:collapse;font-size:11px;">
+    <thead>
+      <tr style="background:#0F1628;">
+        <th style="padding:8px;color:#6A8099;text-align:left;">DATE</th>
+        <th style="padding:8px;color:#6A8099;text-align:left;">SECTEUR</th>
+        <th style="padding:8px;color:#6A8099;text-align:left;">ADRESSE</th>
+        <th style="padding:8px;color:#6A8099;text-align:left;">PIÈCES</th>
+        ${bd.map(b=>`<th style="padding:8px;color:#E8730A;text-align:center;">${b.id}</th>`).join('')}
+        <th style="padding:8px;color:#6A8099;text-align:right;">TOTAL</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${headerRows}
+      ${weekRows}
+      ${totalRow}
+    </tbody>
+  </table>
+  <table style="margin-top:20px;border-collapse:collapse;width:100%">
+    <tr>
+      <td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;text-decoration:underline;width:50%">${p.maitreOuvrage||''} (Chargé de suivi)</td>
+      <td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;text-decoration:underline">Représentant Entreprise</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #ccc;height:60px;"></td>
+      <td style="border:1px solid #ccc;text-align:center;font-weight:700;color:#666;">${s.nom||'SMERAV'}</td>
+    </tr>
+  </table>`;
+
+  printDoc(html, titre);
+}
+
 function renderRapportSection(p, updateProject){
   const rapports2 = p.rapports2||{};
   const bd = p.bordereau||[];
@@ -3144,6 +3256,12 @@ function renderRapportSection(p, updateProject){
   return div({},
     btn('← Rapports','btn-gray',()=>{p._rapportView='months';updateProject({});},{style:{marginBottom:16}}),
     div({style:{background:'#fff',borderRadius:14,padding:'14px 18px',border:'1px solid #E5E9F2',marginBottom:14}}),
+    // Rapport type selector
+    div({style:{display:'flex',gap:8,marginBottom:12}},
+      ...['Journalier','Hebdomadaire','Mensuel'].map(type=>
+        btn(type, p._rapportType===type?'btn-orange':'btn-gray', ()=>{p._rapportType=type;updateProject({});},{style:{fontSize:12,fontWeight:p._rapportType===type?900:400}})
+      )
+    ),
     div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,flexWrap:'wrap',gap:8}},
       div({style:{fontWeight:800,fontSize:16}},getML(selMonth)),
       div({style:{display:'flex',gap:8,flexWrap:'wrap'}},
