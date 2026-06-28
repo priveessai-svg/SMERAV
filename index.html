@@ -532,7 +532,7 @@ function printDoc(htmlContent, title){
     doc.write('@media print{');
     doc.write('.no-print-bar{display:none!important;}');
     doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
-    doc.write('@page{size:A4;margin:30mm 15mm 30mm 15mm;}');
+    doc.write('@page{size:A4;margin:15mm 10mm 15mm 10mm;}');
     doc.write('thead{display:table-header-group;}');
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('table{page-break-inside:auto;}');
@@ -2941,18 +2941,20 @@ function printDecompte(att, p){
   const lignes=att.lignes||[];
   const totalHT=lignes.reduce((s,l)=>s+l.qteMois*(l.pu||0),0);
   const tva=totalHT*TVA,ttc=totalHT+tva;
-  const totalMarche=p.budget||0;
-  const rgCap=totalMarche*0.07;
+  // RG = 10% du TTC
+  const rg=ttc*RG;
+  // A Déduire = somme des NET À PAYER des décomptes précédents
+  // NET précédent = TTC précédent - RG précédent
   const atts2=p.attachements||[];
   const attIdx=atts2.indexOf(att);
-  const rgDejaRetenu=atts2.slice(0,attIdx).reduce((s,a2)=>{
-    const th2=(a2.lignes||[]).reduce((ss,l)=>ss+(l.qteMois||0)*(l.pu||0),0);
-    return s+th2*(1+TVA)*RG;
+  const aDeduire=atts2.slice(0,attIdx).reduce((s,d2)=>{
+    const th2=(d2.lignes||[]).reduce((ss,l)=>ss+(l.qteMois||0)*(l.pu||0),0);
+    const ttc2=th2*(1+TVA);
+    const rg2=ttc2*RG;
+    return s+(ttc2-rg2);
   },0);
-  const rgBrut=ttc*RG;
-  const rgRestant=Math.max(0,rgCap-rgDejaRetenu);
-  const rg=Math.min(rgBrut,rgRestant);
-  const n2=ttc-rg;
+  // NET À PAYER = (TTC - RG) - A Déduire
+  const n2=(ttc-rg)-aDeduire;
   const cumHT=lignes.reduce((s,l)=>s+(l.cumul||0)*(l.pu||0),0);
   const s=getSettings();
   const logoHTML=s.logo?`<img src="${s.logo}" style="width:50px;height:50px;object-fit:contain;"/>`:
@@ -2965,42 +2967,107 @@ function printDecompte(att, p){
     <td style="text-align:right;font-weight:bold">${fmtN(l.qteMois*(l.pu||0)*(1+TVA))}</td>
     <td style="text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
   </tr>`).join('');
+  const clientInfo = (p.clients && p.clients[0]) || {};
+  const clientICE = clientInfo.ice || p.clientIce || '';
   const html=`
-  <table style="margin-bottom:8px;border:none;">
-    <tr><td style="border:none"><strong>Maître d'ouvrage:</strong> ${p.maitreOuvrage||'—'}</td>
-    <td style="border:none"><strong>Marché N°:</strong> ${p.marcheNum||'—'}</td>
-    <td style="border:none"><strong>Ordre de Service N°:</strong> ${p.ordreService||'—'}</td></tr>
-    <tr><td style="border:none"><strong>Titulaire:</strong> Sté SMERAV sarl</td>
-    <td style="border:none"><strong>Date OS:</strong> ${fmtDate(p.dateOS)}</td>
-    <td style="border:none"><strong>Travaux Du:</strong> ${fmtDate(att.du)} <strong>Au:</strong> ${fmtDate(att.au)}</td></tr>
-    <tr><td colspan="3" style="border:none"><strong>Objet:</strong> ${p.objet||p.nom}</td></tr>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:0;font-size:11px;">
+    <tr>
+      <td colspan="2" style="border:1px solid #999;padding:6px 10px;">
+        <div style="font-weight:900;font-size:13px;">${s.nom||'SMERAV S.A.R.L.au'}</div>
+        <div style="margin-top:2px;font-size:10px;">${s.adresse||''}</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #999;padding:5px 10px;width:50%;font-size:11px;">R.C : <strong>${s.rc||'—'}</strong> &nbsp;&nbsp; Patente : <strong>${s.tp||'—'}</strong></td>
+      <td style="border:1px solid #999;padding:5px 10px;font-size:11px;">I.F : <strong>${s.if_||'—'}</strong> &nbsp;&nbsp; CNSS : <strong>${s.cnss||'—'}</strong></td>
+    </tr>
+    <tr>
+      <td colspan="2" style="border:1px solid #999;padding:5px 10px;font-size:11px;">ICE : <strong>${s.ice||'—'}</strong></td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #999;padding:5px 10px;font-size:11px;"><strong>Maître d'ouvrage :</strong> ${p.maitreOuvrage||'—'}</td>
+      <td style="border:1px solid #999;padding:5px 10px;font-size:11px;">ICE : <strong>${clientICE||'—'}</strong></td>
+    </tr>
   </table>
-  <div style="font-weight:900;font-size:13px;color:#1A2540;margin-bottom:8px;padding:6px 10px;background:#f0f4ff;border-left:4px solid #2563EB;">
-    DÉCOMPTE PROVISOIRE N° ${att.num}/${p.marcheNum||'—'}
-  </div>
-  <table>
-    <thead><tr style="background:#1A2540;color:white">
-      <th style="color:white">N° Prix</th><th style="color:white">Désignation</th><th style="color:white">Uté</th>
-      <th style="color:white">Qté Marché</th><th style="color:white">Qté Préc.</th><th style="color:white;background:#E8730A">Qté Mois</th>
-      <th style="color:white">Cumul</th><th style="color:white">PU HT</th>
-      <th style="color:white">Total TTC Mois</th><th style="color:white">Total HT Cumul</th>
-    </tr></thead>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px;">
+    <tr>
+      <td style="border:1px solid #999;padding:6px 10px;width:35%;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Marché N°</span>
+        <span style="font-weight:700">${p.marcheNum||'—'}</span>
+      </td>
+      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">ORDRE DE SERVICE N°</span>
+        <span style="font-weight:700">${p.ordreService||'—'}</span>
+      </td>
+      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Date OS</span>
+        <span style="font-weight:700">${p.dateOS?new Date(p.dateOS).toLocaleDateString('fr-MA'):'—'}</span>
+      </td>
+      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Travaux Du — Au</span>
+        <span style="font-weight:700">${att.du?new Date(att.du).toLocaleDateString('fr-MA'):'—'} — ${att.au?new Date(att.au).toLocaleDateString('fr-MA'):'—'}</span>
+      </td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Titulaire du Marché</span>
+        <span style="font-weight:700">${s.nom||'SMERAV S.A.R.L.au'}</span>
+      </td>
+      <td colspan="3" style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Objet</span>
+        <span style="font-weight:700">${p.objet||p.nom||''}</span>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" style="border:1px solid #999;padding:7px;text-align:center;font-weight:900;font-size:13px;background:#e0e0e0;letter-spacing:0.5px;">
+        DÉCOMPTE PROVISOIRE N° ${att.num}/${p.marcheNum||'—'}
+      </td>
+    </tr>
+  </table>
+  <table style="width:100%;border-collapse:collapse;font-size:11px;">
+    <thead>
+      <tr style="background:#d0d0d0;">
+        <th style="border:1px solid #999;padding:8px 6px;width:55px;text-align:center;font-weight:900;">N° Prix</th>
+        <th style="border:1px solid #999;padding:8px 6px;text-align:center;font-weight:900;">DÉSIGNATION DES ARTICLES</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:35px;text-align:center;font-weight:900;">Uté</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:65px;text-align:center;font-weight:900;">Qté Marché</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:65px;text-align:center;font-weight:900;">Qté Préc.</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-weight:900;background:#E8730A;color:#fff;">Qté Mois</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-weight:900;">Cumul</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-weight:900;">PU HT</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:80px;text-align:center;font-weight:900;">Total TTC Mois</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:80px;text-align:center;font-weight:900;">Total HT Cumul</th>
+      </tr>
+    </thead>
     <tbody>${rowsHTML}</tbody>
   </table>
-  <div style="display:flex;justify-content:flex-end;margin-top:10px;">
-    <table style="width:300px;">
-      <tr><td style="border:1px solid #ccc;padding:5px 8px">Total HT</td><td style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-weight:bold">${fmtN(totalHT)}</td></tr>
-      <tr><td style="border:1px solid #ccc;padding:5px 8px">TVA 20%</td><td style="border:1px solid #ccc;padding:5px 8px;text-align:right">${fmtN(tva)}</td></tr>
-      <tr><td style="border:1px solid #ccc;padding:5px 8px">Total TTC</td><td style="border:1px solid #ccc;padding:5px 8px;text-align:right;font-weight:bold;color:#E8730A">${fmtN(ttc)}</td></tr>
-      <tr><td style="border:1px solid #ccc;padding:5px 8px">Retenu Garantie 5%</td><td style="border:1px solid #ccc;padding:5px 8px;text-align:right;color:#EF4444">${fmtN(rg)}</td></tr>
-      <tr style="background:#F0FFF4"><td style="border:1px solid #10B981;padding:5px 8px;font-weight:900">Total N2</td><td style="border:1px solid #10B981;padding:5px 8px;text-align:right;font-weight:900;font-size:14px;color:#10B981">${fmtN(n2)}</td></tr>
-    </table>
-  </div>
-  <table style="margin-top:14px;border-collapse:collapse;width:100%">
-    <tr><td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;text-decoration:underline;width:50%">${p.maitreOuvrage||'R.A.D.E.E.F'} (Chargé de suivi)</td>
-    <td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;text-decoration:underline">Représentant Entreprise</td></tr>
-    <tr><td style="border:1px solid #ccc;height:60px"></td><td style="border:1px solid #ccc;text-align:center;font-weight:bold;color:#666">SMERAV</td></tr>
+  <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;page-break-inside:avoid;">
+    <tr>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:center;font-weight:700;">TOTAL EN DH HT</td>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:right;font-weight:700;">${fmtN(totalHT)}</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:center;">TVA 20%</td>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:right;">${fmtN(tva)}</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:center;font-weight:700;">TOTAL TTC</td>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:right;font-weight:700;">${fmtN(ttc)}</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:center;">RETENUE DE GARANTIE (10%)</td>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:right;">${fmtN(rg)}</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:center;">A DÉDUIRE DÉCOMPTES PRÉCÉDENTS</td>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:right;">${fmtN(aDeduire)}</td>
+    </tr>
+    <tr style="background:#f5f5f5;">
+      <td style="border:2px solid #333;padding:8px 12px;text-align:center;font-weight:900;font-size:13px;">NET À PAYER (DÉCOMPTE N° ${att.num})</td>
+      <td style="border:2px solid #333;padding:8px 12px;text-align:right;font-weight:900;font-size:13px;">${fmtN(n2)}</td>
+    </tr>
   </table>
+  <p style="font-size:11px;font-style:italic;margin-top:8px;">Arrêté le présent décompte à la somme de : <strong>${numToWords(n2)}</strong></p>
   `;
   printDoc(html,'Décompte N°'+att.num);
 }
