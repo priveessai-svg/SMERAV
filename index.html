@@ -2966,25 +2966,61 @@ function printDecompte(att, p){
     <td style="text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
   </tr>`).join('');
   const html=`
-  <table style="margin-bottom:8px;border:none;">
-    <tr><td style="border:none"><strong>Maître d'ouvrage:</strong> ${p.maitreOuvrage||'—'}</td>
-    <td style="border:none"><strong>Marché N°:</strong> ${p.marcheNum||'—'}</td>
-    <td style="border:none"><strong>Ordre de Service N°:</strong> ${p.ordreService||'—'}</td></tr>
-    <tr><td style="border:none"><strong>Titulaire:</strong> Sté SMERAV sarl</td>
-    <td style="border:none"><strong>Date OS:</strong> ${fmtDate(p.dateOS)}</td>
-    <td style="border:none"><strong>Travaux Du:</strong> ${fmtDate(att.du)} <strong>Au:</strong> ${fmtDate(att.au)}</td></tr>
-    <tr><td colspan="3" style="border:none"><strong>Objet:</strong> ${p.objet||p.nom}</td></tr>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px;">
+    <tr>
+      <td style="border:1px solid #999;padding:6px 10px;width:35%;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Maître d'ouvrage</span>
+        <span style="font-weight:700">${p.maitreOuvrage||p.client||'—'}</span>
+      </td>
+      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Marché N°</span>
+        <span style="font-weight:700">${p.marcheNum||'—'}</span>
+      </td>
+      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">ORDRE DE SERVICE N°</span>
+        <span style="font-weight:700">${p.osNum||p.ordreService||'—'}</span>
+      </td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Titulaire du Marché</span>
+        <span style="font-weight:700">${s.titulaire||s.nom||'SMERAV S.A.R.L.au'}</span>
+      </td>
+      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Date OS</span>
+        <span style="font-weight:700">${p.dateOS?new Date(p.dateOS).toLocaleDateString('fr-MA'):'—'}</span>
+      </td>
+      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Travaux Du <strong>${att.du?new Date(att.du).toLocaleDateString('fr-MA'):'—'}</strong> Au <strong>${att.au?new Date(att.au).toLocaleDateString('fr-MA'):'—'}</strong></span>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="3" style="border:1px solid #999;padding:6px 10px;">
+        <span style="font-size:8px;color:#666;display:block">Objet</span>
+        <span style="font-weight:700">${p.objet||p.nom||''}</span>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="3" style="border:1px solid #999;padding:7px;text-align:center;font-weight:900;font-size:13px;background:#e0e0e0;letter-spacing:0.5px;">
+        DÉCOMPTE PROVISOIRE N° ${att.num}/${p.marcheNum||'—'}
+      </td>
+    </tr>
   </table>
-  <div style="font-weight:900;font-size:13px;color:#1A2540;margin-bottom:8px;padding:6px 10px;background:#f0f4ff;border-left:4px solid #2563EB;">
-    DÉCOMPTE PROVISOIRE N° ${att.num}/${p.marcheNum||'—'}
-  </div>
-  <table>
-    <thead><tr style="background:#1A2540;color:white">
-      <th style="color:white">N° Prix</th><th style="color:white">Désignation</th><th style="color:white">Uté</th>
-      <th style="color:white">Qté Marché</th><th style="color:white">Qté Préc.</th><th style="color:white;background:#E8730A">Qté Mois</th>
-      <th style="color:white">Cumul</th><th style="color:white">PU HT</th>
-      <th style="color:white">Total TTC Mois</th><th style="color:white">Total HT Cumul</th>
-    </tr></thead>
+  <table style="width:100%;border-collapse:collapse;font-size:11px;">
+    <thead>
+      <tr style="background:#d0d0d0;">
+        <th style="border:1px solid #999;padding:8px 6px;width:55px;text-align:center;font-size:12px;font-weight:900;">N° Prix</th>
+        <th style="border:1px solid #999;padding:8px 6px;text-align:center;font-size:12px;font-weight:900;">DÉSIGNATION DES ARTICLES</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:35px;text-align:center;font-size:12px;font-weight:900;">Uté</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:65px;text-align:center;font-size:12px;font-weight:900;">Qté Marché</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:65px;text-align:center;font-size:12px;font-weight:900;">Qté Préc.</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-size:12px;font-weight:900;background:#E8730A;color:#fff;">Qté Mois</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-size:12px;font-weight:900;">Cumul</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-size:12px;font-weight:900;">PU HT</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:80px;text-align:center;font-size:12px;font-weight:900;">Total TTC Mois</th>
+        <th style="border:1px solid #999;padding:8px 6px;width:80px;text-align:center;font-size:12px;font-weight:900;">Total HT Cumul</th>
+      </tr>
+    </thead>
     <tbody>${rowsHTML}</tbody>
   </table>
   <div style="display:flex;justify-content:flex-end;margin-top:10px;">
