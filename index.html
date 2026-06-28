@@ -1333,7 +1333,7 @@ function renderFicheProjet(){
   const tabs = [
     ['info','📋 Infos'],['bordereau','📊 Bordereau'],
     ['attachements','📎 Attachements'],['decomptes','💰 Décomptes'],
-    ['rapport','📄 Rapport'],['charges','💳 Charges'],
+    ['rapport','📄 Rapport'],['photos','📷 Photos'],['charges','💳 Charges'],
   ];
   const sec = state.ficheSection||'info';
 
@@ -1387,6 +1387,7 @@ function renderFicheProjet(){
     sec==='attachements' ? renderAttachementsSection(p, updateProject) :
     sec==='decomptes' ? renderDecomptesSection(p, updateProject) :
     sec==='rapport' ? renderRapportSection(p, updateProject) :
+    sec==='photos' ? renderPhotosSection(p, updateProject) :
     sec==='charges' ? renderProjetCharges(p, updateProject) :
     renderComingSoon(sec)
   );
@@ -1513,6 +1514,46 @@ function renderProjetInfoEdit(p, updateProject){
       }),
       btn('Annuler','btn-gray',()=>setState({ficheSection:'info'}))
     )
+  );
+}
+
+function renderPhotosSection(p, updateProject){
+  const photos = p.photos||[];
+  const savePhotos=(newPhotos)=>updateProject({photos:newPhotos});
+  const addPhoto=(dataUrl,name)=>savePhotos([...photos,{id:Date.now(),url:dataUrl,name:name||'Photo',date:today()}]);
+
+  const importInput=Object.assign(el('input',{type:'file',accept:'image/*',multiple:true,style:{display:'none'}}),{
+    onchange:e=>{Array.from(e.target.files).forEach(f=>{const r=new FileReader();r.onload=ev=>addPhoto(ev.target.result,f.name);r.readAsDataURL(f);});e.target.value='';}
+  });
+  const cameraInput=Object.assign(el('input',{type:'file',accept:'image/*',capture:'environment',style:{display:'none'}}),{
+    onchange:e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>addPhoto(ev.target.result,'Photo '+new Date().toLocaleString('fr-MA'));r.readAsDataURL(f);e.target.value='';}
+  });
+
+  return div({},
+    importInput, cameraInput,
+    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}},
+      div({style:{fontWeight:800,fontSize:15}},'Photos ('+photos.length+')'),
+      div({style:{display:'flex',gap:8}},
+        btn('📷 Prendre photo','btn-orange',()=>cameraInput.click(),{style:{fontSize:12}}),
+        btn('📁 Importer','btn-gray',()=>importInput.click(),{style:{fontSize:12}})
+      )
+    ),
+    photos.length===0
+      ? div({className:'card',style:{padding:50,textAlign:'center',color:'#6B7A99'}},
+          div({style:{fontSize:40,marginBottom:10}},'📷'),
+          div({style:{fontWeight:700}},'Aucune photo')
+        )
+      : div({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12}},
+          ...photos.map(ph=>
+            div({style:{position:'relative',borderRadius:10,overflow:'hidden',border:'1px solid #E5E9F2'}},
+              el('img',{src:ph.url,style:{width:'100%',height:140,objectFit:'cover',display:'block'}}),
+              div({style:{padding:'6px 8px',fontSize:11,color:'#6B7A99',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},ph.name||'Photo'),
+              el('button',{onclick:()=>savePhotos(photos.filter(x=>x.id!==ph.id)),
+                style:{position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.6)',color:'#fff',border:'none',borderRadius:'50%',width:26,height:26,fontSize:16,cursor:'pointer',lineHeight:'26px',textAlign:'center'}
+              },'×')
+            )
+          )
+        )
   );
 }
 
@@ -3298,20 +3339,34 @@ function renderRapportSection(p, updateProject){
           </tr><tr><td colspan="2" style="border:1px solid #999;padding:6px 10px"><span style="font-size:8px;color:#666;display:block">Objet</span><strong>${p.objet||p.nom||''}</strong></td></tr>
           <tr><td colspan="2" style="border:1px solid #999;padding:7px;text-align:center;font-weight:900;font-size:13px;background:#e0e0e0">${title}</td></tr></table>`;
         if(tab==='hebdomadaire'){
-          const wkRows=getWeekRows();
-          const rowsH=wkRows.map((w,i)=>{const total=bd.reduce((s,b)=>s+(w.qtes[b.id]||0),0);
-            return `<tr style="background:${i%2===0?'#fff':'#fafbfd'}"><td style="padding:9px 10px;font-weight:800;color:#E8730A;font-size:12px">Semaine ${w.wk}</td>
-              <td style="padding:9px 10px;text-align:center;color:#6B7A99;font-size:12px">${w.days.size} j.</td>
-              ${bd.map(b=>`<td style="padding:9px 6px;text-align:center;font-weight:700;color:${w.qtes[b.id]>0?'#E8730A':'#6B7A99'};font-size:12px">${w.qtes[b.id]>0?fmtN(w.qtes[b.id]):'-'}</td>`).join('')}
-              <td style="padding:9px 10px;text-align:right;font-weight:900;color:${total>0?'#E8730A':'#6B7A99'};font-size:12px">${total>0?fmtN(total):'-'}</td></tr>`;
-          }).join('');
+          const wkGroups2={};
+          lignes.forEach(l=>{const wk=getWO(l.date);if(!wkGroups2[wk])wkGroups2[wk]=[];wkGroups2[wk].push(l);});
+          let rowsH='';
+          Object.keys(wkGroups2).sort((a,b)=>+a-+b).forEach(wk=>{
+            const wkL=wkGroups2[wk];
+            rowsH+=`<tr style="background:#1A2D50"><td colspan="${bd.length+4}" style="padding:6px 10px;font-weight:900;color:#fff;font-size:11px">Semaine ${wk} (${wkL.length} j.)</td></tr>`;
+            wkL.forEach((l,li)=>{
+              const rt=bd.reduce((s,b)=>s+(parseFloat(l.qtes&&l.qtes[b.id])||0),0);
+              rowsH+=`<tr style="background:${li%2===0?'#fff':'#fafbfd'}">
+                <td style="padding:4px 6px;font-weight:700;color:#2563EB;width:75px;font-size:10px">${fmtDate(l.date)}</td>
+                <td style="padding:6px 8px;min-width:100px">${l.secteur||''}</td>
+                <td style="padding:6px 8px">${l.piecesReparer||''}</td>
+                ${bd.map(b=>`<td style="padding:4px 2px;text-align:center;width:32px;font-weight:${l.qtes&&l.qtes[b.id]>0?'700':'400'};color:${l.qtes&&l.qtes[b.id]>0?'#E8730A':'#999'};font-size:10px">${l.qtes&&l.qtes[b.id]>0?fmtN(l.qtes[b.id]):'-'}</td>`).join('')}
+                <td style="padding:4px 6px;text-align:right;font-weight:800;font-size:10px;color:${rt>0?'#E8730A':'#999'}">${rt>0?fmtN(rt):'-'}</td></tr>`;
+            });
+          });
+          const totT2=bd.reduce((s,b)=>s+getTotal(b.id,lignes),0);
+          rowsH+=`<tr style="background:#0F1628"><td colspan="3" style="padding:8px;font-weight:900;color:#fff;font-size:12px">TOTAL</td>
+            ${bd.map(b=>`<td style="padding:5px 2px;text-align:center;font-weight:900;color:#E8730A;font-size:10px;width:32px">${getTotal(b.id,lignes)>0?fmtN(getTotal(b.id,lignes)):'-'}</td>`).join('')}
+            <td style="padding:5px 6px;text-align:right;font-weight:900;color:#E8730A;font-size:10px">${totT2>0?fmtN(totT2):'-'}</td></tr>`;
           const html=hdr('RAPPORT HEBDOMADAIRE — '+getML(selMonth))+`<table style="width:100%;border-collapse:collapse;font-size:11px;">
             <thead><tr style="background:#0F1628">
-              <th style="padding:9px 10px;color:#6A8099;font-weight:700;font-size:10px;text-align:left">Semaine</th>
-              <th style="padding:9px 10px;color:#6A8099;font-weight:700;font-size:10px;text-align:center">Jours</th>
-              ${bd.map(b=>`<th style="padding:9px 6px;color:#E8730A;font-weight:700;font-size:10px;text-align:center">${b.id}</th>`).join('')}
-              <th style="padding:9px 10px;color:#6A8099;font-weight:700;font-size:10px;text-align:right">Total</th>
-            </tr></thead><tbody>${rowsH}${(()=>{const tot={};bd.forEach(b=>{tot[b.id]=wkRows.reduce((s,w)=>s+(w.qtes[b.id]||0),0);});const totT=bd.reduce((s,b)=>s+(tot[b.id]||0),0);return `<tr style="background:#0F1628"><td style="padding:8px 10px;font-weight:900;color:#fff;font-size:12px">TOTAL</td><td style="padding:8px 10px;text-align:center;font-weight:900;color:#fff;font-size:12px">${wkRows.reduce((s,w)=>s+w.days.size,0)} j.</td>${bd.map(b=>`<td style="padding:8px 6px;text-align:center;font-weight:900;color:#E8730A;font-size:12px">${tot[b.id]>0?fmtN(tot[b.id]):'-'}</td>`).join('')}<td style="padding:8px 10px;text-align:right;font-weight:900;color:#E8730A;font-size:12px">${totT>0?fmtN(totT):'-'}</td></tr>`;})()} </tbody></table>`+sig;
+              <th style="padding:8px;color:#6A8099;font-size:10px;text-align:left">Date</th>
+              <th style="padding:8px;color:#6A8099;font-size:10px;text-align:left">Secteur/Locale/Adresse</th>
+              <th style="padding:8px;color:#6A8099;font-size:10px;text-align:left">Pièces</th>
+              ${bd.map(b=>`<th style="padding:4px 2px;color:#E8730A;font-size:9px;text-align:center;width:32px">${b.id}</th>`).join('')}
+              <th style="padding:4px 6px;color:#6A8099;font-size:9px;text-align:right;width:40px">Total</th>
+            </tr></thead><tbody>${rowsH}</tbody></table>`+sig;
           printDoc(html,'Rapport Hebdomadaire '+getML(selMonth),{landscape:true});
         } else if(tab==='mensuel'){
           const mT={};bd.forEach(b=>{mT[b.id]=getTotal(b.id,allLignes);});
@@ -3490,14 +3545,7 @@ function renderRapportSection(p, updateProject){
                   el('td',{style:{padding:'7px 8px',textAlign:'right',fontWeight:800,color:rt>0?'#E8730A':'#6B7A99',fontSize:11}},rt>0?fmtN(rt):'-')
                 ));
               });
-              // Week total row
-              const wkT={};bd.forEach(b=>{wkT[b.id]=wkL.reduce((s,l)=>s+(parseFloat(l.qtes&&l.qtes[b.id])||0),0);});
-              const wkTot=bd.reduce((s,b)=>s+(wkT[b.id]||0),0);
-              rows.push(el('tr',{style:{background:'#FFF3E0',borderTop:'2px solid #E8730A40'}},
-                el('td',{colSpan:3,style:{padding:'7px 8px',fontWeight:800,fontSize:11,color:'#E8730A'}},'∑ Semaine '+wk),
-                ...bd.map(b=>el('td',{style:{padding:'7px 5px',textAlign:'center',fontWeight:800,color:wkT[b.id]>0?'#E8730A':'#6B7A99',fontSize:11}},wkT[b.id]>0?fmtN(wkT[b.id]):'-')),
-                el('td',{style:{padding:'7px 8px',textAlign:'right',fontWeight:900,color:'#E8730A',fontSize:11}},wkTot>0?fmtN(wkTot):'-')
-              ));
+
             });
             return rows;
           })(),
