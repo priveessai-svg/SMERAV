@@ -3120,6 +3120,25 @@ function renderRapportSection(p, updateProject){
                 ),
                 div({style:{padding:'12px 14px',display:'flex',gap:8}},
                   btn('📂 Ouvrir','btn-blue',()=>{p._selMonth=k;p._rapportView='detail';p._rapportTab='journalier';updateProject({});},{style:{flex:1,fontSize:12}}),
+                  btn('✏️','btn-gray',()=>{
+                    const inp=Object.assign(el('input',{type:'month',value:k,style:{padding:'6px 10px',fontSize:13,borderRadius:6,border:'1px solid #E5E9F2',width:'100%'}}));
+                    const fEl=div({style:{display:'flex',flexDirection:'column',gap:12}},
+                      div({},el('label',{className:'lbl'},'Nouveau mois'),inp),
+                      div({style:{display:'flex',gap:8,justifyContent:'flex-end'}},
+                        btn('Annuler','btn-gray',()=>setState({modal:null})),
+                        btn('✓ Enregistrer','btn-orange',()=>{
+                          const nk=inp.value;
+                          if(!nk){alert('Choisissez un mois');return;}
+                          if(nk===k){setState({modal:null});return;}
+                          const r={...rapports2};
+                          r[nk]=r[k]; delete r[k];
+                          updateProject({rapports2:r});
+                          setState({modal:null});
+                        })
+                      )
+                    );
+                    setState({modal:{title:'Modifier le mois',content:fEl}});
+                  },{style:{padding:'6px 10px',fontSize:12}}),
                   btn('🗑','btn-red',()=>{if(confirmDelete()){const r={...rapports2};delete r[k];updateProject({rapports2:r});}},{style:{padding:'6px 10px',fontSize:12}})
                 )
               );
@@ -3158,6 +3177,70 @@ function renderRapportSection(p, updateProject){
     div({style:{display:'flex',alignItems:'center',gap:12,marginBottom:16,flexWrap:'wrap'}},
       btn('← Rapports','btn-gray',()=>{p._rapportView='months';p._selMonth=null;updateProject({});},{style:{fontSize:12}}),
       div({style:{fontWeight:800,fontSize:16,flex:1}},'📋 '+getML(selMonth)),
+      btn('🖨️ Imprimer','btn-orange',()=>{
+        const s2=getSettings();
+        const DAYS2=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+        const rowsHTML=lignes.map((l,li)=>{
+          const rt=bd.reduce((s,b)=>s+(parseFloat(l.qtes&&l.qtes[b.id])||0),0);
+          return `<tr style="background:${li%2===0?'#fff':'#fafbfd'}">
+            <td style="padding:6px 8px;font-weight:700;color:#2563EB;white-space:nowrap">${DAYS2[new Date(l.date).getDay()]} ${fmtDate(l.date)}</td>
+            <td style="padding:6px 8px">${l.secteur||''}</td>
+            <td style="padding:6px 8px">${l.adresse||''}</td>
+            <td style="padding:6px 8px">${l.piecesReparer||''}</td>
+            ${bd.map(b=>`<td style="padding:6px 5px;text-align:center;font-weight:${(l.qtes&&l.qtes[b.id]>0)?'700':'400'};color:${(l.qtes&&l.qtes[b.id]>0)?'#E8730A':'#999'}">${(l.qtes&&l.qtes[b.id]>0)?fmtN(l.qtes[b.id]):'-'}</td>`).join('')}
+            <td style="padding:6px 8px;text-align:right;font-weight:800;color:${rt>0?'#E8730A':'#999'}">${rt>0?fmtN(rt):'-'}</td>
+          </tr>`;
+        }).join('');
+        const totalRow=`<tr style="background:#0F1628">
+          <td colspan="4" style="padding:8px;font-weight:900;color:#fff;font-size:12px">TOTAL MENSUEL</td>
+          ${bd.map(b=>`<td style="padding:8px 5px;text-align:center;font-weight:900;color:#E8730A;font-size:12px">${fmtN(getTotal(b.id,lignes))||'-'}</td>`).join('')}
+          <td style="padding:8px;text-align:right;font-weight:900;color:#E8730A">${fmtN(bd.reduce((s,b)=>s+getTotal(b.id,lignes),0))}</td>
+        </tr>`;
+        const html=`
+          <table style="width:100%;border-collapse:collapse;margin-bottom:6px;font-size:11px;">
+            <tr><td colspan="2" style="border:1px solid #999;padding:6px 10px;">
+              <div style="font-weight:900;font-size:13px;">${s2.nom||'SMERAV S.A.R.L.au'}</div>
+              <div style="font-size:10px;">${s2.adresse||''}</div>
+            </td></tr>
+            <tr>
+              <td style="border:1px solid #999;padding:5px 10px;width:50%;font-size:11px;">R.C : <strong>${s2.rc||'—'}</strong> &nbsp; Patente : <strong>${s2.tp||'—'}</strong></td>
+              <td style="border:1px solid #999;padding:5px 10px;font-size:11px;">I.F : <strong>${s2.if_||'—'}</strong> &nbsp; CNSS : <strong>${s2.cnss||'—'}</strong></td>
+            </tr>
+            <tr><td colspan="2" style="border:1px solid #999;padding:5px 10px;font-size:11px;">ICE : <strong>${s2.ice||'—'}</strong></td></tr>
+          </table>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:11px;">
+            <tr>
+              <td style="border:1px solid #999;padding:6px 10px;width:50%"><span style="font-size:8px;color:#666;display:block">Maître d'ouvrage</span><strong>${p.maitreOuvrage||'—'}</strong></td>
+              <td style="border:1px solid #999;padding:6px 10px"><span style="font-size:8px;color:#666;display:block">Marché N°</span><strong>${p.marcheNum||'—'}</strong></td>
+            </tr>
+            <tr><td colspan="2" style="border:1px solid #999;padding:6px 10px"><span style="font-size:8px;color:#666;display:block">Objet</span><strong>${p.objet||p.nom||''}</strong></td></tr>
+            <tr><td colspan="2" style="border:1px solid #999;padding:7px;text-align:center;font-weight:900;font-size:13px;background:#e0e0e0">
+              RAPPORT JOURNALIER — ${getML(selMonth)}
+            </td></tr>
+          </table>
+          <table style="width:100%;border-collapse:collapse;font-size:11px;">
+            <thead><tr style="background:#0F1628">
+              <th style="padding:8px;color:#6A8099;font-size:10px;text-align:left">Date</th>
+              <th style="padding:8px;color:#6A8099;font-size:10px;text-align:left">Secteur</th>
+              <th style="padding:8px;color:#6A8099;font-size:10px;text-align:left">Adresse</th>
+              <th style="padding:8px;color:#6A8099;font-size:10px;text-align:left">Pièces</th>
+              ${bd.map(b=>`<th style="padding:8px 5px;color:#E8730A;font-size:10px;text-align:center">${b.id}</th>`).join('')}
+              <th style="padding:8px;color:#6A8099;font-size:10px;text-align:right">Total</th>
+            </tr></thead>
+            <tbody>${rowsHTML}${totalRow}</tbody>
+          </table>
+          <table style="width:100%;border-collapse:collapse;margin-top:20px;font-size:11px;">
+            <tr>
+              <td style="border:1px solid #ccc;padding:7px 12px;font-weight:700;text-align:center;width:50%">${p.maitreOuvrage||'Maître d\'ouvrage'} (Chargé de suivi)</td>
+              <td style="border:1px solid #ccc;padding:7px 12px;font-weight:700;text-align:center">Représentant Entreprise</td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #ccc;height:50px"></td>
+              <td style="border:1px solid #ccc;text-align:center;font-weight:700;color:#6B7A99">${s2.nom||'SMERAV'}</td>
+            </tr>
+          </table>`;
+        printDoc(html,'Rapport '+getML(selMonth));
+      },{style:{fontSize:12}}),
       btn('→ Transférer Attachement','btn-green',()=>{
         const totaux={};
         bd.forEach(b=>{totaux[b.id]=getTotal(b.id,lignes);});
