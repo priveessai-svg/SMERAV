@@ -3462,57 +3462,48 @@ function renderRapportSection(p, updateProject){
       div({style:{overflowX:'auto'}},
         el('table',{style:{width:'100%',borderCollapse:'collapse'}},
           el('thead',{},el('tr',{style:{background:'#0F1628'}},
-            el('th',{style:{padding:'9px 10px',color:'#6A8099',fontWeight:700,fontSize:10,textAlign:'left'}},'Semaine'),
-            el('th',{style:{padding:'9px 10px',color:'#6A8099',fontWeight:700,fontSize:10,textAlign:'center'}},'Jours travaillés'),
+            el('th',{style:{padding:'9px 8px',color:'#6A8099',fontWeight:700,fontSize:10,textAlign:'left',whiteSpace:'nowrap'}},'Date'),
+            el('th',{style:{padding:'9px 8px',color:'#6A8099',fontWeight:700,fontSize:10,textAlign:'left'}},'Secteur/Locale/Adresse'),
+            el('th',{style:{padding:'9px 8px',color:'#6A8099',fontWeight:700,fontSize:10,textAlign:'left'}},'Pièces'),
             ...bd.map(b=>el('th',{style:{padding:'9px 6px',color:'#E8730A',fontWeight:700,fontSize:10,textAlign:'center',whiteSpace:'nowrap'}},b.id)),
             el('th',{style:{padding:'9px 10px',color:'#6A8099',fontWeight:700,fontSize:10,textAlign:'right'}},'Total')
           )),
-          el('tbody',{},...getWeekRows().map((w,i)=>{
-            const total=bd.reduce((s,b)=>s+(w.qtes[b.id]||0),0);
-            const wkDates=[...w.days].sort();
-            const wkLignes=allLignes.filter(l=>getWO(l.date)===w.wk);
-            return el('tr',{style:{borderBottom:'1px solid #E5E9F2',background:i%2===0?'#fff':'#FAFBFD'},onclick:()=>{
-              const s2=getSettings();
-              const hdr2=(title)=>`<div style="font-weight:900;font-size:14px;margin-bottom:6px;">${s2.nom||'SMERAV S.A.R.L.au'}</div>
-                <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:11px;"><tr>
-                  <td style="border:1px solid #999;padding:6px 10px;width:50%"><span style="font-size:8px;color:#666;display:block">Maître d'ouvrage</span><strong>${p.maitreOuvrage||'—'}</strong></td>
-                  <td style="border:1px solid #999;padding:6px 10px"><span style="font-size:8px;color:#666;display:block">Marché N°</span><strong>${p.marcheNum||'—'}</strong></td>
-                </tr><tr><td colspan="2" style="border:1px solid #999;padding:6px 10px"><span style="font-size:8px;color:#666;display:block">Objet</span><strong>${p.objet||p.nom||''}</strong></td></tr>
-                <tr><td colspan="2" style="border:1px solid #999;padding:7px;text-align:center;font-weight:900;font-size:13px;background:#e0e0e0">${title}</td></tr></table>`;
-              const sig2=`<div style="display:flex;justify-content:space-between;margin-top:24px;font-size:11px;padding:0 10px;">
-                <div style="font-weight:700">${p.maitreOuvrage||'Maître d\'ouvrage'} (Chargé de suivi)</div>
-                <div style="text-align:right"><div style="font-weight:700">Représentant Entreprise</div><div style="color:#6B7A99;margin-top:4px">${s2.nom||'SMERAV'}</div></div></div>`;
-              const rowsH=wkLignes.map((l,li)=>{const rt=bd.reduce((s,b)=>s+(parseFloat(l.qtes&&l.qtes[b.id])||0),0);
-                return `<tr style="background:${li%2===0?'#fff':'#fafbfd'}">
-                  <td style="padding:4px 6px;font-weight:700;color:#2563EB;width:75px;font-size:10px">${fmtDate(l.date)}</td>
-                  <td style="padding:6px 8px;min-width:100px">${l.secteur||''}</td>
-                  <td style="padding:6px 8px">${l.piecesReparer||''}</td>
-                  ${bd.map(b=>`<td style="padding:4px 2px;text-align:center;width:32px;font-weight:${l.qtes&&l.qtes[b.id]>0?'700':'400'};color:${l.qtes&&l.qtes[b.id]>0?'#E8730A':'#999'};font-size:10px">${l.qtes&&l.qtes[b.id]>0?fmtN(l.qtes[b.id]):'-'}</td>`).join('')}
-                  <td style="padding:4px 6px;text-align:right;font-weight:800;font-size:10px;color:${rt>0?'#E8730A':'#999'}">${rt>0?fmtN(rt):'-'}</td></tr>`;
-              }).join('');
-              const totalR=`<tr style="background:#0F1628"><td colspan="3" style="padding:7px 8px;font-weight:900;color:#fff;font-size:11px">TOTAL SEMAINE ${w.wk}</td>
-                ${bd.map(b=>`<td style="padding:5px 2px;text-align:center;font-weight:900;color:#E8730A;font-size:10px;width:32px">${w.qtes[b.id]>0?fmtN(w.qtes[b.id]):'-'}</td>`).join('')}
-                <td style="padding:5px 6px;text-align:right;font-weight:900;color:#E8730A;font-size:10px">${fmtN(total)}</td></tr>`;
-              const html=hdr2('RAPPORT JOURNALIER — Semaine '+w.wk+' ('+getML(selMonth)+')')+`<table style="width:100%;border-collapse:collapse;font-size:11px;">
-                <thead><tr style="background:#0F1628">
-                  <th style="padding:8px;color:#6A8099;font-size:10px;text-align:left">Date</th>
-                  <th style="padding:8px;color:#6A8099;font-size:10px;text-align:left">Secteur/Locale/Adresse</th>
-                  <th style="padding:8px;color:#6A8099;font-size:10px;text-align:left">Pièces</th>
-                  ${bd.map(b=>`<th style="padding:4px 2px;color:#E8730A;font-size:9px;text-align:center;width:32px">${b.id}</th>`).join('')}
-                  <th style="padding:4px 6px;color:#6A8099;font-size:9px;text-align:right;width:40px">Total</th>
-                </tr></thead><tbody>${rowsH}${totalR}</tbody></table>`+sig2;
-              printDoc(html,'Rapport Semaine '+w.wk,{landscape:true});
-            },style:{cursor:'pointer'}},
-              el('td',{style:{padding:'9px 10px',fontWeight:800,color:'#E8730A',fontSize:12}},'🖨️ Semaine '+w.wk),
-              el('td',{style:{padding:'9px 10px',textAlign:'center',color:'#6B7A99',fontSize:12}},w.days.size+' j.'),
-              ...bd.map(b=>el('td',{style:{padding:'9px 6px',textAlign:'center',fontWeight:700,color:w.qtes[b.id]>0?'#E8730A':'#6B7A99',fontSize:12}},w.qtes[b.id]>0?fmtN(w.qtes[b.id]):'-')),
-              el('td',{style:{padding:'9px 10px',textAlign:'right',fontWeight:900,color:total>0?'#E8730A':'#6B7A99',fontSize:12}},total>0?fmtN(total):'-')
-            );
-          }),
-          lignes.length===0?el('tr',{},el('td',{colSpan:bd.length+3,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune donnée')):null,
+          el('tbody',{},...(()=>{
+            // Group lignes by week, show all days
+            const wkGroups={};
+            lignes.forEach(l=>{const wk=getWO(l.date);if(!wkGroups[wk])wkGroups[wk]=[];wkGroups[wk].push(l);});
+            const rows=[];
+            Object.keys(wkGroups).sort((a,b)=>+a-+b).forEach(wk=>{
+              const wkL=wkGroups[wk];
+              // Week header row
+              rows.push(el('tr',{style:{background:'#1A2D50'}},
+                el('td',{colSpan:bd.length+4,style:{padding:'6px 10px',fontWeight:900,color:'#fff',fontSize:11}},'Semaine '+wk+' ('+wkL.length+' j.)')
+              ));
+              // Day rows
+              wkL.forEach((l,li)=>{
+                const rt=bd.reduce((s,b)=>s+(parseFloat(l.qtes&&l.qtes[b.id])||0),0);
+                rows.push(el('tr',{style:{borderBottom:'1px solid #E5E9F2',background:li%2===0?'#fff':'#FAFBFD'}},
+                  el('td',{style:{padding:'7px 8px',fontWeight:700,color:'#2563EB',fontSize:11,whiteSpace:'nowrap'}},fmtDate(l.date)),
+                  el('td',{style:{padding:'4px 8px',fontSize:11}},l.secteur||''),
+                  el('td',{style:{padding:'4px 8px',fontSize:11}},l.piecesReparer||''),
+                  ...bd.map(b=>el('td',{style:{padding:'3px 4px',textAlign:'center',fontSize:11,color:l.qtes&&l.qtes[b.id]>0?'#E8730A':'#6B7A99',fontWeight:l.qtes&&l.qtes[b.id]>0?700:400}},l.qtes&&l.qtes[b.id]>0?fmtN(l.qtes[b.id]):'-')),
+                  el('td',{style:{padding:'7px 8px',textAlign:'right',fontWeight:800,color:rt>0?'#E8730A':'#6B7A99',fontSize:11}},rt>0?fmtN(rt):'-')
+                ));
+              });
+              // Week total row
+              const wkT={};bd.forEach(b=>{wkT[b.id]=wkL.reduce((s,l)=>s+(parseFloat(l.qtes&&l.qtes[b.id])||0),0);});
+              const wkTot=bd.reduce((s,b)=>s+(wkT[b.id]||0),0);
+              rows.push(el('tr',{style:{background:'#FFF3E0',borderTop:'2px solid #E8730A40'}},
+                el('td',{colSpan:3,style:{padding:'7px 8px',fontWeight:800,fontSize:11,color:'#E8730A'}},'∑ Semaine '+wk),
+                ...bd.map(b=>el('td',{style:{padding:'7px 5px',textAlign:'center',fontWeight:800,color:wkT[b.id]>0?'#E8730A':'#6B7A99',fontSize:11}},wkT[b.id]>0?fmtN(wkT[b.id]):'-')),
+                el('td',{style:{padding:'7px 8px',textAlign:'right',fontWeight:900,color:'#E8730A',fontSize:11}},wkTot>0?fmtN(wkTot):'-')
+              ));
+            });
+            return rows;
+          })(),
+          lignes.length===0?el('tr',{},el('td',{colSpan:bd.length+4,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune donnée')):null,
           lignes.length>0?el('tr',{style:{background:'#0F1628'}},
-            el('td',{style:{padding:'8px 10px',fontWeight:900,color:'#fff',fontSize:12}},'TOTAL'),
-            el('td',{style:{padding:'8px 10px',textAlign:'center',fontWeight:900,color:'#fff',fontSize:12}},getWeekRows().reduce((s,w)=>s+w.days.size,0)+' j.'),
+            el('td',{colSpan:3,style:{padding:'8px 10px',fontWeight:900,color:'#fff',fontSize:12}},'TOTAL'),
             ...bd.map(b=>el('td',{style:{padding:'8px 6px',textAlign:'center',fontWeight:900,color:'#E8730A',fontSize:12}},getTotal(b.id,lignes)>0?fmtN(getTotal(b.id,lignes)):'-')),
             el('td',{style:{padding:'8px 10px',textAlign:'right',fontWeight:900,color:'#E8730A',fontSize:12}},fmtN(bd.reduce((s,b)=>s+getTotal(b.id,lignes),0)))
           ):null
