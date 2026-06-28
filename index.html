@@ -3330,18 +3330,18 @@ function renderRapportSection(p, updateProject){
           const rowsHTML=lignes.map((l,li)=>{const rt=bd.reduce((s,b)=>s+(parseFloat(l.qtes&&l.qtes[b.id])||0),0);
             return `<tr style="background:${li%2===0?'#fff':'#fafbfd'}">
               <td style="padding:4px 6px;font-weight:700;color:#2563EB;width:75px;font-size:10px">${fmtDate(l.date)}</td>
-              <td style="padding:6px 8px">${l.secteur||''}</td><td style="padding:6px 8px;min-width:120px">${l.adresse||''}</td>
+              <td style="padding:6px 8px;min-width:100px">${l.secteur||''}</td>
               <td style="padding:6px 8px">${l.piecesReparer||''}</td>
               ${bd.map(b=>`<td style="padding:4px 2px;text-align:center;width:32px;font-weight:${l.qtes&&l.qtes[b.id]>0?'700':'400'};color:${l.qtes&&l.qtes[b.id]>0?'#E8730A':'#999'};font-size:10px">${l.qtes&&l.qtes[b.id]>0?fmtN(l.qtes[b.id]):'-'}</td>`).join('')}
               <td style="padding:4px 6px;text-align:right;font-weight:800;font-size:10px;color:${rt>0?'#E8730A':'#999'}">${rt>0?fmtN(rt):'-'}</td></tr>`;
           }).join('');
-          const totalRow=`<tr style="background:#0F1628"><td colspan="4" style="padding:8px;font-weight:900;color:#fff;font-size:12px">TOTAL JOURNALIER</td>
+          const totalRow=`<tr style="background:#0F1628"><td colspan="3" style="padding:8px;font-weight:900;color:#fff;font-size:12px">TOTAL JOURNALIER</td>
             ${bd.map(b=>`<td style="padding:5px 2px;text-align:center;font-weight:900;color:#E8730A;font-size:10px;width:32px">${fmtN(getTotal(b.id,lignes))||'-'}</td>`).join('')}
             <td style="padding:5px 6px;text-align:right;font-weight:900;color:#E8730A;font-size:10px">${fmtN(bd.reduce((s,b)=>s+getTotal(b.id,lignes),0))}</td></tr>`;
           const html=hdr('RAPPORT JOURNALIER — '+getML(selMonth))+`<table style="width:100%;border-collapse:collapse;font-size:11px;">
             <thead><tr style="background:#0F1628">
               <th style="padding:8px;color:#6A8099;font-size:10px;text-align:left">Date</th>
-              <th style="padding:8px;color:#6A8099;font-size:10px;text-align:left">Secteur / Locale / Adresse</th>
+              <th style="padding:8px;color:#6A8099;font-size:10px;text-align:left">Secteur/Locale/Adresse</th>
               <th style="padding:8px;color:#6A8099;font-size:10px;text-align:left">Pièces</th>
               ${bd.map(b=>`<th style="padding:4px 2px;color:#E8730A;font-size:9px;text-align:center;width:32px">${b.id}</th>`).join('')}
               <th style="padding:4px 6px;color:#6A8099;font-size:9px;text-align:right;width:40px">Total</th>
@@ -3379,7 +3379,7 @@ function renderRapportSection(p, updateProject){
     tab==='journalier' ? div({},
       div({style:{display:'flex',justifyContent:'flex-end',marginBottom:10}},
         btn('+ Ajouter ligne','btn-orange',()=>{
-          let nr={date:'',secteur:'',adresse:'',piecesReparer:'',qtes:{}};
+          let nr={date:'',secteur:'',piecesReparer:'',qtes:{}};
           const lC=div({});
           function rL(){lC.innerHTML='';if(bd.length>0)lC.appendChild(div({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',gap:6,maxHeight:180,overflowY:'auto',padding:4}},
             ...bd.map(b=>div({style:{background:'#F8FAFD',borderRadius:7,padding:'7px 8px'}},
@@ -3392,7 +3392,6 @@ function renderRapportSection(p, updateProject){
             div({style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:10}},
               div({},el('label',{className:'lbl'},'Date *'),Object.assign(el('input',{type:'date',value:''}),{oninput:e=>nr.date=e.target.value})),
               div({},el('label',{className:'lbl'},'Secteur'),Object.assign(el('input',{value:''}),{oninput:e=>nr.secteur=e.target.value})),
-              div({},el('label',{className:'lbl'},'Adresse'),Object.assign(el('input',{value:''}),{oninput:e=>nr.adresse=e.target.value})),
               div({},el('label',{className:'lbl'},'Pièces'),Object.assign(el('input',{value:''}),{oninput:e=>nr.piecesReparer=e.target.value})),
             ),
             bd.length>0?div({},el('label',{className:'lbl'},'Quantités par N° de prix'),lC):null,
@@ -3415,7 +3414,7 @@ function renderRapportSection(p, updateProject){
         div({style:{overflowX:'auto'}},
           el('table',{},
             el('thead',{},el('tr',{style:{background:'#0F1628'}},
-              ...['Date','Secteur / Locale / Adresse','Pièces',...bd.map(b=>b.id),'Total',''].map((h,i)=>
+              ...['Date','Secteur/Locale/Adresse','Pièces',...bd.map(b=>b.id),'Total',''].map((h,i)=>
                 el('th',{style:{padding:'9px 8px',color:i>=4&&i<4+bd.length?'#E8730A':'#6A8099',fontWeight:700,fontSize:10,textAlign:i>=4?'center':'left',whiteSpace:'nowrap'}},h)
               )
             )),
@@ -3427,10 +3426,10 @@ function renderRapportSection(p, updateProject){
                   const rt=bd.reduce((s,b)=>s+(parseFloat(l.qtes&&l.qtes[b.id])||0),0);
                   const idx=lignes.indexOf(l);
                   return el('tr',{style:{borderBottom:'1px solid #E5E9F2',background:idx%2===0?'#fff':'#FAFBFD'}},
-                    el('td',{style:{padding:'7px 8px',fontWeight:700,color:'#2563EB',fontSize:11,whiteSpace:'nowrap'}},DAYS[new Date(l.date).getDay()]+' '+fmtDate(l.date)),
+                    el('td',{style:{padding:'7px 8px',fontWeight:700,color:'#2563EB',fontSize:11,whiteSpace:'nowrap'}},fmtDate(l.date)),
                     el('td',{style:{padding:'4px 6px'}},
-                      Object.assign(el('input',{value:(l.secteur?l.secteur+' / ':'')+( l.adresse||''),style:{width:180,border:'1px solid transparent',borderRadius:4,padding:'3px 5px',fontSize:11,background:'transparent'}}),{oninput:e=>{const parts=e.target.value.split(' / ');const nl=[...lignes];nl[idx]={...nl[idx],secteur:parts[0]||'',adresse:parts.slice(1).join(' / ')||''};saveRapport(selMonth,{...rapports2[selMonth],lignes:nl});},onfocus:e=>e.target.style.borderColor='#E8730A',onblur:e=>e.target.style.borderColor='transparent'})
-                    ),
+                      Object.assign(el('input',{value:l.secteur||'',style:{width:120,border:'1px solid transparent',borderRadius:4,padding:'3px 5px',fontSize:11,background:'transparent'}}),{oninput:e=>{const nl=[...lignes];nl[idx]={...nl[idx],secteur:e.target.value};saveRapport(selMonth,{...rapports2[selMonth],lignes:nl});},onfocus:e=>e.target.style.borderColor='#E8730A',onblur:e=>e.target.style.borderColor='transparent'})
+                  ),
                     el('td',{style:{padding:'4px 6px'}},Object.assign(el('input',{value:l.piecesReparer||'',style:{width:80,border:'1px solid transparent',borderRadius:4,padding:'3px 5px',fontSize:11,background:'transparent'}}),{oninput:e=>{const nl=[...lignes];nl[idx]={...nl[idx],piecesReparer:e.target.value};saveRapport(selMonth,{...rapports2[selMonth],lignes:nl});},onfocus:e=>e.target.style.borderColor='#E8730A',onblur:e=>e.target.style.borderColor='transparent'})),
                     ...bd.map(b=>el('td',{style:{padding:'3px 4px',textAlign:'center'}},Object.assign(el('input',{type:'number',min:0,step:0.01,value:l.qtes&&l.qtes[b.id]||'',style:{width:50,textAlign:'center',border:'1px solid #E5E9F2',borderRadius:4,padding:'3px',fontSize:11,background:l.qtes&&l.qtes[b.id]>0?'#FFF8F0':'#F8FAFD',color:l.qtes&&l.qtes[b.id]>0?'#E8730A':'#6B7A99'}}),{oninput:e=>{const nl=[...lignes];if(!nl[idx].qtes)nl[idx].qtes={};nl[idx].qtes[b.id]=parseFloat(e.target.value)||0;saveRapport(selMonth,{...rapports2[selMonth],lignes:nl});}}))),
                     el('td',{style:{padding:'7px 6px',textAlign:'right',fontWeight:800,color:rt>0?'#E8730A':'#6B7A99',fontSize:11}},rt>0?fmtN(rt):'-'),
@@ -3438,7 +3437,7 @@ function renderRapportSection(p, updateProject){
                   );
                 }),
                 el('tr',{key:'w'+wk,style:{background:'#FFF3E0',borderTop:'2px solid #E8730A40'}},
-                  el('td',{colSpan:4,style:{padding:'7px 8px',fontWeight:800,fontSize:11,color:'#E8730A'}},'∑ Semaine '+wk+' ('+wkL.length+'j.)'),
+                  el('td',{colSpan:2,style:{padding:'7px 8px',fontWeight:800,fontSize:11,color:'#E8730A'}},'∑ Semaine '+wk+' ('+wkL.length+'j.)'),
                   ...bd.map((b,bi)=>el('td',{style:{padding:'7px 5px',textAlign:'center',fontWeight:800,color:wkT[bi]>0?'#E8730A':'#6B7A99',fontSize:11}},wkT[bi]>0?fmtN(wkT[bi]):'-')),
                   el('td',{style:{padding:'7px 6px',textAlign:'right',fontWeight:900,color:'#E8730A',fontSize:11}},fmtN(wkT.reduce((s,t)=>s+t,0))),
                   el('td',{})
@@ -3446,12 +3445,12 @@ function renderRapportSection(p, updateProject){
               ];
             }),
             lignes.length>0?el('tr',{style:{background:'#0F1628'}},
-              el('td',{colSpan:4,style:{padding:'9px 8px',fontWeight:900,color:'#fff',fontSize:12}},'TOTAL MENSUEL'),
+              el('td',{colSpan:3,style:{padding:'9px 8px',fontWeight:900,color:'#fff',fontSize:12}},'TOTAL MENSUEL'),
               ...bd.map(b=>el('td',{style:{padding:'9px 5px',textAlign:'center',fontWeight:900,color:'#E8730A',fontSize:12}},fmtN(getTotal(b.id,lignes))||'-')),
               el('td',{style:{padding:'9px 6px',textAlign:'right',fontWeight:900,color:'#E8730A'}},fmtN(bd.reduce((s,b)=>s+getTotal(b.id,lignes),0))),
               el('td',{})
             ):null,
-            lignes.length===0?el('tr',{},el('td',{colSpan:bd.length+6,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune ligne — cliquez "+ Ajouter ligne"')):null
+            lignes.length===0?el('tr',{},el('td',{colSpan:bd.length+5,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune ligne — cliquez "+ Ajouter ligne"')):null
             )
           )
         )
