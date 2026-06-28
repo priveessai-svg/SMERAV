@@ -490,7 +490,7 @@ const NAV = [
 // ══════════════════════════════════════════
 // PRINT DOC
 // ══════════════════════════════════════════
-function printDoc(htmlContent, title){
+function printDoc(htmlContent, title, orient='portrait'){
   try{
     const s = getSettings();
     const nom = (s.nom||'SMERAV S.A.R.L').replace(/'/g,"\'");
@@ -532,7 +532,7 @@ function printDoc(htmlContent, title){
     doc.write('@media print{');
     doc.write('.no-print-bar{display:none!important;}');
     doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
-    doc.write('@page{size:A4;margin:30mm 15mm 30mm 15mm;}');
+    doc.write('@page{size:A4 '+orient+';margin:15mm 10mm 15mm 10mm;}');
     doc.write('thead{display:table-header-group;}');
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('table{page-break-inside:auto;}');
@@ -883,7 +883,10 @@ function showFactureForm(facture=null, idx=null){
     div({style:{borderTop:'1px solid #eee',paddingTop:12}},
       div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}},
         div({style:{fontWeight:800,fontSize:13}},'Détail de la facture'),
-        btn('🖨 Imprimer','btn-blue',()=>printRapport(p,selMonth,lignes,bd,getML,getWO,DAYS,fmtN,fmtDate,getTotal,weeks),{style:{fontSize:12}}),
+        btn('🖨 Imprimer','btn-blue',()=>{
+          const orient = confirm('📄 Cliquez OK pour Paysage (Landscape)\nAnnuler pour Portrait') ? 'landscape' : 'portrait';
+          printRapport(p,selMonth,lignes,bd,getML,getWO,DAYS,fmtN,fmtDate,getTotal,weeks,orient);
+        },{style:{fontSize:12}}),
         
         btn('+ Ajouter ligne','btn-orange',()=>{f.lignes.push({ref:'',designation:'',qte:1,unite:'U',pu:0});calcTotal();},{style:{padding:'6px 14px',fontSize:12}})
       ),
@@ -3087,7 +3090,7 @@ function printDecompte(att, p){
 }
 
 // ── RAPPORT CHANTIER ─────────────────────
-function printRapport(p, selMonth, lignes, bd, getML, getWO, DAYS, fmtN, fmtDate, getTotal, weeks, toExcel=false){
+function printRapport(p, selMonth, lignes, bd, getML, getWO, DAYS, fmtN, fmtDate, getTotal, weeks, orient='portrait'){
   const s = getSettings();
   const type = p._rapportType||'Mensuel';
   const logoHTML = s.logo?`<img src="${s.logo}" style="height:40px;object-fit:contain;"/>`:`<div style="font-weight:900;font-size:13px;">SM</div>`;
@@ -3115,7 +3118,7 @@ function printRapport(p, selMonth, lignes, bd, getML, getWO, DAYS, fmtN, fmtDate
       <td style="padding:6px 8px;">${l.secteur||''}</td>
       <td style="padding:6px 8px;">${l.adresse||''}</td>
       <td style="padding:6px 8px;">${l.piecesReparer||''}</td>
-      ${bd.map(b=>`<td style="padding:6px 5px;text-align:center;font-weight:${l.qtes&&l.qtes[b.id]>0?'700':'400'};color:${l.qtes&&l.qtes[b.id]>0?'#E8730A':'#999'};">${l.qtes&&l.qtes[b.id]>0?fmtN(l.qtes[b.id]):'-'}</td>`).join('')}
+      ${bd.map(b=>`<td style="padding:3px 2px;text-align:center;font-size:10px;width:32px;font-weight:${l.qtes&&l.qtes[b.id]>0?'700':'400'};color:${l.qtes&&l.qtes[b.id]>0?'#E8730A':'#999'};">${l.qtes&&l.qtes[b.id]>0?fmtN(l.qtes[b.id]):'-'}</td>`).join('')}
       <td style="padding:6px 8px;text-align:right;font-weight:800;color:${rt>0?'#E8730A':'#999'}">${rt>0?fmtN(rt):'-'}</td>
     </tr>`;
   }).join('');
@@ -3126,7 +3129,7 @@ function printRapport(p, selMonth, lignes, bd, getML, getWO, DAYS, fmtN, fmtDate
     const wkT=bd.map(b=>getTotal(b.id,wkL));
     return `<tr style="background:#FFF3E0;border-top:2px solid #E8730A40;">
       <td colspan="4" style="padding:7px 8px;font-weight:800;color:#E8730A;">∑ Semaine ${wk} (${wkL.length}j.)</td>
-      ${wkT.map(t=>`<td style="padding:7px 5px;text-align:center;font-weight:800;color:${t>0?'#E8730A':'#999'}">${t>0?fmtN(t):'-'}</td>`).join('')}
+      ${wkT.map(t=>`<td style="padding:3px 2px;text-align:center;font-size:10px;width:32px;font-weight:800;color:${t>0?'#E8730A':'#999'}">${t>0?fmtN(t):'-'}</td>`).join('')}
       <td style="padding:7px 8px;text-align:right;font-weight:900;color:#E8730A">${fmtN(wkT.reduce((s,t)=>s+t,0))}</td>
     </tr>`;
   }).join('') : '';
@@ -3173,7 +3176,7 @@ function printRapport(p, selMonth, lignes, bd, getML, getWO, DAYS, fmtN, fmtDate
         <th style="padding:8px;color:#6A8099;text-align:left;">SECTEUR</th>
         <th style="padding:8px;color:#6A8099;text-align:left;">ADRESSE</th>
         <th style="padding:8px;color:#6A8099;text-align:left;">PIÈCES</th>
-        ${bd.map(b=>`<th style="padding:8px;color:#E8730A;text-align:center;">${b.id}</th>`).join('')}
+        ${bd.map(b=>`<th style="padding:4px 2px;color:#E8730A;text-align:center;font-size:9px;width:32px;">${b.id}</th>`).join('')}
         <th style="padding:8px;color:#6A8099;text-align:right;">TOTAL</th>
       </tr>
     </thead>
@@ -3194,7 +3197,7 @@ function printRapport(p, selMonth, lignes, bd, getML, getWO, DAYS, fmtN, fmtDate
     </tr>
   </table>`;
 
-  printDoc(html, titre);
+  printDoc(html, titre, orient);
 }
 
 function renderRapportSection(p, updateProject){
