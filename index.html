@@ -2966,6 +2966,21 @@ function printDecompte(att, p){
     <td style="text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
   </tr>`).join('');
   const html=`
+  <table style="width:100%;border-collapse:collapse;margin-bottom:6px;font-size:11px;">
+    <tr>
+      <td colspan="2" style="border:1px solid #999;padding:6px 10px;">
+        <div style="font-weight:900;font-size:13px;">${s.nom||'SMERAV S.A.R.L.au'}</div>
+        <div style="margin-top:2px;">${s.adresse||''}</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #999;padding:5px 10px;width:50%;">R.C : <strong>${s.rc||'—'}</strong> &nbsp;&nbsp; Patente : <strong>${s.tp||'—'}</strong></td>
+      <td style="border:1px solid #999;padding:5px 10px;">I.F : <strong>${s.if_||'—'}</strong> &nbsp;&nbsp; CNSS : <strong>${s.cnss||'—'}</strong></td>
+    </tr>
+    <tr>
+      <td colspan="2" style="border:1px solid #999;padding:5px 10px;">ICE : <strong>${s.ice||'—'}</strong></td>
+    </tr>
+  </table>
   <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px;">
     <tr>
       <td style="border:1px solid #999;padding:6px 10px;width:35%;vertical-align:top">
