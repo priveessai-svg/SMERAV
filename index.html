@@ -540,10 +540,16 @@ function printDoc(htmlContent, title, orient='portrait'){
     doc.write('}');
     doc.write('</style></head><body>');
     doc.write('<div class="no-print-bar">');
-    const printFn = orient==='landscape'
-      ? "document.querySelector('style').textContent+='@page{size:A4 landscape;}';window.print();"
-      : "window.print();";
-    doc.write('<button onclick="'+printFn+'" style="background:#E8730A;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;margin-right:6px;">&#128424; Imprimer</button>');
+    const printScript = orient==='landscape'
+      ? `<script>
+          var _ls=document.createElement('style');
+          _ls.textContent='@page{size:A4 landscape!important;margin:10mm!important;}body{transform:none!important;}';
+          document.head.appendChild(_ls);
+          function doPrint(){window.print();}
+        <\/script>`
+      : `<script>function doPrint(){window.print();}<\/script>`;
+    doc.write(printScript);
+    doc.write('<button onclick="doPrint()" style="background:#E8730A;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;margin-right:6px;">&#128424; Imprimer</button>');
     doc.write('<button onclick="saveExcel()" style="background:#16A34A;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;margin-right:6px;">&#128202; Excel</button>');
     doc.write('<button onclick="parent.document.getElementById(\'__printFrame\').remove()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">&#x2715; Fermer</button>');
     doc.write('</div>');
