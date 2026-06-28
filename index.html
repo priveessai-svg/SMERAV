@@ -883,10 +883,7 @@ function showFactureForm(facture=null, idx=null){
     div({style:{borderTop:'1px solid #eee',paddingTop:12}},
       div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}},
         div({style:{fontWeight:800,fontSize:13}},'Détail de la facture'),
-        btn('🖨 Imprimer','btn-blue',()=>{
-          const orient = confirm('📄 Cliquez OK pour Paysage (Landscape)\nAnnuler pour Portrait') ? 'landscape' : 'portrait';
-          printRapport(p,selMonth,lignes,bd,getML,getWO,DAYS,fmtN,fmtDate,getTotal,weeks,orient);
-        },{style:{fontSize:12}}),
+        btn('🖨 Imprimer','btn-blue',()=>printRapport(p,selMonth,lignes,bd,getML,getWO,DAYS,fmtN,fmtDate,getTotal,weeks,'landscape'),{style:{fontSize:12}}),
         
         btn('+ Ajouter ligne','btn-orange',()=>{f.lignes.push({ref:'',designation:'',qte:1,unite:'U',pu:0});calcTotal();},{style:{padding:'6px 14px',fontSize:12}})
       ),
