@@ -3084,9 +3084,10 @@ function renderRapportSection(p, updateProject){
   const getWO=d=>{const dt=new Date(d),f=new Date(dt.getFullYear(),dt.getMonth(),1);return Math.ceil((dt.getDate()+f.getDay())/7);};
   const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 
-  if(!p._rapportView) p._rapportView='months';
-  if(!p._selMonth) p._selMonth=null;
   if(!p._rapportTab) p._rapportTab='journalier';
+  // Toujours liste des mois si pas de mois selectionne
+  if(!p._selMonth) p._rapportView='months';
+  else if(!p._rapportView) p._rapportView='months';
 
   const saveRapport=(month,data)=>{
     const r2={...rapports2,[month]:data};
@@ -3157,7 +3158,7 @@ function renderRapportSection(p, updateProject){
   return div({},
     // Header
     div({style:{display:'flex',alignItems:'center',gap:12,marginBottom:16,flexWrap:'wrap'}},
-      btn('← Rapports','btn-gray',()=>{p._rapportView='months';updateProject({});},{style:{fontSize:12}}),
+      btn('← Rapports','btn-gray',()=>{p._rapportView='months';p._selMonth=null;updateProject({});},{style:{fontSize:12}}),
       div({style:{fontWeight:800,fontSize:16,flex:1}},'📋 '+getML(selMonth)),
       btn('→ Transférer Attachement','btn-green',()=>{
         const totaux={};
