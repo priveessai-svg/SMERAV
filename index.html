@@ -3265,6 +3265,7 @@ function renderRapportSection(p, updateProject){
     div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,flexWrap:'wrap',gap:8}},
       div({style:{fontWeight:800,fontSize:16}},getML(selMonth)),
       div({style:{display:'flex',gap:8,flexWrap:'wrap'}},
+        btn('🖨 Imprimer','btn-blue',()=>printRapport(p,selMonth,lignes,bd,getML,getWO,DAYS,fmtN,fmtDate,getTotal,weeks),{style:{fontSize:12}}),
         btn('→ Transférer Attachement','btn-green',()=>{
           const totaux={};
           bd.forEach(b=>{totaux[b.id]=getTotal(b.id,lignes);});
