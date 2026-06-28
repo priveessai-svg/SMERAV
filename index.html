@@ -535,11 +535,11 @@ function printDoc(htmlContent, title, orient='portrait'){
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('.no-print-bar{text-align:center;padding:8px;background:#1A2540;position:sticky;top:0;z-index:999;}');
     doc.write('#main{margin:0;overflow-x:auto;}');
-    doc.write('body{min-width:'+(isLandscape?'270':'180')+'mm;width:'+(isLandscape?'270':'180')+'mm;}');
+    doc.write('body{min-width:'+(orient==='landscape'?'270':'180')+'mm;width:'+(orient==='landscape'?'270':'180')+'mm;}');
     doc.write('@media print{');
     doc.write('.no-print-bar{display:none!important;}');
     doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
-    if(isLandscape){
+    if(orient==='landscape'){
       doc.write('@page{size:297mm 210mm;margin:8mm;}');
     } else {
       doc.write('@page{size:210mm 297mm;margin:15mm 10mm;}');
@@ -547,11 +547,12 @@ function printDoc(htmlContent, title, orient='portrait'){
     doc.write('thead{display:table-header-group;}');
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('table{page-break-inside:auto;}');
-    if(isLandscape){
-      doc.write('@page{size:297mm 210mm;margin:8mm;}');
-      doc.write('html,body{width:277mm!important;}');
-      doc.write('#main{width:277mm!important;}');
-      doc.write('table{font-size:9px!important;}');
+    if(orient==='landscape'){
+      doc.write('@page{size:297mm 210mm;margin:5mm;}');
+      doc.write('html,body{width:287mm!important;margin:0!important;}');
+      doc.write('#main{width:287mm!important;transform-origin:top left;}');
+      doc.write('table{font-size:8px!important;width:100%!important;}');
+      doc.write('th,td{padding:2px 3px!important;}');
     }
     doc.write('}');
     doc.write('</style></head><body>');
@@ -3142,25 +3143,25 @@ function printRapport(p, selMonth, lignes, bd, getML, getWO, DAYS, fmtN, fmtDate
     const wkL=lignes.filter(l=>getWO(l.date)===wk);
     const wkT=bd.map(b=>getTotal(b.id,wkL));
     return `<tr style="background:#FFF3E0;border-top:2px solid #E8730A40;">
-      <td colspan="4" style="padding:7px 8px;font-weight:800;color:#E8730A;">∑ Semaine ${wk} (${wkL.length}j.)</td>
+      <td colspan="4" style="padding:3px 4px;font-weight:800;color:#E8730A;font-size:8px;">∑ Sem ${wk} (${wkL.length}j.)</td>
       ${wkT.map(t=>`<td style="padding:3px 2px;text-align:center;font-size:10px;width:32px;font-weight:800;color:${t>0?'#E8730A':'#999'}">${t>0?fmtN(t):'-'}</td>`).join('')}
       <td style="padding:7px 8px;text-align:right;font-weight:900;color:#E8730A">${fmtN(wkT.reduce((s,t)=>s+t,0))}</td>
     </tr>`;
   }).join('') : '';
 
   const totalRow = `<tr style="background:#0F1628;">
-    <td colspan="4" style="padding:9px 8px;font-weight:900;color:#fff;">TOTAL ${type==='Journalier'?'JOURNALIER':type==='Hebdomadaire'?'HEBDOMADAIRE':'MENSUEL'}</td>
+    <td colspan="4" style="padding:4px;font-weight:900;color:#fff;font-size:8px;">TOTAL ${type==='Journalier'?'JOURNALIER':type==='Hebdomadaire'?'HEBDOMADAIRE':'MENSUEL'}</td>
     ${bd.map(b=>`<td style="padding:9px 5px;text-align:center;font-weight:900;color:#E8730A;">${fmtN(getTotal(b.id,filteredLignes))||'-'}</td>`).join('')}
     <td style="padding:9px 8px;text-align:right;font-weight:900;color:#E8730A;">${fmtN(bd.reduce((s,b)=>s+getTotal(b.id,filteredLignes),0))}</td>
   </tr>`;
 
   const html = `
   <div style="min-width:${80+200+120+120+(bd.length*34)+80}px;">
-  <div style="display:flex;align-items:center;gap:12px;padding-bottom:8px;border-bottom:2px solid #E8730A;margin-bottom:10px;">
+  <div style="display:flex;align-items:center;gap:8px;padding-bottom:6px;border-bottom:2px solid #E8730A;margin-bottom:8px;">
     ${logoHTML}
     <div style="flex:1">
-      <div style="font-size:15px;font-weight:900;">${s.nom||'SMERAV S.A.R.L.au'}</div>
-      <div style="font-size:9px;color:#666;">${s.adresse||''}</div>
+      <div style="font-size:12px;font-weight:900;">${s.nom||'SMERAV S.A.R.L.au'}</div>
+      <div style="font-size:8px;color:#666;">${s.adresse||''}</div>
     </div>
   </div>
   <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:11px;">
@@ -3184,15 +3185,15 @@ function printRapport(p, selMonth, lignes, bd, getML, getWO, DAYS, fmtN, fmtDate
       </td>
     </tr>
   </table>
-  <table style="width:100%;border-collapse:collapse;font-size:11px;">
+  <table style="width:100%;border-collapse:collapse;font-size:9px;table-layout:fixed;">
     <thead>
       <tr style="background:#0F1628;">
-        <th style="padding:8px;color:#6A8099;text-align:left;">DATE</th>
-        <th style="padding:8px;color:#6A8099;text-align:left;">SECTEUR</th>
-        <th style="padding:8px;color:#6A8099;text-align:left;">ADRESSE</th>
-        <th style="padding:8px;color:#6A8099;text-align:left;">PIÈCES</th>
-        ${bd.map(b=>`<th style="padding:4px 2px;color:#E8730A;text-align:center;font-size:9px;width:32px;">${b.id}</th>`).join('')}
-        <th style="padding:8px;color:#6A8099;text-align:right;">TOTAL</th>
+        <th style="padding:4px;color:#6A8099;text-align:left;width:18mm;">DATE</th>
+        <th style="padding:4px;color:#6A8099;text-align:left;width:20mm;">SECTEUR</th>
+        <th style="padding:4px;color:#6A8099;text-align:left;width:30mm;">ADRESSE</th>
+        <th style="padding:4px;color:#6A8099;text-align:left;width:25mm;">PIÈCES</th>
+        ${bd.map(b=>`<th style="padding:2px 1px;color:#E8730A;text-align:center;font-size:7px;overflow:hidden;">${b.id.slice(-3)}</th>`).join('')}
+        <th style="padding:4px 2px;color:#6A8099;text-align:right;width:14mm;">TOT</th>
       </tr>
     </thead>
     <tbody>
