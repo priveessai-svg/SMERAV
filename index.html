@@ -1519,8 +1519,16 @@ function renderProjetInfoEdit(p, updateProject){
 
 function renderPhotosSection(p, updateProject){
   const photos = p.photos||[];
-  const savePhotos=(newPhotos)=>updateProject({photos:newPhotos});
-  const addPhoto=(dataUrl,name)=>savePhotos([...photos,{id:Date.now(),url:dataUrl,name:name||'Photo',date:today()}]);
+  if(!p._photoSel) p._photoSel=[];
+  const sel = p._photoSel;
+
+  const savePhotos=(newPhotos)=>{p._photoSel=[];updateProject({photos:newPhotos});};
+  const addPhoto=(dataUrl,name)=>updateProject({photos:[...photos,{id:Date.now(),url:dataUrl,name:name||'Photo',date:today()}]});
+
+  const toggleSel=(id)=>{
+    p._photoSel=sel.includes(id)?sel.filter(x=>x!==id):[...sel,id];
+    updateProject({});
+  };
 
   const importInput=Object.assign(el('input',{type:'file',accept:'image/*',multiple:true,style:{display:'none'}}),{
     onchange:e=>{Array.from(e.target.files).forEach(f=>{const r=new FileReader();r.onload=ev=>addPhoto(ev.target.result,f.name);r.readAsDataURL(f);});e.target.value='';}
@@ -1531,9 +1539,12 @@ function renderPhotosSection(p, updateProject){
 
   return div({},
     importInput, cameraInput,
-    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}},
-      div({style:{fontWeight:800,fontSize:15}},'Photos ('+photos.length+')'),
-      div({style:{display:'flex',gap:8}},
+    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}},
+      div({style:{fontWeight:800,fontSize:15}},'Photos ('+photos.length+')'+(sel.length?' · '+sel.length+' sélectionné(s)':'')),
+      div({style:{display:'flex',gap:8,flexWrap:'wrap'}},
+        sel.length>0 ? btn('🗑 Supprimer ('+sel.length+')','btn-red',()=>{
+          if(confirmDelete()) savePhotos(photos.filter(x=>!sel.includes(x.id)));
+        },{style:{fontSize:12}}) : null,
         btn('📷 Prendre photo','btn-orange',()=>cameraInput.click(),{style:{fontSize:12}}),
         btn('📁 Importer','btn-gray',()=>importInput.click(),{style:{fontSize:12}})
       )
@@ -1543,16 +1554,31 @@ function renderPhotosSection(p, updateProject){
           div({style:{fontSize:40,marginBottom:10}},'📷'),
           div({style:{fontWeight:700}},'Aucune photo')
         )
-      : div({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12}},
-          ...photos.map(ph=>
-            div({style:{position:'relative',borderRadius:10,overflow:'hidden',border:'1px solid #E5E9F2'}},
-              el('img',{src:ph.url,style:{width:'100%',height:140,objectFit:'cover',display:'block'}}),
-              div({style:{padding:'6px 8px',fontSize:11,color:'#6B7A99',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},ph.name||'Photo'),
-              el('button',{onclick:()=>savePhotos(photos.filter(x=>x.id!==ph.id)),
-                style:{position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.6)',color:'#fff',border:'none',borderRadius:'50%',width:26,height:26,fontSize:16,cursor:'pointer',lineHeight:'26px',textAlign:'center'}
-              },'×')
-            )
-          )
+      : div({style:{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:3}},
+          ...photos.map(ph=>{
+            const isSel=sel.includes(ph.id);
+            return div({
+              style:{position:'relative',paddingBottom:'100%',cursor:'pointer',
+                outline: isSel?'3px solid #2563EB':'none', outlineOffset:'-3px'},
+              onclick:()=>{
+                setState({modal:{title:ph.name||'Photo',content:div({style:{textAlign:'center'}},
+                  el('img',{src:ph.url,style:{maxWidth:'100%',maxHeight:'70vh',objectFit:'contain',borderRadius:6}}),
+                  div({style:{marginTop:12,display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap'}},
+                    el('a',{href:ph.url,download:ph.name||'photo.jpg',
+                      style:{background:'#2563EB',color:'#fff',padding:'8px 16px',borderRadius:6,fontSize:13,fontWeight:700,textDecoration:'none',cursor:'pointer'}
+                    },'💾 Enregistrer'),
+                    btn(isSel?'✓ Sélectionné':'Sélectionner',isSel?'btn-orange':'btn-gray',()=>{toggleSel(ph.id);setState({modal:null});},{style:{fontSize:13}}),
+                    btn('🗑 Supprimer','btn-red',()=>{if(confirmDelete()){savePhotos(photos.filter(x=>x.id!==ph.id));setState({modal:null});}},{style:{fontSize:13}})
+                  )
+                ),wide:true}});
+              }
+            },
+              el('img',{src:ph.url,style:{position:'absolute',top:0,left:0,width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none',opacity:isSel?0.6:1}}),
+              isSel ? div({style:{position:'absolute',top:4,right:4,background:'#2563EB',borderRadius:'50%',width:22,height:22,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 1px 4px rgba(0,0,0,0.3)'}},
+                el('span',{style:{color:'#fff',fontSize:13,fontWeight:900}},'✓')
+              ) : null
+            );
+          })
         )
   );
 }
@@ -1560,20 +1586,84 @@ function renderPhotosSection(p, updateProject){
 function renderProjetCharges(p, updateProject){
   const charges = p.charges||[];
   const total = charges.reduce((s,c)=>s+c.montant,0);
-  const cats = ['MO','Matériaux','Matériel','Transport','Sous-traitance'];
+  const cats = [
+    {key:'Pièces',   icon:'🔧'},
+    {key:'Transport',icon:'🚗'},
+    {key:'Gasoil',   icon:'⛽'},
+    {key:"Main d'œuvre", icon:'👷'},
+    {key:'Outillage',icon:'🛠️'},
+    {key:'Autre',    icon:'📦'},
+  ];
+
+  // ── VUE DOSSIERS ──
+  if(!p._chargesCat) {
+    return div({},
+      div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}},
+        div({},
+          div({style:{fontSize:15,fontWeight:800}},'Charges'),
+          div({style:{color:'#E8730A',fontWeight:700}},fmt(total))
+        )
+      ),
+      div({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:14}},
+        ...cats.map(c=>{
+          const catCharges=charges.filter(x=>x.categorie===c.key);
+          const catTotal=catCharges.reduce((s,x)=>s+x.montant,0);
+          return div({
+            className:'card',
+            style:{overflow:'hidden',cursor:'pointer'},
+            onclick:()=>{p._chargesCat=c.key;updateProject({});}
+          },
+            div({style:{background:'linear-gradient(135deg,#0F1628,#1A2D50)',padding:'14px 14px 10px'}},
+              div({style:{fontSize:28,marginBottom:4}},c.icon),
+              div({style:{fontSize:13,fontWeight:900,color:'#fff'}},c.key),
+              div({style:{fontSize:11,color:'#6A8099'}},catCharges.length+' article(s)')
+            ),
+            div({style:{padding:'8px 14px',fontWeight:700,color:'#E8730A',fontSize:13}},catTotal>0?fmt(catTotal):'0,00 MAD')
+          );
+        })
+      ),
+      div({style:{marginTop:16,background:'linear-gradient(135deg,#E8730A,#F59B2B)',borderRadius:12,padding:'14px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}},
+        div({style:{color:'#fff',fontWeight:800,fontSize:14}},'TOTAL CHARGES'),
+        div({style:{color:'#fff',fontWeight:900,fontSize:18}},fmt(total))
+      )
+    );
+  }
+
+  // ── VUE DETAIL CATEGORIE ──
+  const selCat = p._chargesCat;
+  const catInfo = cats.find(c=>c.key===selCat)||{icon:'📦',key:selCat};
+  const catCharges = charges.filter(c=>c.categorie===selCat);
+  const catTotal = catCharges.reduce((s,c)=>s+c.montant,0);
 
   return div({},
     div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}},
-      div({},div({style:{fontSize:15,fontWeight:800}},'Charges'),div({style:{color:'#E8730A',fontWeight:700}},fmt(total))),
+      div({style:{display:'flex',alignItems:'center',gap:10}},
+        btn('← Charges','btn-gray',()=>{p._chargesCat=null;updateProject({});},{style:{fontSize:12}}),
+        div({},
+          div({style:{fontSize:15,fontWeight:800}},''+catInfo.icon+' '+selCat),
+          div({style:{color:'#E8730A',fontWeight:700}},fmt(catTotal))
+        )
+      ),
       btn('+ Ajouter','btn-orange',()=>{
-        let f={designation:'',montant:0,date:today(),categorie:'MO'};
+        let f={designation:'',montant:0,date:today(),categorie:selCat};
+        const catBtns=div({style:{display:'flex',flexWrap:'wrap',gap:6,marginBottom:4}});
+        const renderCatBtns=()=>{catBtns.innerHTML='';cats.forEach(c=>{
+          const b=el('button',{
+            style:{padding:'6px 10px',borderRadius:20,border:'2px solid '+(f.categorie===c.key?'#E8730A':'#E5E9F2'),
+              background:f.categorie===c.key?'#FFF3E0':'#F8FAFD',color:f.categorie===c.key?'#E8730A':'#6B7A99',
+              fontWeight:f.categorie===c.key?700:400,cursor:'pointer',fontSize:12},
+            onclick:()=>{f.categorie=c.key;renderCatBtns();}
+          },c.icon+' '+c.key);
+          catBtns.appendChild(b);
+        });};
+        renderCatBtns();
         const fEl=div({style:{display:'flex',flexDirection:'column',gap:12}},
           div({className:'grid-2'},
             div({style:{gridColumn:'1/-1'}},el('label',{className:'lbl'},'Désignation'),Object.assign(el('input',{value:''}),{oninput:e=>f.designation=e.target.value})),
             div({},el('label',{className:'lbl'},'Montant (MAD)'),Object.assign(el('input',{type:'number',value:0}),{oninput:e=>f.montant=+e.target.value})),
             div({},el('label',{className:'lbl'},'Date'),Object.assign(el('input',{type:'date',value:f.date}),{oninput:e=>f.date=e.target.value})),
-            div({},el('label',{className:'lbl'},'Catégorie'),(()=>{const s=el('select',{});cats.forEach(c=>s.innerHTML+=`<option>${c}</option>`);s.oninput=e=>f.categorie=e.target.value;return s;})()),
           ),
+          div({},el('label',{className:'lbl'},'Catégorie'),catBtns),
           div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
             btn('Annuler','btn-gray',()=>setState({modal:null})),
             btn('Enregistrer','btn-orange',()=>{
@@ -1589,12 +1679,12 @@ function renderProjetCharges(p, updateProject){
     div({className:'card'},
       el('table',{},
         el('thead',{},el('tr',{},...['Désignation','Montant','Date','Catégorie',''].map(h=>el('th',{},h)))),
-        el('tbody',{},...(charges.length?charges.map((c,i)=>
+        el('tbody',{},...(catCharges.length?catCharges.map((c,i)=>
           el('tr',{},
             el('td',{style:{fontWeight:600}},c.designation),
             el('td',{style:{fontWeight:800,color:'#E8730A'}},fmt(c.montant)),
             el('td',{},fmtDate(c.date)),
-            el('td',{},span({className:'badge',style:{background:'#2563EB15',color:'#2563EB'}},c.categorie)),
+            el('td',{},(()=>{const ci={Pièces:'🔧',Transport:'🚗',Gasoil:'⛽',"Main d'œuvre":'👷',Outillage:'🛠️',Autre:'📦'};const ic=ci[c.categorie]||'';return span({className:'badge',style:{background:'#E8730A15',color:'#E8730A'}},ic+' '+c.categorie);})()),
             el('td',{},btn('✕','btn-red',()=>{updateProject({charges:charges.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}}))
           )
         ):[el('tr',{},el('td',{colSpan:5,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune charge'))]))
