@@ -1685,7 +1685,28 @@ function renderProjetCharges(p, updateProject){
             el('td',{style:{fontWeight:800,color:'#E8730A'}},fmt(c.montant)),
             el('td',{},fmtDate(c.date)),
             el('td',{},(()=>{const ci={Pièces:'🔧',Transport:'🚗',Gasoil:'⛽',"Main d'œuvre":'👷',Outillage:'🛠️',Autre:'📦'};const ic=ci[c.categorie]||'';return span({className:'badge',style:{background:'#E8730A15',color:'#E8730A'}},ic+' '+c.categorie);})()),
-            el('td',{},btn('✕','btn-red',()=>{updateProject({charges:charges.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}}))
+            el('td',{style:{display:'flex',gap:4}},
+              btn('✏️','btn-gray',()=>{
+                const cats2=[{key:'Pièces',icon:'🔧'},{key:'Transport',icon:'🚗'},{key:'Gasoil',icon:'⛽'},{key:"Main d'oeuvre",icon:'👷'},{key:'Outillage',icon:'🛠️'},{key:'Autre',icon:'📦'}];
+                let f={...c};
+                const cb=div({style:{display:'flex',flexWrap:'wrap',gap:6}});
+                const rCB=()=>{cb.innerHTML='';cats2.forEach(ct=>{const b=el('button',{style:{padding:'6px 10px',borderRadius:20,border:'2px solid '+(f.categorie===ct.key?'#E8730A':'#E5E9F2'),background:f.categorie===ct.key?'#FFF3E0':'#F8FAFD',color:f.categorie===ct.key?'#E8730A':'#6B7A99',fontWeight:f.categorie===ct.key?700:400,cursor:'pointer',fontSize:12},onclick:()=>{f.categorie=ct.key;rCB();}},ct.icon+' '+ct.key);cb.appendChild(b);});};rCB();
+                const desEl=Object.assign(el('input',{value:f.designation,style:{width:'100%',padding:'6px',borderRadius:6,border:'1px solid #E5E9F2',fontSize:13}}),{oninput:e=>f.designation=e.target.value});
+                const mtEl=Object.assign(el('input',{type:'number',value:f.montant,style:{width:'100%',padding:'6px',borderRadius:6,border:'1px solid #E5E9F2',fontSize:13}}),{oninput:e=>f.montant=+e.target.value});
+                const dtEl=Object.assign(el('input',{type:'date',value:f.date,style:{width:'100%',padding:'6px',borderRadius:6,border:'1px solid #E5E9F2',fontSize:13}}),{oninput:e=>f.date=e.target.value});
+                const fEl=div({style:{display:'flex',flexDirection:'column',gap:10}},
+                  div({},el('label',{className:'lbl'},'Désignation'),desEl),
+                  div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}},div({},el('label',{className:'lbl'},'Montant'),mtEl),div({},el('label',{className:'lbl'},'Date'),dtEl)),
+                  div({},el('label',{className:'lbl'},'Catégorie'),cb),
+                  div({style:{display:'flex',gap:8,justifyContent:'flex-end'}},
+                    btn('Annuler','btn-gray',()=>setState({modal:null})),
+                    btn('Enregistrer','btn-orange',()=>{const nc=[...charges];nc[charges.indexOf(c)]={...f};updateProject({charges:nc});setState({modal:null});})
+                  )
+                );
+                setState({modal:{title:'Modifier',content:fEl,wide:true}});
+              },{style:{padding:'4px 8px',fontSize:12}}),
+              btn('✕','btn-red',()=>{updateProject({charges:charges.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}})
+            )
           )
         ):[el('tr',{},el('td',{colSpan:5,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune charge'))]))
       )
