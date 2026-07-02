@@ -2706,13 +2706,15 @@ function renderAttachementsSection(p, updateProject){
             el('thead',{},el('tr',{},...['N° Prix','Désignation','Uté','Qté Marché','Qté Précédente','Qté du Mois ✏️','Cumul','%'].map((h,i)=>
               el('th',{style:{fontSize:10,padding:'8px',color:h.includes('✏️')?'#E8730A':'#6B7A99',textAlign:i>=3?'right':'left'}},h)
             ))),
-            el('tbody',{},...lignes.map((l,i)=>el('tr',{style:{borderBottom:'1px solid #E5E9F2',background:i%2===0?'#fff':'#FAFBFD'}},
+            el('tbody',{},...lignes.map((l,i)=>{
+              const isTitle = !l.unite && !l.pu && !l.qteBD;
+              return el('tr',{style:{borderBottom:'1px solid #E5E9F2',background:isTitle?'#F0F4FF':i%2===0?'#fff':'#FAFBFD'}},
               el('td',{style:{padding:'6px 8px',fontWeight:700,color:'#2563EB',fontSize:11}},l.id),
-              el('td',{style:{padding:'6px 8px',fontSize:11,maxWidth:200}},l.designation),
-              el('td',{style:{padding:'6px 8px',textAlign:'center',color:'#6B7A99'}},l.unite),
-              el('td',{style:{padding:'6px 8px',textAlign:'right',color:'#6B7A99'}},fmtN(l.qteBD)),
-              el('td',{style:{padding:'6px 8px',textAlign:'right',color:'#6B7A99'}},fmtN(l.qtePrecedente)),
-              el('td',{style:{padding:'4px'}},(()=>{
+              el('td',{style:{padding:'6px 8px',fontSize:11,maxWidth:200,fontWeight:isTitle?800:400,color:isTitle?'#1A2540':'inherit'}},l.designation),
+              el('td',{style:{padding:'6px 8px',textAlign:'center',color:'#6B7A99'}},isTitle?'':l.unite),
+              el('td',{style:{padding:'6px 8px',textAlign:'right',color:'#6B7A99'}},isTitle?'':fmtN(l.qteBD)),
+              el('td',{style:{padding:'6px 8px',textAlign:'right',color:'#6B7A99'}},isTitle?'':fmtN(l.qtePrecedente)),
+              el('td',{style:{padding:'4px'}},isTitle?el('span',{},''): (()=>{
   const inp = el('input',{type:'text',inputmode:'decimal',value:l.qteMois||'',
     'data-idx':i,
     style:{width:70,textAlign:'right',border:'2px solid #E8730A60',borderRadius:6,padding:'4px 6px',fontSize:11,background:'#FFF8F0'}});
@@ -2730,9 +2732,9 @@ function renderAttachementsSection(p, updateProject){
   };
   return inp;
 })()),
-              el('td',{id:'cumul-'+i,style:{padding:'6px 8px',textAlign:'right',fontWeight:700,color:'#2563EB'}},fmtN(l.cumul)),
-              el('td',{id:'pct-'+i,style:{padding:'6px 8px',textAlign:'right'}},span({style:{background:l.pct>=100?'#10B98120':l.pct>0?'#2563EB15':'#F4F6FA',color:l.pct>=100?'#10B981':l.pct>0?'#2563EB':'#6B7A99',padding:'2px 7px',borderRadius:20,fontSize:10,fontWeight:700}},l.pct+'%'))
-            )))
+              el('td',{id:'cumul-'+i,style:{padding:'6px 8px',textAlign:'right',fontWeight:700,color:'#2563EB'}},isTitle?'':fmtN(l.cumul)),
+              el('td',{id:'pct-'+i,style:{padding:'6px 8px',textAlign:'right'}},isTitle?el('span',{},''):span({style:{background:l.pct>=100?'#10B98120':l.pct>0?'#2563EB15':'#F4F6FA',color:l.pct>=100?'#10B981':l.pct>0?'#2563EB':'#6B7A99',padding:'2px 7px',borderRadius:20,fontSize:10,fontWeight:700}},l.pct+'%'))
+            );}))
           ));
         }
         renderLignes();
@@ -3111,14 +3113,18 @@ function printDecompte(att, p){
   const s=getSettings();
   const logoHTML=s.logo?`<img src="${s.logo}" style="width:50px;height:50px;object-fit:contain;"/>`:
     `<div style="width:50px;height:50px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:10px;">SM</div>`;
-  const rowsHTML=lignes.map(l=>`<tr>
-    <td>${l.id||''}</td><td>${l.designation||''}</td><td style="text-align:center">${l.unite||''}</td>
-    <td style="text-align:right">${fmtN(l.qteBD)}</td><td style="text-align:right">${fmtN(l.qtePrecedente)}</td>
-    <td style="text-align:right;font-weight:bold;color:#E8730A">${fmtN(l.qteMois)}</td>
-    <td style="text-align:right">${fmtN(l.cumul)}</td><td style="text-align:right">${fmtN(l.pu)}</td>
-    <td style="text-align:right;font-weight:bold">${fmtN(l.qteMois*(l.pu||0)*(1+TVA))}</td>
-    <td style="text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
-  </tr>`).join('');
+  const rowsHTML=lignes.map(l=>{
+    const isTit=!l.unite&&!l.pu&&!l.qteBD;
+    if(isTit) return `<tr style="background:#F0F4FF"><td style="font-weight:800;color:#1A2540">${l.id||''}</td><td colspan="9" style="font-weight:800;color:#1A2540">${l.designation||''}</td></tr>`;
+    return `<tr>
+      <td>${l.id||''}</td><td>${l.designation||''}</td><td style="text-align:center">${l.unite||''}</td>
+      <td style="text-align:right">${fmtN(l.qteBD)}</td><td style="text-align:right">${fmtN(l.qtePrecedente)}</td>
+      <td style="text-align:right;font-weight:bold;color:#E8730A">${fmtN(l.qteMois)}</td>
+      <td style="text-align:right">${fmtN(l.cumul)}</td><td style="text-align:right">${fmtN(l.pu)}</td>
+      <td style="text-align:right;font-weight:bold">${fmtN(l.qteMois*(l.pu||0)*(1+TVA))}</td>
+      <td style="text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
+    </tr>`;
+  }).join('');
   const allClients = (typeof state !== 'undefined' && state.clients) || [];
   const clientInfo = allClients.find(c => c.nom === p.client) || {};
   const clientICE = clientInfo.ice || '';
