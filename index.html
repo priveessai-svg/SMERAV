@@ -2648,6 +2648,8 @@ function renderAttachementsSection(p, updateProject){
               btn('🖨️','btn-blue',()=>{
                 const s = state.settings;
                 const rows = (a.lignes||[]).map((l,li)=>{
+                  const skipRow=!l.id&&!l.unite&&!parseFloat(l.pu);
+                  if(skipRow) return '';
                   const isH=(!l.unite&&!parseFloat(l.pu)&&!parseFloat(l.qteBD))||(l.id&&l.id.toString().toLowerCase().includes('prix')&&!parseFloat(l.pu));
                   if(isH) return `<tr style="background:#F0F4FF"><td style="font-weight:800;padding:7px 6px;font-size:13px;color:#2563EB">${l.id||''}</td><td colspan="7" style="padding:7px 6px;font-size:13px;font-weight:800;color:#1A2540">${l.designation||''}</td></tr>`;
                   return `<tr style="background:${li%2===0?'#fff':'#f9f9f9'}">
