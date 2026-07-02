@@ -2426,6 +2426,9 @@ function renderBordereauSection(p, updateProject){
                   const designation = String(row[1]||'').trim();
                   if(!designation) return;
                   const unite = String(row[2]||'').trim();
+                  const qteCheck = parseFloat(String(row[3]||'').replace(',','.'))||0;
+                  const puCheck = parseFloat(String(row[4]||'').replace(',','.'))||0;
+                  if(!id && !unite && !qteCheck && !puCheck) return;
                   const qte = parseFloat(String(row[3]).replace(',','.'))||0;
                   const pu = parseFloat(String(row[4]).replace(',','.'))||0;
                   newBd.push({id,designation,unite,qte,pu,total:qte*pu});
@@ -2968,14 +2971,18 @@ function printDecompte(att, p){
   const s=getSettings();
   const logoHTML=s.logo?`<img src="${s.logo}" style="width:50px;height:50px;object-fit:contain;"/>`:
     `<div style="width:50px;height:50px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:10px;">SM</div>`;
-  const rowsHTML=lignes.map(l=>`<tr>
+  const rowsHTML=lignes.map(l=>{
+    const isH=!l.id?false:(!l.unite&&!parseFloat(l.pu)&&!parseFloat(l.qteBD))||(l.id.toString().toLowerCase().includes('prix')&&!parseFloat(l.pu));
+    if(!l.id&&!l.unite&&!parseFloat(l.pu)) return '';
+    if(isH) return `<tr style="background:#F0F4FF"><td style="font-weight:800;color:#2563EB">${l.id||''}</td><td colspan="9" style="font-weight:800;color:#1A2540">${l.designation||''}</td></tr>`;
+    return `<tr>
     <td>${l.id||''}</td><td>${l.designation||''}</td><td style="text-align:center">${l.unite||''}</td>
     <td style="text-align:right">${fmtN(l.qteBD)}</td><td style="text-align:right">${fmtN(l.qtePrecedente)}</td>
     <td style="text-align:right;font-weight:bold;color:#E8730A">${fmtN(l.qteMois)}</td>
     <td style="text-align:right">${fmtN(l.cumul)}</td><td style="text-align:right">${fmtN(l.pu)}</td>
     <td style="text-align:right;font-weight:bold">${fmtN(l.qteMois*(l.pu||0)*(1+TVA))}</td>
     <td style="text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
-  </tr>`).join('');
+  </tr>`;}).join('');
   const allClients = (typeof state !== 'undefined' && state.clients) || [];
   const clientInfo = allClients.find(c => c.nom === p.client) || {};
   const clientICE = clientInfo.ice || '';
