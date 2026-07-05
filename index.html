@@ -2565,20 +2565,20 @@ function renderAttachementsSection(p, updateProject){
                   const isTitre = !l.unite; // lignes de titre/catégorie (sans unité) : pas de quantités/%
                   if(isTitre){
                     return `<tr style="background:${li%2===0?'#fff':'#f9f9f9'}">
-                    <td style="text-align:center;font-weight:700;padding:7px 6px;font-size:13px;">${l.id||''}</td>
-                    <td colspan="7" style="padding:7px 6px;font-size:13px;font-weight:700;background:#f0f0f0;">${l.designation||''}</td>
+                    <td style="text-align:center;font-weight:700;padding:3px 6px;font-size:10px;">${l.id||''}</td>
+                    <td colspan="7" style="padding:3px 6px;font-size:10px;font-weight:700;background:#f0f0f0;">${l.designation||''}</td>
                   </tr>`;
                   }
                   return `
                   <tr style="background:${li%2===0?'#fff':'#f9f9f9'}">
-                    <td style="text-align:center;font-weight:700;padding:7px 6px;font-size:13px;">${l.id||''}</td>
-                    <td style="padding:7px 6px;font-size:13px;">${l.designation||''}</td>
-                    <td style="text-align:center;padding:7px 6px;font-size:13px;">${l.unite||''}</td>
-                    <td style="text-align:center;padding:7px 6px;font-size:13px;">${l.qteBD||0}</td>
-                    <td style="text-align:center;padding:7px 6px;font-size:13px;">${l.qtePrecedente||0}</td>
-                    <td style="text-align:center;font-weight:700;padding:7px 6px;font-size:13px;">${l.qteMois||0}</td>
-                    <td style="text-align:center;font-weight:700;padding:7px 6px;font-size:13px;">${l.cumul||0}</td>
-                    <td style="text-align:center;padding:7px 6px;font-size:13px;">${l.pct||0}%</td>
+                    <td style="text-align:center;font-weight:700;padding:3px 6px;font-size:10px;">${l.id||''}</td>
+                    <td style="padding:3px 6px;font-size:10px;">${l.designation||''}</td>
+                    <td style="text-align:center;padding:3px 6px;font-size:10px;">${l.unite||''}</td>
+                    <td style="text-align:center;padding:3px 6px;font-size:10px;">${l.qteBD||0}</td>
+                    <td style="text-align:center;padding:3px 6px;font-size:10px;">${l.qtePrecedente||0}</td>
+                    <td style="text-align:center;font-weight:700;padding:3px 6px;font-size:10px;">${l.qteMois||0}</td>
+                    <td style="text-align:center;font-weight:700;padding:3px 6px;font-size:10px;">${l.cumul||0}</td>
+                    <td style="text-align:center;padding:3px 6px;font-size:10px;">${l.pct||0}%</td>
                   </tr>`;
                 }).join('');
 
@@ -2862,9 +2862,10 @@ function renderDecomptesSection(p, updateProject){
 function printDecompte(att, p){
   const TVA=0.20,RG=0.10;
   const lignes=att.lignes||[];
-  const totalHT=lignes.reduce((s,l)=>s+l.qteMois*(l.pu||0),0);
-  const tva=totalHT*TVA,ttc=totalHT+tva;
-  // RG = 10% du TTC
+  const cumHT=lignes.reduce((s,l)=>s+(l.cumul||0)*(l.pu||0),0);
+  // Le décompte est cumulatif : HT, TVA, TTC et RG sont calculés sur le cumul à date
+  const tva=cumHT*TVA,ttc=cumHT+tva;
+  // RG = 10% du TTC (cumulatif)
   const rg=ttc*RG;
   // A Déduire = somme des NET À PAYER des décomptes précédents
   // NET précédent = TTC précédent - RG précédent
@@ -2878,7 +2879,6 @@ function printDecompte(att, p){
   },0);
   // NET À PAYER = (TTC - RG) - A Déduire
   const n2=(ttc-rg)-aDeduire;
-  const cumHT=lignes.reduce((s,l)=>s+(l.cumul||0)*(l.pu||0),0);
   const s=getSettings();
   const logoHTML=s.logo?`<img src="${s.logo}" style="width:50px;height:50px;object-fit:contain;"/>`:
     `<div style="width:50px;height:50px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:10px;">SM</div>`;
@@ -2886,15 +2886,15 @@ function printDecompte(att, p){
     const isTitre = !l.unite; // lignes de titre/catégorie (sans unité) : pas de quantités/prix
     if(isTitre){
       return `<tr>
-    <td style="font-weight:bold">${l.id||''}</td><td colspan="8" style="font-weight:bold;background:#f0f0f0">${l.designation||''}</td>
+    <td style="padding:3px 6px;font-size:10px;font-weight:bold">${l.id||''}</td><td colspan="8" style="padding:3px 6px;font-size:10px;font-weight:bold;background:#f0f0f0">${l.designation||''}</td>
   </tr>`;
     }
     return `<tr>
-    <td>${l.id||''}</td><td>${l.designation||''}</td><td style="text-align:center">${l.unite||''}</td>
-    <td style="text-align:right">${fmtN(l.qteBD)}</td><td style="text-align:right">${fmtN(l.qtePrecedente)}</td>
-    <td style="text-align:right;font-weight:bold;color:#E8730A">${fmtN(l.qteMois)}</td>
-    <td style="text-align:right">${fmtN(l.cumul)}</td><td style="text-align:right">${fmtN(l.pu)}</td>
-    <td style="text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
+    <td style="padding:3px 6px;font-size:10px;">${l.id||''}</td><td style="padding:3px 6px;font-size:10px;">${l.designation||''}</td><td style="padding:3px 6px;font-size:10px;text-align:center">${l.unite||''}</td>
+    <td style="padding:3px 6px;font-size:10px;text-align:right">${fmtN(l.qteBD)}</td><td style="padding:3px 6px;font-size:10px;text-align:right">${fmtN(l.qtePrecedente)}</td>
+    <td style="padding:3px 6px;font-size:10px;text-align:right;font-weight:bold;color:#E8730A">${fmtN(l.qteMois)}</td>
+    <td style="padding:3px 6px;font-size:10px;text-align:right">${fmtN(l.cumul)}</td><td style="padding:3px 6px;font-size:10px;text-align:right">${fmtN(l.pu)}</td>
+    <td style="padding:3px 6px;font-size:10px;text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
   </tr>`;
   }).join('');
   const allClients = (typeof state !== 'undefined' && state.clients) || [];
