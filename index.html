@@ -2952,7 +2952,7 @@ function printDecompte(att, p){
   const TVA=0.20,RG=0.10;
   const lignes=att.lignes||[];
   const totalHT=lignes.reduce((s,l)=>s+l.qteMois*(l.pu||0),0);
-  const tva=totalHT*TVA,ttc=totalHT+tva;
+  const tva=cumHT*TVA,ttc=cumHT+tva;
   // RG = 10% du TTC
   const rg=ttc*RG;
   // A Déduire = somme des NET À PAYER des décomptes précédents
@@ -3063,7 +3063,7 @@ function printDecompte(att, p){
   <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;page-break-inside:avoid;">
     <tr>
       <td style="border:1px solid #999;padding:6px 12px;text-align:center;font-weight:700;">TOTAL EN DH HT</td>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:right;font-weight:700;">${fmtN(totalHT)}</td>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:right;font-weight:700;">${fmtN(cumHT)}</td>
     </tr>
     <tr>
       <td style="border:1px solid #999;padding:6px 12px;text-align:center;">TVA 20%</td>
