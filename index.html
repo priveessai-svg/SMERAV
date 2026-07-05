@@ -2595,7 +2595,7 @@ function renderAttachementsSection(p, updateProject){
                     </td>
                     <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
                       <span style="font-size:8px;color:#666;display:block">ORDRE DE SERVICE N°</span>
-                      <span style="font-weight:700">${p.osNum||'—'}</span>
+                      <span style="font-weight:700">${p.ordreService||'—'}</span>
                     </td>
                     <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
                       <span style="font-size:8px;color:#666;display:block">Date OS</span>
@@ -2628,17 +2628,17 @@ function renderAttachementsSection(p, updateProject){
                   </tr>
                 </table>
 
-                <table style="width:100%;border-collapse:collapse;font-size:9px;">
+                <table style="width:100%;border-collapse:collapse;font-size:9px;table-layout:fixed;">
                   <thead>
                     <tr style="background:#d0d0d0;">
-                      <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-size:13px;">N° Prix</th>
-                      <th style="border:1px solid #999;padding:8px 6px;text-align:center;font-size:13px;">DESIGNATION DES ARTICLES</th>
-                      <th style="border:1px solid #999;padding:8px 6px;width:40px;text-align:center;font-size:13px;">Uté</th>
-                      <th style="border:1px solid #999;padding:8px 6px;width:70px;text-align:center;font-size:13px;">Qté marché</th>
-                      <th style="border:1px solid #999;padding:8px 6px;width:80px;text-align:center;font-size:13px;">Qté précédente</th>
-                      <th style="border:1px solid #999;padding:8px 6px;width:70px;text-align:center;font-size:13px;">Qté du mois</th>
-                      <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-size:13px;">Cumul</th>
-                      <th style="border:1px solid #999;padding:8px 6px;width:45px;text-align:center;font-size:13px;">%</th>
+                      <th style="border:1px solid #999;padding:8px 4px;width:6%;text-align:center;font-size:12px;">N° Prix</th>
+                      <th style="border:1px solid #999;padding:8px 6px;width:46%;text-align:center;font-size:12px;">DESIGNATION DES ARTICLES</th>
+                      <th style="border:1px solid #999;padding:8px 4px;width:5%;text-align:center;font-size:12px;">Uté</th>
+                      <th style="border:1px solid #999;padding:8px 4px;width:9%;text-align:center;font-size:12px;">Qté marché</th>
+                      <th style="border:1px solid #999;padding:8px 4px;width:10%;text-align:center;font-size:12px;">Qté précédente</th>
+                      <th style="border:1px solid #999;padding:8px 4px;width:9%;text-align:center;font-size:12px;">Qté du mois</th>
+                      <th style="border:1px solid #999;padding:8px 4px;width:8%;text-align:center;font-size:12px;">Cumul</th>
+                      <th style="border:1px solid #999;padding:8px 4px;width:7%;text-align:center;font-size:12px;">%</th>
                     </tr>
                   </thead>
                   <tbody>
