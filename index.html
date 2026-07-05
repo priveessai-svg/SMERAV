@@ -87,6 +87,95 @@ tr:hover{background:#F8FAFD;}
 <body>
 <div id="app"></div>
 
+
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMERAV - Gestion Chantier</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0F1628">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SMERAV">
+<link rel="apple-touch-icon" href="https://via.placeholder.com/192x192/E8730A/ffffff?text=SM">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --navy:#0F1628; --navy2:#1A2540; --navy3:#1E3A6E; --navyBorder:#1E2D4A;
+  --orange:#E8730A; --orangeL:#F59B2B;
+  --blue:#2563EB; --bg:#F4F6FA; --white:#fff; --border:#E5E9F2;
+  --text:#1A2540; --muted:#6B7A99;
+  --green:#10B981; --red:#EF4444; --yellow:#F59E0B;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
+body{background:var(--bg);color:var(--text);}
+input,select,textarea{background:#F8FAFD;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;width:100%;color:var(--text);outline:none;font-family:inherit;}
+input:focus,select:focus,textarea:focus{border-color:var(--orange);}
+button{cursor:pointer;font-family:inherit;}
+table{border-collapse:collapse;width:100%;}
+th{text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:10px 14px;border-bottom:2px solid var(--border);}
+td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;}
+tr:hover{background:#F8FAFD;}
+.badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.btn{border:none;border-radius:9px;padding:9px 18px;font-weight:700;font-size:13px;}
+.btn-orange{background:var(--orange);color:#fff;}
+.btn-blue{background:var(--blue);color:#fff;}
+.btn-green{background:var(--green);color:#fff;}
+.btn-red{background:#FEE2E2;color:var(--red);}
+.btn-gray{background:#F4F6FA;color:var(--muted);}
+.card{background:var(--white);border-radius:14px;border:1px solid var(--border);overflow:hidden;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal{background:var(--white);border-radius:16px;padding:28px;max-width:700px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+.modal-wide{max-width:900px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.lbl{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;display:block;text-transform:uppercase;}
+.sidebar{width:240px;min-width:240px;background:var(--navy);display:flex;flex-direction:column;height:100vh;position:fixed;left:0;top:0;z-index:200;overflow-y:auto;}
+.main{margin-left:240px;min-height:100vh;display:flex;flex-direction:column;}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.content{padding:24px;flex:1;}
+.section{font-size:10px;color:#4A5568;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:12px 16px 4px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;color:#8AA0C0;cursor:pointer;border-radius:8px;margin:1px 8px;font-size:13px;font-weight:500;}
+.nav-item:hover,.nav-item.active{background:var(--navy2);color:#fff;}
+.nav-child{padding:7px 16px 7px 44px;color:#6A8099;cursor:pointer;font-size:12px;border-radius:6px;margin:1px 8px;}
+.nav-child:hover,.nav-child.active{background:#1A2540;color:var(--orangeL);}
+.stat-card{border-radius:12px;padding:16px 18px;}
+@media print {
+  .sidebar,.topbar,.no-print,.no-print *{display:none!important;}
+  .main{margin-left:0!important;}
+  .content{padding:0!important;}
+  thead{display:table-header-group!important;}
+  tr{page-break-inside:avoid;}
+  body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  @page{
+    size:A4;
+    margin:10mm 10mm 25mm 10mm;
+  }
+  .print-page{page-break-after:always;}
+  /* Cacher date/heure du navigateur */
+  @page { margin-top: 10mm; }
+  /* Footer personnalisé */
+  .print-footer{
+    display:block!important;
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    text-align:center;
+    font-size:8px;
+    color:#444;
+    border-top:1px solid #aaa;
+    padding:4px 10mm;
+    background:#fff;
+  }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
 <script>
 // ══════════════════════════════════════════
 // UTILS
