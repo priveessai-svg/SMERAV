@@ -2426,9 +2426,6 @@ function renderBordereauSection(p, updateProject){
                   const designation = String(row[1]||'').trim();
                   if(!designation) return;
                   const unite = String(row[2]||'').trim();
-                  const qteCheck = parseFloat(String(row[3]||'').replace(',','.'))||0;
-                  const puCheck = parseFloat(String(row[4]||'').replace(',','.'))||0;
-                  if(!id && !unite && !qteCheck && !puCheck) return;
                   const qte = parseFloat(String(row[3]).replace(',','.'))||0;
                   const pu = parseFloat(String(row[4]).replace(',','.'))||0;
                   newBd.push({id,designation,unite,qte,pu,total:qte*pu});
@@ -2650,12 +2647,8 @@ function renderAttachementsSection(p, updateProject){
               },{style:{padding:'4px 8px',fontSize:12}}),
               btn('🖨️','btn-blue',()=>{
                 const s = state.settings;
-                const rows = (a.lignes||[]).map((l,li)=>{
-                  const skipRow=!l.id&&!l.unite&&!parseFloat(l.pu);
-                  if(skipRow) return '';
-                  const isH=(!l.unite&&!parseFloat(l.pu)&&!parseFloat(l.qteBD))||(l.id&&l.id.toString().toLowerCase().includes('prix')&&!parseFloat(l.pu));
-                  if(isH) return `<tr style="background:#F0F4FF"><td style="font-weight:800;padding:7px 6px;font-size:13px;color:#2563EB">${l.id||''}</td><td colspan="7" style="padding:7px 6px;font-size:13px;font-weight:800;color:#1A2540">${l.designation||''}</td></tr>`;
-                  return `<tr style="background:${li%2===0?'#fff':'#f9f9f9'}">
+                const rows = (a.lignes||[]).map((l,li)=>`
+                  <tr style="background:${li%2===0?'#fff':'#f9f9f9'}">
                     <td style="text-align:center;font-weight:700;padding:7px 6px;font-size:13px;">${l.id||''}</td>
                     <td style="padding:7px 6px;font-size:13px;">${l.designation||''}</td>
                     <td style="text-align:center;padding:7px 6px;font-size:13px;">${l.unite||''}</td>
@@ -2664,7 +2657,7 @@ function renderAttachementsSection(p, updateProject){
                     <td style="text-align:center;font-weight:700;padding:7px 6px;font-size:13px;">${l.qteMois||0}</td>
                     <td style="text-align:center;font-weight:700;padding:7px 6px;font-size:13px;">${l.cumul||0}</td>
                     <td style="text-align:center;padding:7px 6px;font-size:13px;">${l.pct||0}%</td>
-                  </tr>`;}).join('');
+                  </tr>`).join('');
 
                 const html = `
                 <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:13px;">
@@ -2679,7 +2672,7 @@ function renderAttachementsSection(p, updateProject){
                     </td>
                     <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
                       <span style="font-size:8px;color:#666;display:block">ORDRE DE SERVICE N°</span>
-                      <span style="font-weight:700">${p.ordreService||'—'}</span>
+                      <span style="font-weight:700">${p.osNum||'—'}</span>
                     </td>
                     <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
                       <span style="font-size:8px;color:#666;display:block">Date OS</span>
@@ -2780,11 +2773,6 @@ function renderAttachementsSection(p, updateProject){
                             if(idx2>=0&&idx2<arr.length-1){arr[idx2+1].focus();arr[idx2+1].select();}
                           }
                         };
-                        const isH=(!l.unite&&!parseFloat(l.pu)&&!parseFloat(l.qteBD))||(l.id&&l.id.toString().toLowerCase().includes('prix')&&!parseFloat(l.pu));
-                        if(isH) return el('tr',{style:{background:'#F0F4FF'}},
-                          el('td',{style:{padding:'5px 8px',fontWeight:800,color:'#2563EB'}},l.id||''),
-                          el('td',{colSpan:7,style:{padding:'5px 8px',fontWeight:800,color:'#1A2540',fontSize:11}},l.designation||'')
-                        );
                         return el('tr',{style:{background:li%2===0?'#fff':'#F8FAFD'}},
                           el('td',{style:{padding:'5px 8px',fontWeight:700,color:'#2563EB',textAlign:'center'}},l.id||''),
                           el('td',{style:{padding:'5px 8px',fontSize:10}},l.designation||''),
@@ -2907,12 +2895,12 @@ function renderDecomptesSection(p, updateProject){
                   el('td',{style:{textAlign:'right',fontWeight:800,color:'#E8730A'}},fmtN(l.qteMois)),
                   el('td',{style:{textAlign:'right',fontWeight:700,color:'#2563EB'}},fmtN(l.cumul)),
                   el('td',{style:{textAlign:'right'}},fmtN(l.pu)),
-                  
+                  el('td',{style:{textAlign:'right',fontWeight:800,color:'#E8730A'}},fmtN(l.qteMois*(l.pu||0)*(1+TVA))),
                   el('td',{style:{textAlign:'right'}},fmtN((l.cumul||0)*(l.pu||0)))
                 ));
                 const detailEl = div({style:{overflowX:'auto'}},
                   el('table',{},
-                    el('thead',{},el('tr',{},...['N°','Désignation','Uté','Qté Marché','Qté Préc.','Qté Mois','Cumul','PU HT','Total HT Cumul'].map(h=>el('th',{style:{fontSize:9,padding:'6px'}},h)))),
+                    el('thead',{},el('tr',{},...['N°','Désignation','Uté','Qté Marché','Qté Préc.','Qté Mois','Cumul','PU HT','Total TTC Mois','Total HT Cumul'].map(h=>el('th',{style:{fontSize:9,padding:'6px'}},h)))),
                     el('tbody',{},...rows,
                       el('tr',{style:{background:'#FFF8F0',borderTop:'2px solid #E8730A30'}},
                         el('td',{colSpan:8,style:{padding:'8px',textAlign:'right',fontWeight:800}},'Totaux Mois / Cumul'),
@@ -2952,7 +2940,7 @@ function printDecompte(att, p){
   const TVA=0.20,RG=0.10;
   const lignes=att.lignes||[];
   const totalHT=lignes.reduce((s,l)=>s+l.qteMois*(l.pu||0),0);
-  const tva=cumHT*TVA,ttc=cumHT+tva;
+  const tva=totalHT*TVA,ttc=totalHT+tva;
   // RG = 10% du TTC
   const rg=ttc*RG;
   // A Déduire = somme des NET À PAYER des décomptes précédents
@@ -2971,18 +2959,14 @@ function printDecompte(att, p){
   const s=getSettings();
   const logoHTML=s.logo?`<img src="${s.logo}" style="width:50px;height:50px;object-fit:contain;"/>`:
     `<div style="width:50px;height:50px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:10px;">SM</div>`;
-  const rowsHTML=lignes.map(l=>{
-    const isH=!l.id?false:(!l.unite&&!parseFloat(l.pu)&&!parseFloat(l.qteBD))||(l.id.toString().toLowerCase().includes('prix')&&!parseFloat(l.pu));
-    if(!l.id&&!l.unite&&!parseFloat(l.pu)) return '';
-    if(isH) return `<tr style="background:#F0F4FF"><td style="font-weight:800;color:#2563EB">${l.id||''}</td><td colspan="9" style="font-weight:800;color:#1A2540">${l.designation||''}</td></tr>`;
-    return `<tr>
+  const rowsHTML=lignes.map(l=>`<tr>
     <td>${l.id||''}</td><td>${l.designation||''}</td><td style="text-align:center">${l.unite||''}</td>
     <td style="text-align:right">${fmtN(l.qteBD)}</td><td style="text-align:right">${fmtN(l.qtePrecedente)}</td>
     <td style="text-align:right;font-weight:bold;color:#E8730A">${fmtN(l.qteMois)}</td>
     <td style="text-align:right">${fmtN(l.cumul)}</td><td style="text-align:right">${fmtN(l.pu)}</td>
-
+    <td style="text-align:right;font-weight:bold">${fmtN(l.qteMois*(l.pu||0)*(1+TVA))}</td>
     <td style="text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
-  </tr>`;}).join('');
+  </tr>`).join('');
   const allClients = (typeof state !== 'undefined' && state.clients) || [];
   const clientInfo = allClients.find(c => c.nom === p.client) || {};
   const clientICE = clientInfo.ice || '';
@@ -3054,7 +3038,7 @@ function printDecompte(att, p){
         <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-weight:900;background:#E8730A;color:#fff;">Qté Mois</th>
         <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-weight:900;">Cumul</th>
         <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-weight:900;">PU HT</th>
-
+        <th style="border:1px solid #999;padding:8px 6px;width:80px;text-align:center;font-weight:900;">Total TTC Mois</th>
         <th style="border:1px solid #999;padding:8px 6px;width:80px;text-align:center;font-weight:900;">Total HT Cumul</th>
       </tr>
     </thead>
