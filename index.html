@@ -2907,12 +2907,12 @@ function renderDecomptesSection(p, updateProject){
                   el('td',{style:{textAlign:'right',fontWeight:800,color:'#E8730A'}},fmtN(l.qteMois)),
                   el('td',{style:{textAlign:'right',fontWeight:700,color:'#2563EB'}},fmtN(l.cumul)),
                   el('td',{style:{textAlign:'right'}},fmtN(l.pu)),
-                  el('td',{style:{textAlign:'right',fontWeight:800,color:'#E8730A'}},fmtN(l.qteMois*(l.pu||0)*(1+TVA))),
+                  
                   el('td',{style:{textAlign:'right'}},fmtN((l.cumul||0)*(l.pu||0)))
                 ));
                 const detailEl = div({style:{overflowX:'auto'}},
                   el('table',{},
-                    el('thead',{},el('tr',{},...['N°','Désignation','Uté','Qté Marché','Qté Préc.','Qté Mois','Cumul','PU HT','Total TTC Mois','Total HT Cumul'].map(h=>el('th',{style:{fontSize:9,padding:'6px'}},h)))),
+                    el('thead',{},el('tr',{},...['N°','Désignation','Uté','Qté Marché','Qté Préc.','Qté Mois','Cumul','PU HT','Total HT Cumul'].map(h=>el('th',{style:{fontSize:9,padding:'6px'}},h)))),
                     el('tbody',{},...rows,
                       el('tr',{style:{background:'#FFF8F0',borderTop:'2px solid #E8730A30'}},
                         el('td',{colSpan:8,style:{padding:'8px',textAlign:'right',fontWeight:800}},'Totaux Mois / Cumul'),
@@ -2980,7 +2980,7 @@ function printDecompte(att, p){
     <td style="text-align:right">${fmtN(l.qteBD)}</td><td style="text-align:right">${fmtN(l.qtePrecedente)}</td>
     <td style="text-align:right;font-weight:bold;color:#E8730A">${fmtN(l.qteMois)}</td>
     <td style="text-align:right">${fmtN(l.cumul)}</td><td style="text-align:right">${fmtN(l.pu)}</td>
-    <td style="text-align:right;font-weight:bold">${fmtN(l.qteMois*(l.pu||0)*(1+TVA))}</td>
+
     <td style="text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
   </tr>`;}).join('');
   const allClients = (typeof state !== 'undefined' && state.clients) || [];
@@ -3054,7 +3054,7 @@ function printDecompte(att, p){
         <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-weight:900;background:#E8730A;color:#fff;">Qté Mois</th>
         <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-weight:900;">Cumul</th>
         <th style="border:1px solid #999;padding:8px 6px;width:60px;text-align:center;font-weight:900;">PU HT</th>
-        <th style="border:1px solid #999;padding:8px 6px;width:80px;text-align:center;font-weight:900;">Total TTC Mois</th>
+
         <th style="border:1px solid #999;padding:8px 6px;width:80px;text-align:center;font-weight:900;">Total HT Cumul</th>
       </tr>
     </thead>
