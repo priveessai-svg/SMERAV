@@ -2154,10 +2154,15 @@ function renderFichesPaie(){
   const mois = renderFichesPaie._mois;
   const ouvriers = state.ouvriers||[];
 
+  function daysInMonth(m){ const [y,mm]=m.split('-').map(Number); return new Date(y,mm,0).getDate(); }
+  const nDays = daysInMonth(mois);
+  const dayNums = Array.from({length:nDays},(_,i)=>i+1);
+
   function getRec(o){
     const paie = o.paie||{};
-    return paie[mois] || {jours:0,primes:0,retenues:0,statut:'En attente',datePaiement:''};
+    return paie[mois] || {jours:{}, avance:0, statut:'En attente', datePaiement:''};
   }
+  function ttj(o){ const j=getRec(o).jours||{}; return Object.values(j).reduce((s,v)=>s+(+v||0),0); }
   function saveRec(oId, patch){
     const updated = ouvriers.map(o=>{
       if(o.id!==oId) return o;
@@ -2175,77 +2180,135 @@ function renderFichesPaie(){
   );
   const moisInput = Object.assign(el('input',{type:'month',value:mois}),{oninput:e=>{renderFichesPaie._mois=e.target.value;render();}});
 
+  // ---- Onglet Pointage : grille calendrier (1 case par jour) ----
   if(tab==='pointage'){
     return div({},
       div({style:{fontSize:18,fontWeight:800,marginBottom:14}},'Fiches de paie'),
       tabsBar,
       div({style:{display:'flex',alignItems:'center',gap:10,marginBottom:14}},el('label',{className:'lbl'},'Mois'),moisInput),
-      div({className:'card'},
-        el('table',{},
-          el('thead',{},el('tr',{},...['Employé','Qualification','Jours travaillés','Taux/Jour',''].map(h=>el('th',{},h)))),
-          el('tbody',{},...(ouvriers.length?ouvriers.map(o=>{
+      div({className:'card',style:{overflowX:'auto'}},
+        el('table',{style:{fontSize:11}},
+          el('thead',{},el('tr',{},
+            el('th',{style:{minWidth:30}},'N°'),
+            el('th',{style:{minWidth:140,textAlign:'left'}},'Nom & Prénom'),
+            el('th',{style:{minWidth:60}},'Fonction'),
+            ...dayNums.map(d=>el('th',{style:{padding:'4px 2px',minWidth:22}},String(d))),
+            el('th',{style:{minWidth:45,background:'#E8730A',color:'#fff'}},'TTJ')
+          )),
+          el('tbody',{},...(ouvriers.length?ouvriers.map((o,i)=>{
             const rec = getRec(o);
-            const jInput = el('input',{type:'number',value:rec.jours,style:{width:'70px'}});
             return el('tr',{},
-              el('td',{style:{fontWeight:700}},o.nom+' '+(o.prenom||'')),
-              el('td',{},span({className:'badge',style:{background:'#2563EB15',color:'#2563EB'}},o.specialite||'—')),
-              el('td',{},jInput),
-              el('td',{style:{color:'#6B7A99'}},fmt(o.tauxJour||0)),
-              el('td',{},btn('Enregistrer','btn-orange',()=>{saveRec(o.id,{jours:+jInput.value});notify('Pointage enregistré ✓');},{style:{padding:'4px 10px',fontSize:12}}))
+              el('td',{style:{textAlign:'center',color:'#6B7A99'}},i+1),
+              el('td',{style:{fontWeight:700,whiteSpace:'nowrap'}},o.nom+' '+(o.prenom||'')),
+              el('td',{style:{textAlign:'center'}},o.specialite||'—'),
+              ...dayNums.map(d=>{
+                const val = (rec.jours||{})[d]?1:0;
+                const cb = el('input',{type:'checkbox'});
+                cb.checked = val===1;
+                cb.onchange = e=>{
+                  const jours = {...(rec.jours||{})};
+                  jours[d] = e.target.checked?1:0;
+                  saveRec(o.id,{jours});
+                };
+                return el('td',{style:{textAlign:'center',padding:'2px'}},cb);
+              }),
+              el('td',{style:{fontWeight:900,color:'#E8730A',textAlign:'center',background:'#FFF7ED'}},ttj(o))
             );
-          }):[el('tr',{},el('td',{colSpan:5,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun employé — ajoutez des employés dans la section Employés'))]))
+          }):[el('tr',{},el('td',{colSpan:4+nDays,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun employé — ajoutez des employés dans la section Employés'))]))
         )
       )
     );
   }
 
+  // ---- Onglet Tableau de paiement ----
   if(tab==='tableau'){
     const rows = ouvriers.map(o=>{
       const rec = getRec(o);
-      const brut = (rec.jours||0)*(o.tauxJour||0);
-      const net = brut + (rec.primes||0) - (rec.retenues||0);
-      return {o,rec,brut,net};
+      const nj = ttj(o);
+      const pj = o.tauxJour||0;
+      const totalPJ = nj*pj;
+      const avance = rec.avance||0;
+      const reste = totalPJ - avance;
+      return {o,rec,nj,pj,totalPJ,avance,reste};
     });
-    const totalNet = rows.reduce((s,r)=>s+r.net,0);
+    const totalReste = rows.reduce((s,r)=>s+r.reste,0);
+
+    function printTableau(){
+      const [y,m] = mois.split('-');
+      const dernierJour = daysInMonth(mois);
+      const rowsHTML = rows.map(({o,nj,pj,totalPJ,avance,reste})=>`
+        <tr>
+          <td>${o.nom} ${o.prenom||''}</td>
+          <td style="text-align:center">${o.cin||'—'}</td>
+          <td style="text-align:center">${fmtN(pj)}</td>
+          <td style="text-align:center">${nj}</td>
+          <td style="text-align:right">${fmtN(totalPJ)}</td>
+          <td style="text-align:right">${fmtN(avance)}</td>
+          <td style="text-align:right;font-weight:700">${fmtN(reste)}</td>
+          <td></td>
+        </tr>`).join('');
+      const html = `
+        <div>
+          ${headerHTML()}
+          <h2 style="text-align:center;text-decoration:underline;margin:14px 0;">TABLEAU DE PAIEMENT</h2>
+          <div style="display:flex;justify-content:space-between;margin-bottom:14px;font-weight:700;">
+            <div>MOIS : ${m}/${y.slice(2)}</div>
+            <div>DU : 01/${m}/${y}</div>
+            <div>AU : ${dernierJour}/${m}/${y}</div>
+          </div>
+          <table>
+            <thead><tr>
+              <th>NOM ET PRÉNOM</th><th>N° CIN</th><th>P - J</th><th>N - J</th>
+              <th>TOTAL P/J</th><th>AVANCE</th><th>TOTAL REST</th><th>SIGNATURE</th>
+            </tr></thead>
+            <tbody>${rowsHTML}</tbody>
+          </table>
+          ${footerHTML()}
+        </div>`;
+      printDoc(html, 'Tableau de paiement - '+mois);
+    }
+
     return div({},
-      div({style:{fontSize:18,fontWeight:800,marginBottom:14}},'Fiches de paie'),
+      div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}},
+        div({style:{fontSize:18,fontWeight:800}},'Fiches de paie'),
+        btn('🖨 Imprimer le tableau','btn-orange',printTableau)
+      ),
       tabsBar,
       div({style:{display:'flex',alignItems:'center',gap:10,marginBottom:14}},el('label',{className:'lbl'},'Mois'),moisInput),
       div({className:'card'},
         el('table',{},
-          el('thead',{},el('tr',{},...['Employé','Jours','Brut','Primes','Retenues','Net','Statut',''].map(h=>el('th',{},h)))),
-          el('tbody',{},...(rows.length?rows.map(({o,rec,brut,net})=>{
-            const primesInput=el('input',{type:'number',value:rec.primes||0,style:{width:'70px'}});
-            primesInput.oninput=e=>saveRec(o.id,{primes:+e.target.value});
-            const retenuesInput=el('input',{type:'number',value:rec.retenues||0,style:{width:'70px'}});
-            retenuesInput.oninput=e=>saveRec(o.id,{retenues:+e.target.value});
+          el('thead',{},el('tr',{},...['Nom et Prénom','N° CIN','P - J','N - J','Total P/J','Avance','Total Rest',''].map(h=>el('th',{},h)))),
+          el('tbody',{},...(rows.length?rows.map(({o,nj,pj,totalPJ,avance,reste})=>{
+            const avanceInput=el('input',{type:'number',value:avance,style:{width:'80px'}});
+            avanceInput.oninput=e=>saveRec(o.id,{avance:+e.target.value});
             return el('tr',{},
               el('td',{style:{fontWeight:700}},o.nom+' '+(o.prenom||'')),
-              el('td',{},rec.jours||0),
-              el('td',{},fmt(brut)),
-              el('td',{},primesInput),
-              el('td',{},retenuesInput),
-              el('td',{style:{fontWeight:800,color:'#E8730A'}},fmt(net)),
-              el('td',{},span({className:'badge',style:{background:rec.statut==='Payé'?'#10B98120':'#FEE2E2',color:rec.statut==='Payé'?'#10B981':'#EF4444'}},rec.statut||'En attente')),
-              el('td',{},btn(rec.statut==='Payé'?'Marquer impayé':'Marquer payé','btn-gray',()=>saveRec(o.id,{statut:rec.statut==='Payé'?'En attente':'Payé',datePaiement:today()}),{style:{padding:'4px 8px',fontSize:11}}))
+              el('td',{style:{color:'#6B7A99'}},o.cin||'—'),
+              el('td',{style:{textAlign:'center'}},fmtN(pj)),
+              el('td',{style:{textAlign:'center',fontWeight:700}},nj),
+              el('td',{style:{textAlign:'right'}},fmtN(totalPJ)),
+              el('td',{},avanceInput),
+              el('td',{style:{fontWeight:800,color:'#E8730A',textAlign:'right'}},fmtN(reste)),
             );
-          }):[el('tr',{},el('td',{colSpan:8,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun employé'))]))
+          }):[el('tr',{},el('td',{colSpan:7,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun employé'))]))
         )
       ),
       div({className:'card',style:{marginTop:14,padding:'16px 20px',display:'flex',justifyContent:'space-between',alignItems:'center',background:'#E8730A',border:'none'}},
-        div({style:{fontWeight:800,color:'#fff'}},'TOTAL NET DU MOIS'),
-        div({style:{fontWeight:900,fontSize:18,color:'#fff'}},fmt(totalNet))
+        div({style:{fontWeight:800,color:'#fff'}},'TOTAL REST DU MOIS'),
+        div({style:{fontWeight:900,fontSize:18,color:'#fff'}},fmt(totalReste))
       )
     );
   }
 
-  // ---- tab === 'fiche' : fiche de paie individuelle ----
+  // ---- Onglet Fiche de paie individuelle ----
   if(renderFichesPaie._empId==null && ouvriers[0]) renderFichesPaie._empId = ouvriers[0].id;
   const empId = renderFichesPaie._empId;
   const o = ouvriers.find(x=>x.id===empId);
   const rec = o ? getRec(o) : null;
-  const brut = o ? (rec.jours||0)*(o.tauxJour||0) : 0;
-  const net = o ? brut + (rec.primes||0) - (rec.retenues||0) : 0;
+  const nj = o ? ttj(o) : 0;
+  const totalPJ = o ? nj*(o.tauxJour||0) : 0;
+  const avance = o ? (rec.avance||0) : 0;
+  const reste = totalPJ - avance;
 
   const empSelect = el('select',{});
   ouvriers.forEach(ov=>{const opt=el('option',{},ov.nom+' '+(ov.prenom||''));opt.value=ov.id;if(ov.id===empId)opt.selected=true;empSelect.appendChild(opt);});
@@ -2268,12 +2331,11 @@ function renderFichesPaie(){
         <table>
           <thead><tr><th>Désignation</th><th>Montant (MAD)</th></tr></thead>
           <tbody>
-            <tr><td>Jours travaillés</td><td style="text-align:right">${rec.jours||0}</td></tr>
-            <tr><td>Taux journalier</td><td style="text-align:right">${fmtN(o.tauxJour||0)}</td></tr>
-            <tr><td style="font-weight:700">Salaire brut</td><td style="text-align:right;font-weight:700">${fmtN(brut)}</td></tr>
-            <tr><td>Primes</td><td style="text-align:right">${fmtN(rec.primes||0)}</td></tr>
-            <tr><td>Retenues</td><td style="text-align:right">-${fmtN(rec.retenues||0)}</td></tr>
-            <tr><td style="font-weight:900;background:#f0f0f0">NET À PAYER</td><td style="text-align:right;font-weight:900;background:#f0f0f0">${fmtN(net)}</td></tr>
+            <tr><td>Jours travaillés (N-J)</td><td style="text-align:right">${nj}</td></tr>
+            <tr><td>Taux journalier (P-J)</td><td style="text-align:right">${fmtN(o.tauxJour||0)}</td></tr>
+            <tr><td style="font-weight:700">Total P/J</td><td style="text-align:right;font-weight:700">${fmtN(totalPJ)}</td></tr>
+            <tr><td>Avance</td><td style="text-align:right">-${fmtN(avance)}</td></tr>
+            <tr><td style="font-weight:900;background:#f0f0f0">TOTAL REST À PAYER</td><td style="text-align:right;font-weight:900;background:#f0f0f0">${fmtN(reste)}</td></tr>
           </tbody>
         </table>
         <div style="margin-top:50px;display:flex;justify-content:space-between;font-size:11px;">
@@ -2297,12 +2359,11 @@ function renderFichesPaie(){
       div({style:{color:'#6B7A99',marginBottom:14}},'N° CIN : '+(o.cin||'—')+'  ·  '+(o.specialite||'—')),
       el('table',{},
         el('tbody',{},
-          el('tr',{},el('td',{style:{fontWeight:700}},'Jours travaillés'),el('td',{style:{textAlign:'right'}},rec.jours||0)),
-          el('tr',{},el('td',{style:{fontWeight:700}},'Taux journalier'),el('td',{style:{textAlign:'right'}},fmt(o.tauxJour||0))),
-          el('tr',{},el('td',{style:{fontWeight:700}},'Salaire brut'),el('td',{style:{textAlign:'right',fontWeight:700}},fmt(brut))),
-          el('tr',{},el('td',{},'Primes'),el('td',{style:{textAlign:'right'}},fmt(rec.primes||0))),
-          el('tr',{},el('td',{},'Retenues'),el('td',{style:{textAlign:'right'}},'-'+fmt(rec.retenues||0))),
-          el('tr',{style:{background:'#FFF7ED'}},el('td',{style:{fontWeight:900}},'NET À PAYER'),el('td',{style:{textAlign:'right',fontWeight:900,color:'#E8730A'}},fmt(net))),
+          el('tr',{},el('td',{style:{fontWeight:700}},'Jours travaillés (N-J)'),el('td',{style:{textAlign:'right'}},nj)),
+          el('tr',{},el('td',{style:{fontWeight:700}},'Taux journalier (P-J)'),el('td',{style:{textAlign:'right'}},fmt(o.tauxJour||0))),
+          el('tr',{},el('td',{style:{fontWeight:700}},'Total P/J'),el('td',{style:{textAlign:'right',fontWeight:700}},fmt(totalPJ))),
+          el('tr',{},el('td',{},'Avance'),el('td',{style:{textAlign:'right'}},'-'+fmt(avance))),
+          el('tr',{style:{background:'#FFF7ED'}},el('td',{style:{fontWeight:900}},'TOTAL REST À PAYER'),el('td',{style:{textAlign:'right',fontWeight:900,color:'#E8730A'}},fmt(reste))),
         )
       )
     ) : div({className:'card',style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun employé — ajoutez des employés dans la section Employés.')
