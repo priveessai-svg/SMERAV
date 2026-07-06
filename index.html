@@ -1429,46 +1429,97 @@ function renderProjetInfoEdit(p, updateProject){
 
 function renderProjetCharges(p, updateProject){
   const charges = p.charges||[];
+  const CATS = [
+    {key:'Pièces', icon:'🔧'},
+    {key:'Transport', icon:'🚗'},
+    {key:'Gasoil', icon:'⛽'},
+    {key:"Main d'œuvre", icon:'👷'},
+    {key:'Outillage', icon:'🛠️'},
+    {key:'Autre', icon:'📦'},
+  ];
+  // Compatibilité avec les anciennes catégories déjà enregistrées
+  const oldMap = {'MO':"Main d'œuvre",'Matériaux':'Pièces','Matériel':'Outillage','Sous-traitance':'Autre'};
+  function normCat(c){
+    if(CATS.some(k=>k.key===c)) return c;
+    return oldMap[c] || 'Autre';
+  }
   const total = charges.reduce((s,c)=>s+c.montant,0);
-  const cats = ['MO','Matériaux','Matériel','Transport','Sous-traitance'];
+  if(!renderProjetCharges._sel) renderProjetCharges._sel = {};
+  const selCat = renderProjetCharges._sel[p.id] || null;
 
+  function openAddModal(presetCat){
+    let f={designation:'',montant:0,date:today(),categorie:presetCat||CATS[0].key};
+    const fEl=div({style:{display:'flex',flexDirection:'column',gap:12}},
+      div({className:'grid-2'},
+        div({style:{gridColumn:'1/-1'}},el('label',{className:'lbl'},'Désignation'),Object.assign(el('input',{value:''}),{oninput:e=>f.designation=e.target.value})),
+        div({},el('label',{className:'lbl'},'Montant (MAD)'),Object.assign(el('input',{type:'number',value:0}),{oninput:e=>f.montant=+e.target.value})),
+        div({},el('label',{className:'lbl'},'Date'),Object.assign(el('input',{type:'date',value:f.date}),{oninput:e=>f.date=e.target.value})),
+        div({},el('label',{className:'lbl'},'Catégorie'),(()=>{const s=el('select',{});CATS.forEach(c=>{const o=el('option',{},c.key);if(c.key===f.categorie)o.selected=true;s.appendChild(o);});s.oninput=e=>f.categorie=e.target.value;return s;})()),
+      ),
+      div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
+        btn('Annuler','btn-gray',()=>setState({modal:null})),
+        btn('Enregistrer','btn-orange',()=>{
+          if(!f.designation){alert('Désignation obligatoire');return;}
+          updateProject({charges:[...charges,{id:Date.now(),...f}]});
+          setState({modal:null});notify('Charge ajoutée ✓');
+        })
+      )
+    );
+    setState({modal:{title:'Nouvelle Charge',content:fEl}});
+  }
+
+  if(selCat){
+    // ---- Vue détail d'une catégorie ----
+    const list = charges.map((c,i)=>({...c,_i:i})).filter(c=>normCat(c.categorie)===selCat);
+    const catTotal = list.reduce((s,c)=>s+c.montant,0);
+    return div({},
+      div({style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16}},
+        div({},
+          btn('← Retour','btn-gray',()=>{renderProjetCharges._sel[p.id]=null;render();},{style:{marginBottom:10}}),
+          div({style:{fontSize:15,fontWeight:800,marginTop:8}},selCat),
+          div({style:{color:'#E8730A',fontWeight:700}},fmt(catTotal))
+        ),
+        btn('+ Ajouter','btn-orange',()=>openAddModal(selCat))
+      ),
+      div({className:'card'},
+        el('table',{},
+          el('thead',{},el('tr',{},...['Désignation','Montant','Date',''].map(h=>el('th',{},h)))),
+          el('tbody',{},...(list.length?list.map(c=>
+            el('tr',{},
+              el('td',{style:{fontWeight:600}},c.designation),
+              el('td',{style:{fontWeight:800,color:'#E8730A'}},fmt(c.montant)),
+              el('td',{},fmtDate(c.date)),
+              el('td',{},btn('✕','btn-red',()=>{updateProject({charges:charges.filter((_,idx)=>idx!==c._i)});},{style:{padding:'4px 8px',fontSize:12}}))
+            )
+          ):[el('tr',{},el('td',{colSpan:4,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune charge'))]))
+        )
+      )
+    );
+  }
+
+  // ---- Vue d'ensemble : cartes par catégorie ----
   return div({},
     div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}},
       div({},div({style:{fontSize:15,fontWeight:800}},'Charges'),div({style:{color:'#E8730A',fontWeight:700}},fmt(total))),
-      btn('+ Ajouter','btn-orange',()=>{
-        let f={designation:'',montant:0,date:today(),categorie:'MO'};
-        const fEl=div({style:{display:'flex',flexDirection:'column',gap:12}},
-          div({className:'grid-2'},
-            div({style:{gridColumn:'1/-1'}},el('label',{className:'lbl'},'Désignation'),Object.assign(el('input',{value:''}),{oninput:e=>f.designation=e.target.value})),
-            div({},el('label',{className:'lbl'},'Montant (MAD)'),Object.assign(el('input',{type:'number',value:0}),{oninput:e=>f.montant=+e.target.value})),
-            div({},el('label',{className:'lbl'},'Date'),Object.assign(el('input',{type:'date',value:f.date}),{oninput:e=>f.date=e.target.value})),
-            div({},el('label',{className:'lbl'},'Catégorie'),(()=>{const s=el('select',{});cats.forEach(c=>s.innerHTML+=`<option>${c}</option>`);s.oninput=e=>f.categorie=e.target.value;return s;})()),
+      btn('+ Ajouter','btn-orange',()=>openAddModal())
+    ),
+    div({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:14,marginBottom:14}},
+      ...CATS.map(cat=>{
+        const list = charges.filter(c=>normCat(c.categorie)===cat.key);
+        const sum = list.reduce((s,c)=>s+c.montant,0);
+        return div({className:'card',style:{cursor:'pointer',overflow:'hidden'},onclick:()=>{renderProjetCharges._sel[p.id]=cat.key;render();}},
+          div({style:{background:'var(--navy)',color:'#fff',padding:'14px 14px 10px'}},
+            div({style:{fontSize:22,marginBottom:4}},cat.icon),
+            div({style:{fontWeight:800,fontSize:14}},cat.key),
+            div({style:{color:'#9AAAC8',fontSize:11,marginTop:2}},list.length+' article(s)')
           ),
-          div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
-            btn('Annuler','btn-gray',()=>setState({modal:null})),
-            btn('Enregistrer','btn-orange',()=>{
-              if(!f.designation){alert('Désignation obligatoire');return;}
-              updateProject({charges:[...charges,{id:Date.now(),...f}]});
-              setState({modal:null});notify('Charge ajoutée ✓');
-            })
-          )
+          div({style:{padding:'10px 14px',fontWeight:800,color:'#E8730A'}},fmt(sum))
         );
-        setState({modal:{title:'Nouvelle Charge',content:fEl}});
       })
     ),
-    div({className:'card'},
-      el('table',{},
-        el('thead',{},el('tr',{},...['Désignation','Montant','Date','Catégorie',''].map(h=>el('th',{},h)))),
-        el('tbody',{},...(charges.length?charges.map((c,i)=>
-          el('tr',{},
-            el('td',{style:{fontWeight:600}},c.designation),
-            el('td',{style:{fontWeight:800,color:'#E8730A'}},fmt(c.montant)),
-            el('td',{},fmtDate(c.date)),
-            el('td',{},span({className:'badge',style:{background:'#2563EB15',color:'#2563EB'}},c.categorie)),
-            el('td',{},btn('✕','btn-red',()=>{updateProject({charges:charges.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}}))
-          )
-        ):[el('tr',{},el('td',{colSpan:5,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune charge'))]))
-      )
+    div({className:'card',style:{padding:'16px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}},
+      div({style:{fontWeight:800,fontSize:14}},'TOTAL'),
+      div({style:{fontWeight:900,fontSize:18,color:'#E8730A'}},fmt(total))
     )
   );
 }
