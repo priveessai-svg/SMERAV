@@ -1468,6 +1468,30 @@ function renderProjetCharges(p, updateProject){
     setState({modal:{title:'Nouvelle Charge',content:fEl}});
   }
 
+  function openEditModal(idx){
+    const orig = charges[idx];
+    let f={designation:orig.designation,montant:orig.montant,date:orig.date,categorie:orig.categorie};
+    const fEl=div({style:{display:'flex',flexDirection:'column',gap:12}},
+      div({className:'grid-2'},
+        div({style:{gridColumn:'1/-1'}},el('label',{className:'lbl'},'Désignation'),Object.assign(el('input',{value:orig.designation}),{oninput:e=>f.designation=e.target.value})),
+        div({},el('label',{className:'lbl'},'Montant (MAD)'),Object.assign(el('input',{type:'number',value:orig.montant}),{oninput:e=>f.montant=+e.target.value})),
+        div({},el('label',{className:'lbl'},'Date'),Object.assign(el('input',{type:'date',value:orig.date}),{oninput:e=>f.date=e.target.value})),
+        div({},el('label',{className:'lbl'},'Catégorie'),(()=>{const s=el('select',{});CATS.forEach(c=>{const o=el('option',{},c.key);if(c.key===normCat(f.categorie))o.selected=true;s.appendChild(o);});s.oninput=e=>f.categorie=e.target.value;return s;})()),
+      ),
+      div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
+        btn('Annuler','btn-gray',()=>setState({modal:null})),
+        btn('Enregistrer','btn-orange',()=>{
+          if(!f.designation){alert('Désignation obligatoire');return;}
+          const updated=charges.slice();
+          updated[idx]={...orig,...f};
+          updateProject({charges:updated});
+          setState({modal:null});notify('Charge modifiée ✓');
+        })
+      )
+    );
+    setState({modal:{title:'Modifier la Charge',content:fEl}});
+  }
+
   if(selCat){
     // ---- Vue détail d'une catégorie ----
     const list = charges.map((c,i)=>({...c,_i:i})).filter(c=>normCat(c.categorie)===selCat);
@@ -1489,7 +1513,10 @@ function renderProjetCharges(p, updateProject){
               el('td',{style:{fontWeight:600}},c.designation),
               el('td',{style:{fontWeight:800,color:'#E8730A'}},fmt(c.montant)),
               el('td',{},fmtDate(c.date)),
-              el('td',{},btn('✕','btn-red',()=>{updateProject({charges:charges.filter((_,idx)=>idx!==c._i)});},{style:{padding:'4px 8px',fontSize:12}}))
+              el('td',{style:{display:'flex',gap:6}},
+                btn('✏️','btn-gray',()=>openEditModal(c._i),{style:{padding:'4px 8px',fontSize:12}}),
+                btn('✕','btn-red',()=>{updateProject({charges:charges.filter((_,idx)=>idx!==c._i)});},{style:{padding:'4px 8px',fontSize:12}})
+              )
             )
           ):[el('tr',{},el('td',{colSpan:4,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune charge'))]))
         )
@@ -1517,9 +1544,9 @@ function renderProjetCharges(p, updateProject){
         );
       })
     ),
-    div({className:'card',style:{padding:'16px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}},
-      div({style:{fontWeight:800,fontSize:14}},'TOTAL'),
-      div({style:{fontWeight:900,fontSize:18,color:'#E8730A'}},fmt(total))
+    div({className:'card',style:{padding:'16px 20px',display:'flex',justifyContent:'space-between',alignItems:'center',background:'#E8730A',border:'none'}},
+      div({style:{fontWeight:800,fontSize:14,color:'#fff'}},'TOTAL'),
+      div({style:{fontWeight:900,fontSize:18,color:'#fff'}},fmt(total))
     )
   );
 }
