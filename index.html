@@ -1138,6 +1138,7 @@ function renderContent(){
     case 'factures-achat': return renderFacturesAchat();
     case 'paiements-fourn': return renderPaiementsFourn();
     case 'ouvriers': return renderOuvriers();
+    case 'employes': return renderOuvriers();
     case 'specialites': return renderSpecialites();
     case 'materiaux': return renderMateriaux();
     case 'cheques': return renderCheques();
@@ -2107,31 +2108,31 @@ function renderOuvriers(){
   const ouvriers=state.ouvriers||[];
   return div({},
     div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}},
-      div({style:{fontSize:18,fontWeight:800}},'Ouvriers'),
+      div({style:{fontSize:18,fontWeight:800}},'Employés'),
       btn('+ Ajouter','btn-orange',()=>{
         let f={nom:'',prenom:'',cin:'',tel:'',specialite:'',tauxJour:0,dateEntree:today(),statut:'Actif'};
         const fEl=div({style:{display:'flex',flexDirection:'column',gap:12}},
           div({className:'grid-2'},
             div({},el('label',{className:'lbl'},'Nom *'),Object.assign(el('input',{value:''}),{oninput:e=>f.nom=e.target.value})),
             div({},el('label',{className:'lbl'},'Prénom'),Object.assign(el('input',{value:''}),{oninput:e=>f.prenom=e.target.value})),
-            div({},el('label',{className:'lbl'},'CIN'),Object.assign(el('input',{value:''}),{oninput:e=>f.cin=e.target.value})),
+            div({},el('label',{className:'lbl'},'N° CIN'),Object.assign(el('input',{value:''}),{oninput:e=>f.cin=e.target.value})),
             div({},el('label',{className:'lbl'},'Téléphone'),Object.assign(el('input',{value:''}),{oninput:e=>f.tel=e.target.value})),
-            div({},el('label',{className:'lbl'},'Spécialité'),(()=>{const s=el('select',{});s.innerHTML='<option value="">--</option>';(state.specialites||[]).forEach(sp=>s.innerHTML+=`<option>${sp}</option>`);s.oninput=e=>f.specialite=e.target.value;return s;})()),
+            div({},el('label',{className:'lbl'},'Qualification'),Object.assign(el('input',{value:''}),{oninput:e=>f.specialite=e.target.value})),
             div({},el('label',{className:'lbl'},'Taux journalier (MAD)'),Object.assign(el('input',{type:'number',value:0}),{oninput:e=>f.tauxJour=+e.target.value})),
             div({},el('label',{className:'lbl'},"Date d'entrée"),Object.assign(el('input',{type:'date',value:f.dateEntree}),{oninput:e=>f.dateEntree=e.target.value})),
             div({},el('label',{className:'lbl'},'Statut'),(()=>{const s=el('select',{});['Actif','Inactif'].forEach(x=>s.innerHTML+=`<option>${x}</option>`);s.oninput=e=>f.statut=e.target.value;return s;})()),
           ),
           div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
             btn('Annuler','btn-gray',()=>setState({modal:null})),
-            btn('Enregistrer','btn-orange',()=>{if(!f.nom){alert('Nom obligatoire');return;}setState({ouvriers:[...state.ouvriers,{id:Date.now(),...f}],modal:null});notify('Ouvrier ajouté ✓');})
+            btn('Enregistrer','btn-orange',()=>{if(!f.nom){alert('Nom obligatoire');return;}setState({ouvriers:[...state.ouvriers,{id:Date.now(),...f}],modal:null});notify('Employé ajouté ✓');})
           )
         );
-        setState({modal:{title:'Nouvel Ouvrier',content:fEl}});
+        setState({modal:{title:'Nouvel Employé',content:fEl}});
       })
     ),
     div({className:'card'},
       el('table',{},
-        el('thead',{},el('tr',{},...['Nom','Prénom','CIN','Téléphone','Spécialité','Taux/Jour','Statut',''].map(h=>el('th',{},h)))),
+        el('thead',{},el('tr',{},...['Nom','Prénom','N° CIN','Téléphone','Qualification','Taux/Jour','Statut',''].map(h=>el('th',{},h)))),
         el('tbody',{},...(ouvriers.length?ouvriers.map((o,i)=>el('tr',{},
           el('td',{style:{fontWeight:700}},o.nom),el('td',{},o.prenom||'—'),el('td',{style:{color:'#6B7A99'}},o.cin||'—'),
           el('td',{},o.tel||'—'),
@@ -2139,7 +2140,7 @@ function renderOuvriers(){
           el('td',{style:{fontWeight:700,color:'#E8730A'}},fmtN(o.tauxJour)+' MAD'),
           el('td',{},span({className:'badge',style:{background:o.statut==='Actif'?'#10B98120':'#FEE2E2',color:o.statut==='Actif'?'#10B981':'#EF4444'}},o.statut)),
           el('td',{},btn('✕','btn-red',()=>{if(confirmDelete())setState({ouvriers:state.ouvriers.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}}))
-        )):[el('tr',{},el('td',{colSpan:8,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun ouvrier'))]))
+        )):[el('tr',{},el('td',{colSpan:8,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun employé'))]))
       )
     )
   );
