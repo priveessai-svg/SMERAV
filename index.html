@@ -1139,6 +1139,7 @@ function renderContent(){
     case 'paiements-fourn': return renderPaiementsFourn();
     case 'ouvriers': return renderOuvriers();
     case 'employes': return renderOuvriers();
+    case 'paie': return renderFichesPaie();
     case 'specialites': return renderSpecialites();
     case 'materiaux': return renderMateriaux();
     case 'cheques': return renderCheques();
@@ -2143,6 +2144,168 @@ function renderOuvriers(){
         )):[el('tr',{},el('td',{colSpan:8,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun employé'))]))
       )
     )
+  );
+}
+
+function renderFichesPaie(){
+  if(!renderFichesPaie._tab) renderFichesPaie._tab='pointage';
+  if(!renderFichesPaie._mois) renderFichesPaie._mois = today().slice(0,7);
+  const tab = renderFichesPaie._tab;
+  const mois = renderFichesPaie._mois;
+  const ouvriers = state.ouvriers||[];
+
+  function getRec(o){
+    const paie = o.paie||{};
+    return paie[mois] || {jours:0,primes:0,retenues:0,statut:'En attente',datePaiement:''};
+  }
+  function saveRec(oId, patch){
+    const updated = ouvriers.map(o=>{
+      if(o.id!==oId) return o;
+      const paie = {...(o.paie||{})};
+      paie[mois] = {...getRec(o), ...patch};
+      return {...o, paie};
+    });
+    setState({ouvriers:updated});
+  }
+
+  const tabsBar = div({style:{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}},
+    btn('🕐 Pointage','btn-'+(tab==='pointage'?'orange':'gray'),()=>{renderFichesPaie._tab='pointage';render();}),
+    btn('💵 Tableau de paiement','btn-'+(tab==='tableau'?'orange':'gray'),()=>{renderFichesPaie._tab='tableau';render();}),
+    btn('📄 Fiche de paie','btn-'+(tab==='fiche'?'orange':'gray'),()=>{renderFichesPaie._tab='fiche';render();}),
+  );
+  const moisInput = Object.assign(el('input',{type:'month',value:mois}),{oninput:e=>{renderFichesPaie._mois=e.target.value;render();}});
+
+  if(tab==='pointage'){
+    return div({},
+      div({style:{fontSize:18,fontWeight:800,marginBottom:14}},'Fiches de paie'),
+      tabsBar,
+      div({style:{display:'flex',alignItems:'center',gap:10,marginBottom:14}},el('label',{className:'lbl'},'Mois'),moisInput),
+      div({className:'card'},
+        el('table',{},
+          el('thead',{},el('tr',{},...['Employé','Qualification','Jours travaillés','Taux/Jour',''].map(h=>el('th',{},h)))),
+          el('tbody',{},...(ouvriers.length?ouvriers.map(o=>{
+            const rec = getRec(o);
+            const jInput = el('input',{type:'number',value:rec.jours,style:{width:'70px'}});
+            return el('tr',{},
+              el('td',{style:{fontWeight:700}},o.nom+' '+(o.prenom||'')),
+              el('td',{},span({className:'badge',style:{background:'#2563EB15',color:'#2563EB'}},o.specialite||'—')),
+              el('td',{},jInput),
+              el('td',{style:{color:'#6B7A99'}},fmt(o.tauxJour||0)),
+              el('td',{},btn('Enregistrer','btn-orange',()=>{saveRec(o.id,{jours:+jInput.value});notify('Pointage enregistré ✓');},{style:{padding:'4px 10px',fontSize:12}}))
+            );
+          }):[el('tr',{},el('td',{colSpan:5,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun employé — ajoutez des employés dans la section Employés'))]))
+        )
+      )
+    );
+  }
+
+  if(tab==='tableau'){
+    const rows = ouvriers.map(o=>{
+      const rec = getRec(o);
+      const brut = (rec.jours||0)*(o.tauxJour||0);
+      const net = brut + (rec.primes||0) - (rec.retenues||0);
+      return {o,rec,brut,net};
+    });
+    const totalNet = rows.reduce((s,r)=>s+r.net,0);
+    return div({},
+      div({style:{fontSize:18,fontWeight:800,marginBottom:14}},'Fiches de paie'),
+      tabsBar,
+      div({style:{display:'flex',alignItems:'center',gap:10,marginBottom:14}},el('label',{className:'lbl'},'Mois'),moisInput),
+      div({className:'card'},
+        el('table',{},
+          el('thead',{},el('tr',{},...['Employé','Jours','Brut','Primes','Retenues','Net','Statut',''].map(h=>el('th',{},h)))),
+          el('tbody',{},...(rows.length?rows.map(({o,rec,brut,net})=>{
+            const primesInput=el('input',{type:'number',value:rec.primes||0,style:{width:'70px'}});
+            primesInput.oninput=e=>saveRec(o.id,{primes:+e.target.value});
+            const retenuesInput=el('input',{type:'number',value:rec.retenues||0,style:{width:'70px'}});
+            retenuesInput.oninput=e=>saveRec(o.id,{retenues:+e.target.value});
+            return el('tr',{},
+              el('td',{style:{fontWeight:700}},o.nom+' '+(o.prenom||'')),
+              el('td',{},rec.jours||0),
+              el('td',{},fmt(brut)),
+              el('td',{},primesInput),
+              el('td',{},retenuesInput),
+              el('td',{style:{fontWeight:800,color:'#E8730A'}},fmt(net)),
+              el('td',{},span({className:'badge',style:{background:rec.statut==='Payé'?'#10B98120':'#FEE2E2',color:rec.statut==='Payé'?'#10B981':'#EF4444'}},rec.statut||'En attente')),
+              el('td',{},btn(rec.statut==='Payé'?'Marquer impayé':'Marquer payé','btn-gray',()=>saveRec(o.id,{statut:rec.statut==='Payé'?'En attente':'Payé',datePaiement:today()}),{style:{padding:'4px 8px',fontSize:11}}))
+            );
+          }):[el('tr',{},el('td',{colSpan:8,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun employé'))]))
+        )
+      ),
+      div({className:'card',style:{marginTop:14,padding:'16px 20px',display:'flex',justifyContent:'space-between',alignItems:'center',background:'#E8730A',border:'none'}},
+        div({style:{fontWeight:800,color:'#fff'}},'TOTAL NET DU MOIS'),
+        div({style:{fontWeight:900,fontSize:18,color:'#fff'}},fmt(totalNet))
+      )
+    );
+  }
+
+  // ---- tab === 'fiche' : fiche de paie individuelle ----
+  if(renderFichesPaie._empId==null && ouvriers[0]) renderFichesPaie._empId = ouvriers[0].id;
+  const empId = renderFichesPaie._empId;
+  const o = ouvriers.find(x=>x.id===empId);
+  const rec = o ? getRec(o) : null;
+  const brut = o ? (rec.jours||0)*(o.tauxJour||0) : 0;
+  const net = o ? brut + (rec.primes||0) - (rec.retenues||0) : 0;
+
+  const empSelect = el('select',{});
+  ouvriers.forEach(ov=>{const opt=el('option',{},ov.nom+' '+(ov.prenom||''));opt.value=ov.id;if(ov.id===empId)opt.selected=true;empSelect.appendChild(opt);});
+  empSelect.oninput=e=>{renderFichesPaie._empId=+e.target.value;render();};
+
+  function printFiche(){
+    if(!o) return;
+    const html = `
+      <div style="max-width:700px;margin:0 auto;">
+        ${headerHTML()}
+        <h2 style="text-align:center;margin:14px 0;">FICHE DE PAIE — ${mois}</h2>
+        <table style="margin-bottom:14px;">
+          <tbody>
+            <tr><td style="font-weight:700;width:40%;">Employé</td><td>${o.nom} ${o.prenom||''}</td></tr>
+            <tr><td style="font-weight:700;">N° CIN</td><td>${o.cin||'—'}</td></tr>
+            <tr><td style="font-weight:700;">Qualification</td><td>${o.specialite||'—'}</td></tr>
+            <tr><td style="font-weight:700;">Mois</td><td>${mois}</td></tr>
+          </tbody>
+        </table>
+        <table>
+          <thead><tr><th>Désignation</th><th>Montant (MAD)</th></tr></thead>
+          <tbody>
+            <tr><td>Jours travaillés</td><td style="text-align:right">${rec.jours||0}</td></tr>
+            <tr><td>Taux journalier</td><td style="text-align:right">${fmtN(o.tauxJour||0)}</td></tr>
+            <tr><td style="font-weight:700">Salaire brut</td><td style="text-align:right;font-weight:700">${fmtN(brut)}</td></tr>
+            <tr><td>Primes</td><td style="text-align:right">${fmtN(rec.primes||0)}</td></tr>
+            <tr><td>Retenues</td><td style="text-align:right">-${fmtN(rec.retenues||0)}</td></tr>
+            <tr><td style="font-weight:900;background:#f0f0f0">NET À PAYER</td><td style="text-align:right;font-weight:900;background:#f0f0f0">${fmtN(net)}</td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top:50px;display:flex;justify-content:space-between;font-size:11px;">
+          <div>Signature Employeur</div><div>Signature Employé</div>
+        </div>
+        ${footerHTML()}
+      </div>`;
+    printDoc(html, 'Fiche de paie - '+o.nom+' - '+mois);
+  }
+
+  return div({},
+    div({style:{fontSize:18,fontWeight:800,marginBottom:14}},'Fiches de paie'),
+    tabsBar,
+    div({style:{display:'flex',gap:14,alignItems:'flex-end',marginBottom:14,flexWrap:'wrap'}},
+      div({},el('label',{className:'lbl'},'Employé'),empSelect),
+      div({},el('label',{className:'lbl'},'Mois'),moisInput),
+      o?btn('🖨 Imprimer la fiche','btn-orange',printFiche):null
+    ),
+    o? div({className:'card',style:{padding:20,maxWidth:600}},
+      div({style:{fontWeight:800,fontSize:16,marginBottom:10}},o.nom+' '+(o.prenom||'')),
+      div({style:{color:'#6B7A99',marginBottom:14}},'N° CIN : '+(o.cin||'—')+'  ·  '+(o.specialite||'—')),
+      el('table',{},
+        el('tbody',{},
+          el('tr',{},el('td',{style:{fontWeight:700}},'Jours travaillés'),el('td',{style:{textAlign:'right'}},rec.jours||0)),
+          el('tr',{},el('td',{style:{fontWeight:700}},'Taux journalier'),el('td',{style:{textAlign:'right'}},fmt(o.tauxJour||0))),
+          el('tr',{},el('td',{style:{fontWeight:700}},'Salaire brut'),el('td',{style:{textAlign:'right',fontWeight:700}},fmt(brut))),
+          el('tr',{},el('td',{},'Primes'),el('td',{style:{textAlign:'right'}},fmt(rec.primes||0))),
+          el('tr',{},el('td',{},'Retenues'),el('td',{style:{textAlign:'right'}},'-'+fmt(rec.retenues||0))),
+          el('tr',{style:{background:'#FFF7ED'}},el('td',{style:{fontWeight:900}},'NET À PAYER'),el('td',{style:{textAlign:'right',fontWeight:900,color:'#E8730A'}},fmt(net))),
+        )
+      )
+    ) : div({className:'card',style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun employé — ajoutez des employés dans la section Employés.')
   );
 }
 
