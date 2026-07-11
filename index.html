@@ -12,6 +12,7 @@
 <link rel="apple-touch-icon" href="https://via.placeholder.com/192x192/E8730A/ffffff?text=SM">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root {
   --navy:#0F1628; --navy2:#1A2540; --navy3:#1E3A6E; --navyBorder:#1E2D4A;
@@ -96,9 +97,17 @@ const C = {
   yellow:"#F59E0B", navy:"#0F1628", muted:"#6B7A99", border:"#E5E9F2"
 };
 
-function fmt(n){ return Number(n||0).toLocaleString('fr-MA',{minimumFractionDigits:2})+' MAD'; }
-function fmtN(n){ return Number(n||0).toLocaleString('fr-MA'); }
-function fmtQte(n){ return Number(n||0).toLocaleString('fr-MA',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtGrouped(n){
+  n = Number(n||0);
+  const neg = n<0; n = Math.abs(n);
+  const fixed = n.toFixed(2);
+  const parts = fixed.split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+  return (neg?'-':'') + parts[0] + ',' + parts[1];
+}
+function fmt(n){ return fmtGrouped(n)+' MAD'; }
+function fmtN(n){ return fmtGrouped(n); }
+function fmtQte(n){ return fmtGrouped(n); }
 function fmtDate(d){ if(!d) return '—'; const p=d.split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:d; }
 function today(){ return new Date().toISOString().split('T')[0]; }
 function numToWords(n){
@@ -1247,7 +1256,7 @@ function renderFicheProjet(){
   const tabs = [
     ['info','📋 Infos'],['bordereau','📊 Bordereau'],
     ['attachements','📎 Attachements'],['decomptes','💰 Décomptes'],
-    ['rapport','📄 Rapport'],['charges','💳 Charges'],
+    ['rapport','📄 Rapport'],['charges','💳 Charges'],['documents','📁 Documents'],
   ];
   const sec = state.ficheSection||'info';
 
@@ -1302,6 +1311,7 @@ function renderFicheProjet(){
     sec==='decomptes' ? renderDecomptesSection(p, updateProject) :
     sec==='rapport' ? renderRapportSection(p, updateProject) :
     sec==='charges' ? renderProjetCharges(p, updateProject) :
+    sec==='documents' ? renderProjetDocuments(p, updateProject) :
     renderComingSoon(sec)
   );
 }
@@ -1550,6 +1560,99 @@ function renderProjetCharges(p, updateProject){
     div({className:'card',style:{padding:'16px 20px',display:'flex',justifyContent:'space-between',alignItems:'center',background:'#E8730A',border:'none'}},
       div({style:{fontWeight:800,fontSize:14,color:'#fff'}},'TOTAL'),
       div({style:{fontWeight:900,fontSize:18,color:'#fff'}},fmt(total))
+    )
+  );
+}
+
+function renderProjetDocuments(p, updateProject){
+  const docs = p.documents||[];
+
+  function buildPdfFromImage(imgData, onReady){
+    const img = new Image();
+    img.onload = ()=>{
+      const { jsPDF } = window.jspdf;
+      const pageW=210, pageH=297; // A4 en mm
+      const ratio = Math.min((pageW-20)/img.width, (pageH-20)/img.height);
+      const w = img.width*ratio, h = img.height*ratio;
+      const x = (pageW-w)/2, y = (pageH-h)/2;
+      const docPdf = new jsPDF({unit:'mm',format:'a4'});
+      docPdf.addImage(imgData, 'JPEG', x, y, w, h);
+      onReady(docPdf.output('datauristring'));
+    };
+    img.src = imgData;
+  }
+
+  function handleFile(file){
+    const isPdf = file.type==='application/pdf';
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const fileData = e.target.result;
+      let nomVal = '';
+      const nameInput = el('input',{type:'text',placeholder:"ex: Facture fournisseur"});
+      nameInput.oninput = ev=>nomVal=ev.target.value;
+      const fEl = div({style:{display:'flex',flexDirection:'column',gap:12}},
+        div({},el('label',{className:'lbl'},'Nom du document'),nameInput),
+        div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
+          btn('Annuler','btn-gray',()=>setState({modal:null})),
+          btn('Enregistrer','btn-orange',()=>{
+            if(!nomVal.trim()){alert('Nom obligatoire');return;}
+            if(isPdf){
+              const newDoc = {id:Date.now(), nom:nomVal.trim(), dataUrl:fileData, date:today()};
+              updateProject({documents:[...docs,newDoc]});
+              setState({modal:null});
+              notify('Document enregistré ✓');
+            } else {
+              buildPdfFromImage(fileData,(dataUrl)=>{
+                const newDoc = {id:Date.now(), nom:nomVal.trim(), dataUrl, date:today()};
+                updateProject({documents:[...docs,newDoc]});
+                setState({modal:null});
+                notify('Document enregistré ✓');
+              });
+            }
+          })
+        )
+      );
+      setState({modal:{title:'Nom du document',content:fEl}});
+    };
+    reader.readAsDataURL(file);
+  }
+
+  const fileInput = el('input',{type:'file',accept:'image/*,application/pdf',style:{display:'none'}});
+  fileInput.onchange = e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); e.target.value=''; };
+
+  function openDoc(d){
+    const w = window.open('');
+    if(w) w.document.write('<iframe src="'+d.dataUrl+'" style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;"></iframe>');
+  }
+  function downloadDoc(d){
+    const a = document.createElement('a');
+    a.href = d.dataUrl; a.download = d.nom+'.pdf';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+
+  return div({},
+    fileInput,
+    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}},
+      div({},div({style:{fontSize:15,fontWeight:800}},'Documents'),div({style:{color:'#6B7A99',fontSize:12}},docs.length+' document(s)')),
+      btn('📷 Scanner un document','btn-orange',()=>fileInput.click())
+    ),
+    div({className:'card'},
+      docs.length ? div({},...docs.slice().reverse().map(d=>
+        div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid #E5E9F2'}},
+          div({style:{display:'flex',alignItems:'center',gap:10}},
+            span({style:{fontSize:22}},'📄'),
+            div({},
+              div({style:{fontWeight:700}},d.nom),
+              div({style:{fontSize:11,color:'#6B7A99'}},fmtDate(d.date))
+            )
+          ),
+          div({style:{display:'flex',gap:6}},
+            btn('👁 Ouvrir','btn-gray',()=>openDoc(d),{style:{padding:'4px 10px',fontSize:12}}),
+            btn('⬇️','btn-gray',()=>downloadDoc(d),{style:{padding:'4px 8px',fontSize:12}}),
+            btn('✕','btn-red',()=>{if(confirmDelete())updateProject({documents:docs.filter(x=>x.id!==d.id)});},{style:{padding:'4px 8px',fontSize:12}})
+          )
+        )
+      )) : div({style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun document — cliquez sur "📷 Scanner un document" pour ajouter votre premier fichier')
     )
   );
 }
@@ -2759,7 +2862,7 @@ function renderAttachementsSection(p, updateProject){
           const cEl = document.getElementById('cumul-'+i);
           const pEl = document.getElementById('pct-'+i);
           if(cEl) cEl.textContent = fmtQte(lignes[i].cumul);
-          if(pEl) pEl.textContent = lignes[i].pct+'%';
+          if(pEl) pEl.textContent = fmtGrouped(lignes[i].pct)+'%';
         }
 
         function renderLignes(){
@@ -2793,7 +2896,7 @@ function renderAttachementsSection(p, updateProject){
   return inp;
 })()),
               el('td',{id:'cumul-'+i,style:{padding:'6px 8px',textAlign:'right',fontWeight:700,color:'#2563EB'}},fmtQte(l.cumul)),
-              el('td',{id:'pct-'+i,style:{padding:'6px 8px',textAlign:'right'}},span({style:{background:l.pct>=100?'#10B98120':l.pct>0?'#2563EB15':'#F4F6FA',color:l.pct>=100?'#10B981':l.pct>0?'#2563EB':'#6B7A99',padding:'2px 7px',borderRadius:20,fontSize:10,fontWeight:700}},l.pct+'%'))
+              el('td',{id:'pct-'+i,style:{padding:'6px 8px',textAlign:'right'}},span({style:{background:l.pct>=100?'#10B98120':l.pct>0?'#2563EB15':'#F4F6FA',color:l.pct>=100?'#10B981':l.pct>0?'#2563EB':'#6B7A99',padding:'2px 7px',borderRadius:20,fontSize:10,fontWeight:700}},fmtGrouped(l.pct)+'%'))
             )))
           ));
         }
@@ -2852,7 +2955,7 @@ function renderAttachementsSection(p, updateProject){
                         el('td',{style:{textAlign:'right',color:'#6B7A99'}},fmtQte(l.qtePrecedente)),
                         el('td',{style:{textAlign:'right',fontWeight:800,color:l.qteMois>0?'#E8730A':'#6B7A99'}},fmtQte(l.qteMois)),
                         el('td',{style:{textAlign:'right',fontWeight:700,color:'#2563EB'}},fmtQte(l.cumul)),
-                        el('td',{style:{textAlign:'right'}},span({style:{background:l.pct>=100?'#10B98120':'#2563EB15',color:l.pct>=100?'#10B981':'#2563EB',padding:'2px 7px',borderRadius:20,fontSize:10,fontWeight:700}},l.pct+'%'))
+                        el('td',{style:{textAlign:'right'}},span({style:{background:l.pct>=100?'#10B98120':'#2563EB15',color:l.pct>=100?'#10B981':'#2563EB',padding:'2px 7px',borderRadius:20,fontSize:10,fontWeight:700}},fmtGrouped(l.pct)+'%'))
                       ) : el('tr',{style:{borderBottom:'1px solid #E5E9F2',background:'#F0F0F0'}},
                         el('td',{style:{fontWeight:700,color:'#2563EB',fontSize:11}},l.id),
                         el('td',{colSpan:6,style:{fontSize:11,fontWeight:700}},l.designation)
@@ -2881,7 +2984,7 @@ function renderAttachementsSection(p, updateProject){
                     <td style="text-align:center;padding:3px 6px;font-size:10px;">${fmtQte(l.qtePrecedente)}</td>
                     <td style="text-align:center;font-weight:700;padding:3px 6px;font-size:10px;">${fmtQte(l.qteMois)}</td>
                     <td style="text-align:center;font-weight:700;padding:3px 6px;font-size:10px;">${fmtQte(l.cumul)}</td>
-                    <td style="text-align:center;padding:3px 6px;font-size:10px;">${l.pct||0}%</td>
+                    <td style="text-align:center;padding:3px 6px;font-size:10px;">${fmtGrouped(l.pct||0)}%</td>
                   </tr>`;
                 }).join('');
 
@@ -2985,7 +3088,7 @@ function renderAttachementsSection(p, updateProject){
                           editLignes[li].cumul=(editLignes[li].qtePrecedente||0)+v;
                           editLignes[li].pct=editLignes[li].qteBD>0?Math.round(editLignes[li].cumul/editLignes[li].qteBD*1000)/10:0;
                           cTd.textContent=fmtQte(editLignes[li].cumul);
-                          pTd.textContent=editLignes[li].pct+'%';
+                          pTd.textContent=fmtGrouped(editLignes[li].pct)+'%';
                         };
                         inp.onchange = updateCalc;
                         inp.onblur = updateCalc;
