@@ -1704,6 +1704,22 @@ function renderProjetDocuments(p, updateProject){
 }
 
 
+function getMontantAttache(p){
+  const atts = p.attachements||[];
+  if(!atts.length) return 0;
+  const last = atts[atts.length-1];
+  const lignes = last.lignes||[];
+  const cumHT = lignes.reduce((s,l)=>s+(l.cumul||0)*(l.pu||0),0);
+  const tva = cumHT*0.20;
+  return cumHT+tva;
+}
+function getProgressionCalc(p){
+  const budget = p.budget||0;
+  if(!budget) return 0;
+  const pct = (getMontantAttache(p)/budget)*100;
+  return Math.max(0, Math.min(100, Math.round(pct*10)/10));
+}
+
 function renderListeProjets(){
   // Filters state
   if(!renderListeProjets._f) renderListeProjets._f = {search:'',client:'',statut:'',dateMin:'',dateMax:'',progMin:'',progMax:''};
@@ -1719,8 +1735,8 @@ function renderListeProjets(){
     if(flt.statut && p.statut !== flt.statut) return false;
     if(flt.dateMin && p.dateDebut < flt.dateMin) return false;
     if(flt.dateMax && p.dateDebut > flt.dateMax) return false;
-    if(flt.progMin && (p.progression||0) < Number(flt.progMin)) return false;
-    if(flt.progMax && (p.progression||0) > Number(flt.progMax)) return false;
+    if(flt.progMin && getProgressionCalc(p) < Number(flt.progMin)) return false;
+    if(flt.progMax && getProgressionCalc(p) > Number(flt.progMax)) return false;
     return true;
   });
 
@@ -1739,10 +1755,10 @@ function renderListeProjets(){
   // Export Excel
   function exportExcel(){
     if(!window.XLSX){alert('XLSX non disponible');return;}
-    const rows = [['Réf','Nom','Client','Maître ouvrage','Budget (MAD)','Montant payé','Reste à recevoir','Date début','Date fin','Progression (%)','Statut']];
+    const rows = [['Réf','Nom','Client','Maître ouvrage','Budget (MAD)','Montant attaché','Reste à recevoir','Date début','Date fin','Progression (%)','Statut']];
     projs.forEach(p=>{
-      const paye = (p.payements||[]).reduce((s,x)=>s+(x.montant||0),0);
-      rows.push([p.ref,p.nom,p.client,p.maitreOuvrage||'',p.budget||0,paye,(p.budget||0)-paye,p.dateDebut||'',p.dateFin||'',p.progression||0,p.statut]);
+      const paye = getMontantAttache(p);
+      rows.push([p.ref,p.nom,p.client,p.maitreOuvrage||'',p.budget||0,paye,(p.budget||0)-paye,p.dateDebut||'',p.dateFin||'',getProgressionCalc(p),p.statut]);
     });
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -1754,8 +1770,9 @@ function renderListeProjets(){
   function exportPDF(){
     const win = window.open('','_blank');
     const rows = projs.map((p,i)=>{
-      const paye = (p.payements||[]).reduce((s,x)=>s+(x.montant||0),0);
+      const paye = getMontantAttache(p);
       const reste = (p.budget||0) - paye;
+      const prog = getProgressionCalc(p);
       const statColor = p.statut==='En cours'?'#2563EB':p.statut==='Terminé'?'#10B981':'#F59E0B';
       return `<tr style="background:${i%2===0?'#fff':'#F8FAFD'}">
         <td>${p.ref}</td><td><strong>${p.nom}</strong></td><td>${p.client||'-'}</td>
@@ -1763,7 +1780,7 @@ function renderListeProjets(){
         <td>${Number(paye).toLocaleString('fr-MA')} DH</td>
         <td style="color:#EF4444">${Number(reste).toLocaleString('fr-MA')} DH</td>
         <td>${p.dateDebut||'-'}</td>
-        <td><div style="background:#eee;border-radius:10px;height:8px;width:80px"><div style="background:#E8730A;height:100%;border-radius:10px;width:${p.progression||0}%"></div></div><span style="font-size:11px">${p.progression||0}%</span></td>
+        <td><div style="background:#eee;border-radius:10px;height:8px;width:80px"><div style="background:#E8730A;height:100%;border-radius:10px;width:${prog}%"></div></div><span style="font-size:11px">${prog}%</span></td>
         <td><span style="background:${statColor}20;color:${statColor};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">${p.statut}</span></td>
       </tr>`;
     }).join('');
@@ -1815,11 +1832,12 @@ function renderListeProjets(){
     div({className:'card'},
       el('table',{},
         el('thead',{},el('tr',{},
-          ...['NOM','CLIENT','BUDGET','MONTANT PAYÉ','RESTE À RECEVOIR','DATE DE DÉBUT','PROGRESSION','STATUT','ACTIONS'].map(h=>el('th',{},h))
+          ...['NOM','CLIENT','BUDGET','MONTANT ATTACHÉ','RESTE À RECEVOIR','DATE DE DÉBUT','PROGRESSION','STATUT','ACTIONS'].map(h=>el('th',{},h))
         )),
         el('tbody',{},...(projs.length ? projs.map((p,i)=>{
-          const paye = (p.payements||[]).reduce((s,x)=>s+(x.montant||0),0);
+          const paye = getMontantAttache(p);
           const reste = (p.budget||0) - paye;
+          const prog = getProgressionCalc(p);
           const sc = statColors[p.statut]||'#6B7A99';
           return el('tr',{style:{cursor:'pointer'},onclick:(e)=>{if(!e.target.closest('button'))setState({page:'fiche-projet',selProject:p.id,ficheSection:'info'});}},
             el('td',{},
@@ -1834,9 +1852,9 @@ function renderListeProjets(){
             el('td',{style:{minWidth:120}},
               div({style:{display:'flex',alignItems:'center',gap:8}},
                 div({style:{background:'#eee',borderRadius:20,height:8,flex:1}},
-                  div({style:{background:'#E8730A',height:'100%',borderRadius:20,width:(p.progression||0)+'%'}})
+                  div({style:{background:'#E8730A',height:'100%',borderRadius:20,width:prog+'%'}})
                 ),
-                span({style:{fontSize:12,fontWeight:700,minWidth:32}},(p.progression||0)+'%')
+                span({style:{fontSize:12,fontWeight:700,minWidth:32}},prog+'%')
               )
             ),
             el('td',{},span({className:'badge',style:{background:sc+'20',color:sc}},p.statut)),
