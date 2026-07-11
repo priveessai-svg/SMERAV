@@ -381,6 +381,7 @@ const NAV = [
     {key:'bons-livraison',label:'Bons de livraison'},
     {key:'liste-factures',label:'Factures'},
     {key:'paiements-clients',label:'Paiements Clients'},
+    {key:'catalogue',label:'Produits/Services'},
   ]},
   {key:'rh',icon:'👥',label:'RH',children:[
     {key:'employes',label:'Employés'},
@@ -802,9 +803,19 @@ function showFactureForm(facture=null, idx=null){
       ),
     ),
     div({style:{borderTop:'1px solid #eee',paddingTop:12}},
-      div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}},
+      div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8,flexWrap:'wrap',gap:8}},
         div({style:{fontWeight:800,fontSize:13}},'Détail de la facture'),
-        btn('+ Ajouter ligne','btn-orange',()=>{f.lignes.push({ref:'',designation:'',qte:1,unite:'U',pu:0});calcTotal();},{style:{padding:'6px 14px',fontSize:12}})
+        div({style:{display:'flex',gap:8,flexWrap:'wrap'}},
+          btn('🏗 Depuis un Marché','btn-blue',()=>openLignePicker(
+            (ligne)=>{f.lignes.push(ligne);calcTotal();},
+            ()=>setState({modal:{title:facture?'Modifier Facture':'Nouvelle Facture',content:formEl,wide:true}})
+          ),{style:{padding:'6px 12px',fontSize:12}}),
+          btn('📦 Produits/Services','btn-blue',()=>openLignePicker(
+            (ligne)=>{f.lignes.push(ligne);calcTotal();},
+            ()=>setState({modal:{title:facture?'Modifier Facture':'Nouvelle Facture',content:formEl,wide:true}})
+          ),{style:{padding:'6px 12px',fontSize:12}}),
+          btn('+ Ligne manuelle','btn-orange',()=>{f.lignes.push({ref:'',designation:'',qte:1,unite:'U',pu:0});calcTotal();},{style:{padding:'6px 14px',fontSize:12}})
+        )
       ),
       lignesContainer
     ),
@@ -1139,7 +1150,9 @@ function renderContent(){
     case 'nouveau-projet': return renderNouveauProjet();
     case 'liste-clients': return renderClients();
     case 'factures': return renderFactures();
+    case 'liste-factures': return renderFactures();
     case 'devis': return renderDevis();
+    case 'liste-devis': return renderDevis();
     case 'bons-livraison': return renderBonsLivraison();
     case 'paiements-clients': return renderPaiementsClients();
     case 'fournisseurs': return renderFournisseurs();
@@ -1147,6 +1160,8 @@ function renderContent(){
     case 'bons-reception': return renderBonsReception();
     case 'factures-achat': return renderFacturesAchat();
     case 'paiements-fourn': return renderPaiementsFourn();
+    case 'paiements-fournisseurs': return renderPaiementsFourn();
+    case 'catalogue': return renderCatalogue();
     case 'ouvriers': return renderOuvriers();
     case 'employes': return renderOuvriers();
     case 'paie': return renderFichesPaie();
@@ -1911,9 +1926,19 @@ function showDevisForm(){
     ),
     div({},el('label',{className:'lbl'},'Objet'),Object.assign(el('input',{value:f.objet}),{oninput:e=>f.objet=e.target.value})),
     div({style:{borderTop:'1px solid #eee',paddingTop:10}},
-      div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}},
+      div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8,flexWrap:'wrap',gap:8}},
         div({style:{fontWeight:800,fontSize:13}},'Détail du devis'),
-        btn('+ Ligne','btn-orange',()=>{f.lignes.push({designation:'',qte:1,unite:'U',pu:0});calcTotal();},{style:{padding:'5px 12px',fontSize:12}})
+        div({style:{display:'flex',gap:8,flexWrap:'wrap'}},
+          btn('🏗 Depuis un Marché','btn-blue',()=>openLignePicker(
+            (ligne)=>{f.lignes.push(ligne);calcTotal();},
+            ()=>setState({modal:{title:'Nouveau Devis',content:formEl,wide:true}})
+          ),{style:{padding:'5px 10px',fontSize:12}}),
+          btn('📦 Produits/Services','btn-blue',()=>openLignePicker(
+            (ligne)=>{f.lignes.push(ligne);calcTotal();},
+            ()=>setState({modal:{title:'Nouveau Devis',content:formEl,wide:true}})
+          ),{style:{padding:'5px 10px',fontSize:12}}),
+          btn('+ Ligne manuelle','btn-orange',()=>{f.lignes.push({designation:'',qte:1,unite:'U',pu:0});calcTotal();},{style:{padding:'5px 12px',fontSize:12}})
+        )
       ),
       lignesContainer
     ),
@@ -1970,7 +1995,20 @@ function renderBonsLivraison(){
           ),
           div({},el('label',{className:'lbl'},'Objet'),Object.assign(el('input',{value:f.objet}),{oninput:e=>f.objet=e.target.value})),
           div({style:{borderTop:'1px solid #eee',paddingTop:10}},
-            div({style:{display:'flex',justifyContent:'space-between',marginBottom:8}},div({style:{fontWeight:800}},'Articles'),btn('+ Ligne','btn-orange',()=>{f.lignes.push({designation:'',qte:1,unite:'U'});rL();},{style:{padding:'5px 12px',fontSize:12}})),lC),
+            div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8,flexWrap:'wrap',gap:8}},
+              div({style:{fontWeight:800}},'Articles'),
+              div({style:{display:'flex',gap:8,flexWrap:'wrap'}},
+                btn('🏗 Depuis un Marché','btn-blue',()=>openLignePicker(
+                  (ligne)=>{f.lignes.push(ligne);rL();},
+                  ()=>setState({modal:{title:'Nouveau Bon de Livraison',content:fEl,wide:true}})
+                ),{style:{padding:'5px 10px',fontSize:12}}),
+                btn('📦 Produits/Services','btn-blue',()=>openLignePicker(
+                  (ligne)=>{f.lignes.push(ligne);rL();},
+                  ()=>setState({modal:{title:'Nouveau Bon de Livraison',content:fEl,wide:true}})
+                ),{style:{padding:'5px 10px',fontSize:12}}),
+                btn('+ Ligne manuelle','btn-orange',()=>{f.lignes.push({designation:'',qte:1,unite:'U'});rL();},{style:{padding:'5px 12px',fontSize:12}})
+              )
+            ),lC),
           div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
             btn('Annuler','btn-gray',()=>setState({modal:null})),
             btn('Enregistrer','btn-orange',()=>{setState({bls:[...state.bls,{id:Date.now(),...f}],modal:null});notify('BL enregistré ✓');})
@@ -1987,6 +2025,129 @@ function renderBonsLivraison(){
           el('td',{},fmtDate(b.date)),el('td',{style:{fontWeight:600}},b.client||'—'),el('td',{style:{color:'#6B7A99'}},b.objet||'—'),
           el('td',{},btn('✕','btn-red',()=>{if(confirmDelete())setState({bls:state.bls.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}}))
         )):[el('tr',{},el('td',{colSpan:5,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun bon de livraison'))]))
+      )
+    )
+  );
+}
+
+// ── SÉLECTEUR DE LIGNE (Marché / Catalogue) ─────────────────────
+function openLignePicker(addLigneFn, reopenFn){
+  let tab = 'marche';
+  const wrap = div({});
+
+  function draw(){
+    wrap.innerHTML = '';
+    wrap.appendChild(div({style:{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}},
+      btn('🏗 Depuis un Marché','btn-'+(tab==='marche'?'orange':'gray'),()=>{tab='marche';draw();}),
+      btn('📦 Produits/Services','btn-'+(tab==='catalogue'?'orange':'gray'),()=>{tab='catalogue';draw();})
+    ));
+
+    if(tab==='marche'){
+      const sel = el('select',{});
+      sel.innerHTML = '<option value="">-- Choisir un marché --</option>';
+      (state.projects||[]).forEach(p=>{
+        const opt = el('option',{},(p.nom||'')+' — '+(p.marcheNum||p.ref||''));
+        opt.value = p.id;
+        sel.appendChild(opt);
+      });
+      const bdWrap = div({style:{marginTop:12,overflowX:'auto'}});
+      sel.onchange = e=>{
+        const proj = (state.projects||[]).find(p=>String(p.id)===e.target.value);
+        bdWrap.innerHTML='';
+        if(!proj) return;
+        const bd = proj.bordereau||[];
+        bdWrap.appendChild(el('table',{},
+          el('thead',{},el('tr',{},...['N° Prix','Désignation','Unité','PU HT',''].map(h=>el('th',{style:{fontSize:10,padding:'6px 8px'}},h)))),
+          el('tbody',{},...(bd.length?bd.map(b=>el('tr',{},
+            el('td',{style:{padding:'5px 8px',fontWeight:700,color:'#2563EB'}},b.id||''),
+            el('td',{style:{padding:'5px 8px'}},b.designation||''),
+            el('td',{style:{padding:'5px 8px',textAlign:'center'}},b.unite||''),
+            el('td',{style:{padding:'5px 8px',textAlign:'right'}},fmtN(b.pu||0)),
+            el('td',{},btn('+ Ajouter','btn-orange',()=>{
+              addLigneFn({ref:b.id||'',designation:b.designation||'',unite:b.unite||'U',qte:1,pu:b.pu||0});
+              notify('Article ajouté ✓');
+            },{style:{padding:'4px 10px',fontSize:11}}))
+          )):[el('tr',{},el('td',{colSpan:5,style:{padding:20,textAlign:'center',color:'#6B7A99'}},'Aucun article dans le bordereau de ce marché'))]))
+        ));
+      };
+      wrap.appendChild(div({},el('label',{className:'lbl'},'Choisir un marché'),sel,bdWrap));
+    } else {
+      const cat = (state.settings && state.settings.catalogue) || [];
+      wrap.appendChild(el('table',{},
+        el('thead',{},el('tr',{},...['Référence','Désignation','Unité','Prix',''].map(h=>el('th',{style:{fontSize:10,padding:'6px 8px'}},h)))),
+        el('tbody',{},...(cat.length?cat.map(c=>el('tr',{},
+          el('td',{style:{padding:'5px 8px',fontWeight:700,color:'#2563EB'}},c.ref||''),
+          el('td',{style:{padding:'5px 8px'}},c.designation||''),
+          el('td',{style:{padding:'5px 8px',textAlign:'center'}},c.unite||''),
+          el('td',{style:{padding:'5px 8px',textAlign:'right'}},fmtN(c.pu||0)),
+          el('td',{},btn('+ Ajouter','btn-orange',()=>{
+            addLigneFn({ref:c.ref||'',designation:c.designation||'',unite:c.unite||'U',qte:1,pu:c.pu||0});
+            notify('Article ajouté ✓');
+          },{style:{padding:'4px 10px',fontSize:11}}))
+        )):[el('tr',{},el('td',{colSpan:5,style:{padding:20,textAlign:'center',color:'#6B7A99'}},'Catalogue vide — ajoutez des produits/services dans Clients > Produits/Services'))]))
+      ));
+    }
+  }
+  draw();
+
+  const modalContent = div({},
+    wrap,
+    div({style:{display:'flex',justifyContent:'flex-end',marginTop:16,borderTop:'1px solid #eee',paddingTop:12}},
+      btn('← Retour au document','btn-gray',reopenFn)
+    )
+  );
+  setState({modal:{title:'Ajouter un article',content:modalContent,wide:true}});
+}
+
+// ── PRODUITS / SERVICES (Catalogue) ─────────────────────
+function renderCatalogue(){
+  const cat = (state.settings && state.settings.catalogue) || [];
+
+  function saveCat(newCat){
+    setState({settings:{...state.settings, catalogue:newCat}});
+  }
+
+  function openForm(item=null, idx=null){
+    let f = item ? {...item} : {ref:'',designation:'',unite:'U',pu:0};
+    const fEl = div({style:{display:'flex',flexDirection:'column',gap:12}},
+      div({className:'grid-2'},
+        div({},el('label',{className:'lbl'},'Référence'),Object.assign(el('input',{value:f.ref||''}),{oninput:e=>f.ref=e.target.value})),
+        div({},el('label',{className:'lbl'},'Unité'),Object.assign(el('input',{value:f.unite||'U'}),{oninput:e=>f.unite=e.target.value})),
+      ),
+      div({},el('label',{className:'lbl'},'Désignation *'),Object.assign(el('input',{value:f.designation||''}),{oninput:e=>f.designation=e.target.value})),
+      div({},el('label',{className:'lbl'},'Prix Unitaire HT (MAD)'),Object.assign(el('input',{type:'number',value:f.pu||0}),{oninput:e=>f.pu=+e.target.value})),
+      div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
+        btn('Annuler','btn-gray',()=>setState({modal:null})),
+        btn('Enregistrer','btn-orange',()=>{
+          if(!f.designation){alert('Désignation obligatoire');return;}
+          const newCat = idx===null ? [...cat,{id:Date.now(),...f}] : cat.map((c,ci)=>ci===idx?{...c,...f}:c);
+          saveCat(newCat);
+          setState({modal:null});
+          notify(idx===null?'Produit/Service ajouté ✓':'Produit/Service modifié ✓');
+        })
+      )
+    );
+    setState({modal:{title:item?'Modifier':'Nouveau Produit/Service',content:fEl}});
+  }
+
+  return div({},
+    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}},
+      div({},div({style:{fontSize:18,fontWeight:800}},'Produits / Services'),div({style:{color:'#6B7A99',fontSize:12}},cat.length+' article(s) au catalogue')),
+      btn('+ Ajouter','btn-orange',()=>openForm())
+    ),
+    div({className:'card'},
+      el('table',{},
+        el('thead',{},el('tr',{},...['Référence','Désignation','Unité','Prix Unitaire HT',''].map(h=>el('th',{},h)))),
+        el('tbody',{},...(cat.length?cat.map((c,i)=>el('tr',{},
+          el('td',{style:{fontWeight:700,color:'#2563EB'}},c.ref||'—'),
+          el('td',{style:{fontWeight:600}},c.designation),
+          el('td',{style:{textAlign:'center'}},c.unite||'U'),
+          el('td',{style:{fontWeight:800,color:'#E8730A'}},fmt(c.pu||0)),
+          el('td',{},div({style:{display:'flex',gap:6}},
+            btn('✏️','btn-gray',()=>openForm(c,i),{style:{padding:'4px 8px',fontSize:12}}),
+            btn('✕','btn-red',()=>{if(confirmDelete())saveCat(cat.filter((_,ci)=>ci!==i));},{style:{padding:'4px 8px',fontSize:12}})
+          ))
+        )):[el('tr',{},el('td',{colSpan:5,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun produit/service — cliquez sur "+ Ajouter" pour créer votre catalogue'))]))
       )
     )
   );
