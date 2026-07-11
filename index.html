@@ -98,6 +98,7 @@ const C = {
 
 function fmt(n){ return Number(n||0).toLocaleString('fr-MA',{minimumFractionDigits:2})+' MAD'; }
 function fmtN(n){ return Number(n||0).toLocaleString('fr-MA'); }
+function fmtQte(n){ return Number(n||0).toLocaleString('fr-MA',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtDate(d){ if(!d) return '—'; const p=d.split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:d; }
 function today(){ return new Date().toISOString().split('T')[0]; }
 function numToWords(n){
@@ -2757,7 +2758,7 @@ function renderAttachementsSection(p, updateProject){
           // Update only cumul and pct cells directly
           const cEl = document.getElementById('cumul-'+i);
           const pEl = document.getElementById('pct-'+i);
-          if(cEl) cEl.textContent = fmtN(lignes[i].cumul);
+          if(cEl) cEl.textContent = fmtQte(lignes[i].cumul);
           if(pEl) pEl.textContent = lignes[i].pct+'%';
         }
 
@@ -2771,8 +2772,8 @@ function renderAttachementsSection(p, updateProject){
               el('td',{style:{padding:'6px 8px',fontWeight:700,color:'#2563EB',fontSize:11}},l.id),
               el('td',{style:{padding:'6px 8px',fontSize:11,maxWidth:200}},l.designation),
               el('td',{style:{padding:'6px 8px',textAlign:'center',color:'#6B7A99'}},l.unite),
-              el('td',{style:{padding:'6px 8px',textAlign:'right',color:'#6B7A99'}},fmtN(l.qteBD)),
-              el('td',{style:{padding:'6px 8px',textAlign:'right',color:'#6B7A99'}},fmtN(l.qtePrecedente)),
+              el('td',{style:{padding:'6px 8px',textAlign:'right',color:'#6B7A99'}},fmtQte(l.qteBD)),
+              el('td',{style:{padding:'6px 8px',textAlign:'right',color:'#6B7A99'}},fmtQte(l.qtePrecedente)),
               el('td',{style:{padding:'4px'}},(()=>{
   const inp = el('input',{type:'text',inputmode:'decimal',value:l.qteMois||'',
     'data-idx':i,
@@ -2791,7 +2792,7 @@ function renderAttachementsSection(p, updateProject){
   };
   return inp;
 })()),
-              el('td',{id:'cumul-'+i,style:{padding:'6px 8px',textAlign:'right',fontWeight:700,color:'#2563EB'}},fmtN(l.cumul)),
+              el('td',{id:'cumul-'+i,style:{padding:'6px 8px',textAlign:'right',fontWeight:700,color:'#2563EB'}},fmtQte(l.cumul)),
               el('td',{id:'pct-'+i,style:{padding:'6px 8px',textAlign:'right'}},span({style:{background:l.pct>=100?'#10B98120':l.pct>0?'#2563EB15':'#F4F6FA',color:l.pct>=100?'#10B981':l.pct>0?'#2563EB':'#6B7A99',padding:'2px 7px',borderRadius:20,fontSize:10,fontWeight:700}},l.pct+'%'))
             )))
           ));
@@ -2847,10 +2848,10 @@ function renderAttachementsSection(p, updateProject){
                         el('td',{style:{fontWeight:700,color:'#2563EB',fontSize:11}},l.id),
                         el('td',{style:{fontSize:11,maxWidth:200}},l.designation),
                         el('td',{style:{textAlign:'center',color:'#6B7A99'}},l.unite),
-                        el('td',{style:{textAlign:'right',color:'#6B7A99'}},fmtN(l.qteBD)),
-                        el('td',{style:{textAlign:'right',color:'#6B7A99'}},fmtN(l.qtePrecedente)),
-                        el('td',{style:{textAlign:'right',fontWeight:800,color:l.qteMois>0?'#E8730A':'#6B7A99'}},fmtN(l.qteMois)),
-                        el('td',{style:{textAlign:'right',fontWeight:700,color:'#2563EB'}},fmtN(l.cumul)),
+                        el('td',{style:{textAlign:'right',color:'#6B7A99'}},fmtQte(l.qteBD)),
+                        el('td',{style:{textAlign:'right',color:'#6B7A99'}},fmtQte(l.qtePrecedente)),
+                        el('td',{style:{textAlign:'right',fontWeight:800,color:l.qteMois>0?'#E8730A':'#6B7A99'}},fmtQte(l.qteMois)),
+                        el('td',{style:{textAlign:'right',fontWeight:700,color:'#2563EB'}},fmtQte(l.cumul)),
                         el('td',{style:{textAlign:'right'}},span({style:{background:l.pct>=100?'#10B98120':'#2563EB15',color:l.pct>=100?'#10B981':'#2563EB',padding:'2px 7px',borderRadius:20,fontSize:10,fontWeight:700}},l.pct+'%'))
                       ) : el('tr',{style:{borderBottom:'1px solid #E5E9F2',background:'#F0F0F0'}},
                         el('td',{style:{fontWeight:700,color:'#2563EB',fontSize:11}},l.id),
@@ -2876,10 +2877,10 @@ function renderAttachementsSection(p, updateProject){
                     <td style="text-align:center;font-weight:700;padding:3px 6px;font-size:10px;">${l.id||''}</td>
                     <td style="padding:3px 6px;font-size:10px;">${l.designation||''}</td>
                     <td style="text-align:center;padding:3px 6px;font-size:10px;">${l.unite||''}</td>
-                    <td style="text-align:center;padding:3px 6px;font-size:10px;">${l.qteBD||0}</td>
-                    <td style="text-align:center;padding:3px 6px;font-size:10px;">${l.qtePrecedente||0}</td>
-                    <td style="text-align:center;font-weight:700;padding:3px 6px;font-size:10px;">${l.qteMois||0}</td>
-                    <td style="text-align:center;font-weight:700;padding:3px 6px;font-size:10px;">${l.cumul||0}</td>
+                    <td style="text-align:center;padding:3px 6px;font-size:10px;">${fmtQte(l.qteBD)}</td>
+                    <td style="text-align:center;padding:3px 6px;font-size:10px;">${fmtQte(l.qtePrecedente)}</td>
+                    <td style="text-align:center;font-weight:700;padding:3px 6px;font-size:10px;">${fmtQte(l.qteMois)}</td>
+                    <td style="text-align:center;font-weight:700;padding:3px 6px;font-size:10px;">${fmtQte(l.cumul)}</td>
                     <td style="text-align:center;padding:3px 6px;font-size:10px;">${l.pct||0}%</td>
                   </tr>`;
                 }).join('');
@@ -2976,14 +2977,14 @@ function renderAttachementsSection(p, updateProject){
                       el('tbody',{},...editLignes.map((l,li)=>{
                         const inp = el('input',{type:'text',inputmode:'decimal',value:l.qteMois||0,
                           style:{width:70,textAlign:'right',border:'2px solid #E8730A',borderRadius:6,padding:'3px 6px',fontSize:11}});
-                        const cTd = el('td',{style:{padding:'5px 8px',textAlign:'center',fontWeight:700,color:'#2563EB'}},editLignes[li].cumul||0);
+                        const cTd = el('td',{style:{padding:'5px 8px',textAlign:'center',fontWeight:700,color:'#2563EB'}},fmtQte(editLignes[li].cumul));
                         const pTd = el('td',{style:{padding:'5px 8px',textAlign:'center',color:'#10B981',fontWeight:700}},(editLignes[li].pct||0)+'%');
                         const updateCalc = ()=>{
                           const v=parseFloat(String(inp.value).replace(',','.'))||0;
                           editLignes[li].qteMois=v;
                           editLignes[li].cumul=(editLignes[li].qtePrecedente||0)+v;
                           editLignes[li].pct=editLignes[li].qteBD>0?Math.round(editLignes[li].cumul/editLignes[li].qteBD*1000)/10:0;
-                          cTd.textContent=editLignes[li].cumul;
+                          cTd.textContent=fmtQte(editLignes[li].cumul);
                           pTd.textContent=editLignes[li].pct+'%';
                         };
                         inp.onchange = updateCalc;
@@ -3002,8 +3003,8 @@ function renderAttachementsSection(p, updateProject){
                           el('td',{style:{padding:'5px 8px',fontWeight:700,color:'#2563EB',textAlign:'center'}},l.id||''),
                           el('td',{style:{padding:'5px 8px',fontSize:10}},l.designation||''),
                           el('td',{style:{padding:'5px 8px',textAlign:'center'}},l.unite||''),
-                          el('td',{style:{padding:'5px 8px',textAlign:'center'}},l.qteBD||0),
-                          el('td',{style:{padding:'5px 8px',textAlign:'center'}},l.qtePrecedente||0),
+                          el('td',{style:{padding:'5px 8px',textAlign:'center'}},fmtQte(l.qteBD)),
+                          el('td',{style:{padding:'5px 8px',textAlign:'center'}},fmtQte(l.qtePrecedente)),
                           el('td',{style:{padding:'3px 6px'}},inp),
                           cTd,
                           pTd
@@ -3115,10 +3116,10 @@ function renderDecomptesSection(p, updateProject){
                   el('td',{style:{fontWeight:700,color:'#2563EB',fontSize:11}},l.id),
                   el('td',{style:{fontSize:11,maxWidth:200}},l.designation),
                   el('td',{style:{textAlign:'center'}},l.unite),
-                  el('td',{style:{textAlign:'right',color:'#6B7A99'}},fmtN(l.qteBD)),
-                  el('td',{style:{textAlign:'right',color:'#6B7A99'}},fmtN(l.qtePrecedente)),
-                  el('td',{style:{textAlign:'right',fontWeight:800,color:'#E8730A'}},fmtN(l.qteMois)),
-                  el('td',{style:{textAlign:'right',fontWeight:700,color:'#2563EB'}},fmtN(l.cumul)),
+                  el('td',{style:{textAlign:'right',color:'#6B7A99'}},fmtQte(l.qteBD)),
+                  el('td',{style:{textAlign:'right',color:'#6B7A99'}},fmtQte(l.qtePrecedente)),
+                  el('td',{style:{textAlign:'right',fontWeight:800,color:'#E8730A'}},fmtQte(l.qteMois)),
+                  el('td',{style:{textAlign:'right',fontWeight:700,color:'#2563EB'}},fmtQte(l.cumul)),
                   el('td',{style:{textAlign:'right'}},fmtN(l.pu)),
                   el('td',{style:{textAlign:'right',fontWeight:800,color:'#E8730A'}},fmtN(l.qteMois*(l.pu||0)*(1+TVA))),
                   el('td',{style:{textAlign:'right'}},fmtN((l.cumul||0)*(l.pu||0)))
@@ -3193,9 +3194,9 @@ function printDecompte(att, p){
     }
     return `<tr>
     <td style="padding:3px 6px;font-size:10px;">${l.id||''}</td><td style="padding:3px 6px;font-size:10px;">${l.designation||''}</td><td style="padding:3px 6px;font-size:10px;text-align:center">${l.unite||''}</td>
-    <td style="padding:3px 6px;font-size:10px;text-align:right">${fmtN(l.qteBD)}</td><td style="padding:3px 6px;font-size:10px;text-align:right">${fmtN(l.qtePrecedente)}</td>
-    <td style="padding:3px 6px;font-size:10px;text-align:right;font-weight:bold;color:#E8730A">${fmtN(l.qteMois)}</td>
-    <td style="padding:3px 6px;font-size:10px;text-align:right">${fmtN(l.cumul)}</td><td style="padding:3px 6px;font-size:10px;text-align:right">${fmtN(l.pu)}</td>
+    <td style="padding:3px 6px;font-size:10px;text-align:right">${fmtQte(l.qteBD)}</td><td style="padding:3px 6px;font-size:10px;text-align:right">${fmtQte(l.qtePrecedente)}</td>
+    <td style="padding:3px 6px;font-size:10px;text-align:right;font-weight:bold;color:#E8730A">${fmtQte(l.qteMois)}</td>
+    <td style="padding:3px 6px;font-size:10px;text-align:right">${fmtQte(l.cumul)}</td><td style="padding:3px 6px;font-size:10px;text-align:right">${fmtN(l.pu)}</td>
     <td style="padding:3px 6px;font-size:10px;text-align:right">${fmtN((l.cumul||0)*(l.pu||0))}</td>
   </tr>`;
   }).join('');
