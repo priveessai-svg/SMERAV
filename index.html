@@ -719,6 +719,7 @@ function renderFactures(){
               ),
               el('td',{},
                 div({style:{display:'flex',gap:6}},
+                  btn('✏️','btn-gray',()=>showFactureForm(f,i),{style:{padding:'4px 8px',fontSize:12}}),
                   btn('🖨','btn-blue',()=>printFacture(f),{style:{padding:'4px 8px',fontSize:12}}),
                   btn('✕','btn-red',()=>{if(confirmDelete())setState({factures:state.factures.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}})
                 )
