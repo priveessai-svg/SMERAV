@@ -1093,30 +1093,33 @@ function renderParametres(){
 
 // ── FOURNISSEURS ─────────────────────────
 function renderFournisseurs(){
+  function openForm(item=null, idx=null){
+    let f = item ? {...item} : {nom:'',ice:'',tel:'',email:'',adresse:''};
+    const formEl=div({style:{display:'flex',flexDirection:'column',gap:12}},
+      div({className:'grid-2'},
+        div({},el('label',{className:'lbl'},'Nom *'),Object.assign(el('input',{value:f.nom||''}),{oninput:e=>f.nom=e.target.value})),
+        div({},el('label',{className:'lbl'},'ICE'),Object.assign(el('input',{value:f.ice||''}),{oninput:e=>f.ice=e.target.value})),
+        div({},el('label',{className:'lbl'},'Téléphone'),Object.assign(el('input',{value:f.tel||''}),{oninput:e=>f.tel=e.target.value})),
+        div({},el('label',{className:'lbl'},'Email'),Object.assign(el('input',{value:f.email||''}),{oninput:e=>f.email=e.target.value})),
+      ),
+      div({},el('label',{className:'lbl'},'Adresse'),Object.assign(el('input',{value:f.adresse||''}),{oninput:e=>f.adresse=e.target.value})),
+      div({style:{display:'flex',gap:10,justifyContent:'flex-end',marginTop:8}},
+        btn('Annuler','btn-gray',()=>setState({modal:null})),
+        btn('Enregistrer','btn-orange',()=>{
+          if(!f.nom){alert('Nom obligatoire');return;}
+          const newList = idx===null ? [...state.fournisseurs,{id:Date.now(),...f}] : state.fournisseurs.map((x,xi)=>xi===idx?{...x,...f}:x);
+          setState({fournisseurs:newList,modal:null});
+          notify(idx===null?'Fournisseur ajouté ✓':'Fournisseur modifié ✓');
+        })
+      )
+    );
+    setState({modal:{title:item?'Modifier Fournisseur':'Nouveau Fournisseur',content:formEl}});
+  }
+
   return div({},
     div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}},
       div({style:{fontSize:18,fontWeight:800}},'Fournisseurs'),
-      btn('+ Ajouter','btn-orange',()=>{
-        let f={nom:'',ice:'',tel:'',email:'',adresse:''};
-        const formEl=div({style:{display:'flex',flexDirection:'column',gap:12}},
-          div({className:'grid-2'},
-            div({},el('label',{className:'lbl'},'Nom *'),Object.assign(el('input',{value:''}),{oninput:e=>f.nom=e.target.value})),
-            div({},el('label',{className:'lbl'},'ICE'),Object.assign(el('input',{value:''}),{oninput:e=>f.ice=e.target.value})),
-            div({},el('label',{className:'lbl'},'Téléphone'),Object.assign(el('input',{value:''}),{oninput:e=>f.tel=e.target.value})),
-            div({},el('label',{className:'lbl'},'Email'),Object.assign(el('input',{value:''}),{oninput:e=>f.email=e.target.value})),
-          ),
-          div({},el('label',{className:'lbl'},'Adresse'),Object.assign(el('input',{value:''}),{oninput:e=>f.adresse=e.target.value})),
-          div({style:{display:'flex',gap:10,justifyContent:'flex-end',marginTop:8}},
-            btn('Annuler','btn-gray',()=>setState({modal:null})),
-            btn('Enregistrer','btn-orange',()=>{
-              if(!f.nom){alert('Nom obligatoire');return;}
-              setState({fournisseurs:[...state.fournisseurs,{id:Date.now(),...f}],modal:null});
-              notify('Fournisseur ajouté ✓');
-            })
-          )
-        );
-        setState({modal:{title:'Nouveau Fournisseur',content:formEl}});
-      })
+      btn('+ Ajouter','btn-orange',()=>openForm())
     ),
     div({className:'card'},
       el('table',{},
@@ -1128,7 +1131,10 @@ function renderFournisseurs(){
             el('td',{},f.tel||'—'),
             el('td',{},f.email||'—'),
             el('td',{},f.adresse||'—'),
-            el('td',{},btn('✕','btn-red',()=>{if(confirmDelete())setState({fournisseurs:state.fournisseurs.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 10px',fontSize:12}}))
+            el('td',{},div({style:{display:'flex',gap:6}},
+              btn('✏️','btn-gray',()=>openForm(f,i),{style:{padding:'4px 8px',fontSize:12}}),
+              btn('✕','btn-red',()=>{if(confirmDelete())setState({fournisseurs:state.fournisseurs.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}})
+            ))
           )
         ):[el('tr',{},el('td',{colSpan:6,style:{padding:40,textAlign:'center',color:C.muted}},'Aucun fournisseur'))]))
       )
@@ -2245,13 +2251,23 @@ function renderPaiementsClients(){
 }
 
 // ── BONS DE COMMANDE ─────────────────────
+function nextBcNum(bcs){
+  const year = new Date().getFullYear();
+  const nums = bcs.map(b=>{
+    const m = (b.num||'').match(/^BC-(\d+)\/(\d+)$/);
+    return (m && +m[2]===year) ? +m[1] : 0;
+  });
+  const max = nums.length ? Math.max(...nums) : 0;
+  return 'BC-'+String(max+1).padStart(4,'0')+'/'+year;
+}
+
 function renderBonsCommande(){
   const bcs=state.bcs||[];
   return div({},
     div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}},
       div({style:{fontSize:18,fontWeight:800}},'Bons de Commande'),
       btn('+ Nouveau BC','btn-orange',()=>{
-        let f={num:'BC-'+String(bcs.length+1).padStart(4,'0'),date:today(),fournisseur:'',lignes:[],tva:20,statut:'En attente'};
+        let f={num:nextBcNum(bcs),date:today(),fournisseur:'',lignes:[],tva:20,statut:'En attente'};
         const lC=div({});const tD=div({style:{textAlign:'right',marginTop:8}});
         function cT(){const ht=f.lignes.reduce((s,l)=>s+(l.qte||0)*(l.pu||0),0);f.montantHT=ht;f.montantTTC=ht*(1+f.tva/100);tD.innerHTML=`<strong>HT: ${fmtN(ht)} · TTC: ${fmt(f.montantTTC)}</strong>`;rL();}
         function rL(){lC.innerHTML='';lC.appendChild(el('table',{},el('thead',{},el('tr',{},...['Désignation','Qté','Unité','P.U. HT','Total HT',''].map(h=>el('th',{style:{fontSize:10,padding:'5px'}},h)))),el('tbody',{},...f.lignes.map((l,i)=>el('tr',{},el('td',{style:{padding:'3px'}},Object.assign(el('input',{value:l.designation||'',style:{width:180}}),{oninput:e=>f.lignes[i].designation=e.target.value})),el('td',{style:{padding:'3px'}},Object.assign(el('input',{type:'number',value:l.qte||1,style:{width:55}}),{oninput:e=>{f.lignes[i].qte=+e.target.value;cT();}})),el('td',{style:{padding:'3px'}},Object.assign(el('input',{value:l.unite||'U',style:{width:45}}),{oninput:e=>f.lignes[i].unite=e.target.value})),el('td',{style:{padding:'3px'}},Object.assign(el('input',{type:'number',value:l.pu||0,style:{width:70}}),{oninput:e=>{f.lignes[i].pu=+e.target.value;cT();}})),el('td',{style:{padding:'5px',fontWeight:700}},fmtN((l.qte||0)*(l.pu||0))),el('td',{},el('button',{style:{background:'#FEE2E2',color:'#EF4444',border:'none',borderRadius:4,padding:'3px 7px',cursor:'pointer'},onclick:()=>{f.lignes.splice(i,1);cT();}},'✕')))))));}
@@ -2263,7 +2279,21 @@ function renderBonsCommande(){
             div({},el('label',{className:'lbl'},'Fournisseur'),(()=>{const s=el('select',{});s.innerHTML='<option value="">--</option>';state.fournisseurs.forEach(f=>s.innerHTML+=`<option>${f.nom}</option>`);s.oninput=e=>f.fournisseur=e.target.value;return s;})()),
             div({},el('label',{className:'lbl'},'TVA (%)'),Object.assign(el('input',{type:'number',value:20}),{oninput:e=>{f.tva=+e.target.value;cT();}})),
           ),
-          div({style:{borderTop:'1px solid #eee',paddingTop:10}},div({style:{display:'flex',justifyContent:'space-between',marginBottom:8}},div({style:{fontWeight:800}},'Lignes'),btn('+ Ligne','btn-orange',()=>{f.lignes.push({designation:'',qte:1,unite:'U',pu:0});cT();},{style:{padding:'5px 12px',fontSize:12}})),lC),
+          div({style:{borderTop:'1px solid #eee',paddingTop:10}},
+            div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8,flexWrap:'wrap',gap:8}},
+              div({style:{fontWeight:800}},'Lignes'),
+              div({style:{display:'flex',gap:8,flexWrap:'wrap'}},
+                btn('🏗 Depuis un Marché','btn-blue',()=>openLignePicker(
+                  (ligne)=>{f.lignes.push(ligne);cT();},
+                  ()=>setState({modal:{title:'Nouveau Bon de Commande',content:fEl,wide:true}})
+                ),{style:{padding:'5px 10px',fontSize:12}}),
+                btn('📦 Produits/Services','btn-blue',()=>openLignePicker(
+                  (ligne)=>{f.lignes.push(ligne);cT();},
+                  ()=>setState({modal:{title:'Nouveau Bon de Commande',content:fEl,wide:true}})
+                ),{style:{padding:'5px 10px',fontSize:12}}),
+                btn('+ Ligne manuelle','btn-orange',()=>{f.lignes.push({designation:'',qte:1,unite:'U',pu:0});cT();},{style:{padding:'5px 12px',fontSize:12}})
+              )
+            ),lC),
           tD,
           div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
             btn('Annuler','btn-gray',()=>setState({modal:null})),
