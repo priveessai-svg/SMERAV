@@ -2890,6 +2890,176 @@ function renderMateriaux(){
 }
 
 // ── CHÈQUES & AVANCES ────────────────────
+function openChequeForm(item=null, idx=null){
+  let f = item ? {...item} : {type:'Chèque',num:'',beneficiaire:'',montant:0,date:today(),echeance:'',banque:'',objet:'',statut:'En cours'};
+  const fEl=div({style:{display:'flex',flexDirection:'column',gap:12}},
+    div({className:'grid-2'},
+      div({},el('label',{className:'lbl'},'Type'),(()=>{const s=el('select',{});['Chèque','Avance'].forEach(x=>s.innerHTML+=`<option ${f.type===x?'selected':''}>${x}</option>`);s.oninput=e=>f.type=e.target.value;return s;})()),
+      div({},el('label',{className:'lbl'},'Numéro *'),Object.assign(el('input',{value:f.num||''}),{oninput:e=>f.num=e.target.value})),
+      div({},el('label',{className:'lbl'},'Bénéficiaire'),Object.assign(el('input',{value:f.beneficiaire||''}),{oninput:e=>f.beneficiaire=e.target.value})),
+      div({},el('label',{className:'lbl'},'Montant (MAD) *'),Object.assign(el('input',{type:'number',value:f.montant||0}),{oninput:e=>f.montant=+e.target.value})),
+      div({},el('label',{className:'lbl'},'Date'),Object.assign(el('input',{type:'date',value:f.date||today()}),{oninput:e=>f.date=e.target.value})),
+      div({},el('label',{className:'lbl'},"Date d'échéance"),Object.assign(el('input',{type:'date',value:f.echeance||''}),{oninput:e=>f.echeance=e.target.value})),
+      div({},el('label',{className:'lbl'},'Banque'),Object.assign(el('input',{value:f.banque||''}),{oninput:e=>f.banque=e.target.value})),
+      div({},el('label',{className:'lbl'},'Statut'),(()=>{const s=el('select',{});['En cours','Encaissé','Retourné'].forEach(x=>s.innerHTML+=`<option ${f.statut===x?'selected':''}>${x}</option>`);s.oninput=e=>f.statut=e.target.value;return s;})()),
+      div({style:{gridColumn:'1/-1'}},el('label',{className:'lbl'},'Objet'),Object.assign(el('input',{value:f.objet||''}),{oninput:e=>f.objet=e.target.value})),
+    ),
+    div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
+      btn('Annuler','btn-gray',()=>setState({modal:null})),
+      btn('Enregistrer','btn-orange',()=>{
+        if(!f.num){alert('Numéro obligatoire');return;}
+        const newList = idx===null ? [...state.cheques,{id:Date.now(),...f}] : state.cheques.map((x,xi)=>xi===idx?{...x,...f}:x);
+        setState({cheques:newList,modal:null});
+        notify(idx===null?'Ajouté ✓':'Modifié ✓');
+      })
+    )
+  );
+  setState({modal:{title:item?'Modifier Chèque / Avance':'Nouveau Chèque / Avance',content:fEl,wide:true}});
+}
+
+const BANQUES_MAROC = [
+  'Attijariwafa Bank','Banque Populaire','BMCE Bank Of Africa','Crédit du Maroc',
+  'Société Générale Maroc','CIH Bank','Crédit Agricole du Maroc','Al Barid Bank',
+  'CFG Bank','Bank Al-Yousr','Umnia Bank','Bank Assafa','BTI Bank (Arreda)'
+];
+
+function getChequeTemplate(banque){
+  const templates = (state.settings && state.settings.chequeTemplates) || {};
+  if(templates[banque]) return templates[banque];
+  const presets = {
+    'BMCE Bank Of Africa': {
+      montantChiffresX:150, montantChiffresY:10,
+      montantLettresX:15, montantLettresY:19,
+      beneficiaireX:15, beneficiaireY:29,
+      villeX:100, villeY:57,
+      dateX:140, dateY:57,
+    }
+  };
+  return presets[banque] || {
+    montantChiffresX:145, montantChiffresY:12,
+    montantLettresX:12, montantLettresY:20,
+    beneficiaireX:12, beneficiaireY:32,
+    villeX:115, villeY:52,
+    dateX:145, dateY:52,
+  };
+}
+function saveChequeTemplate(banque, tpl){
+  const templates = {...((state.settings && state.settings.chequeTemplates)||{})};
+  templates[banque] = tpl;
+  setState({settings:{...state.settings, chequeTemplates:templates}});
+}
+
+function openChequePrintForm(){
+  let banque = BANQUES_MAROC[0];
+  let f = {beneficiaire:'', montant:0, ville:'Fès', date:today()};
+  let tpl = getChequeTemplate(banque);
+  const SCALE = 2.4; // px per mm for the on-screen preview
+
+  const previewBox = div({});
+  const calibBox = div({});
+
+  function montantLettres(){
+    return numToWords(f.montant||0).replace(' T.T.C.','');
+  }
+
+  function drawPreview(){
+    previewBox.innerHTML='';
+    const page = div({style:{
+      position:'relative', width:(175*SCALE)+'px', height:(80*SCALE)+'px',
+      background:'#FFFDF5', border:'1px solid #C9A24B', borderRadius:4,
+      boxShadow:'0 2px 8px rgba(0,0,0,0.08)', overflow:'hidden', fontFamily:'Arial,sans-serif'
+    }});
+    // Generic static guide labels (layout aid only — not a reproduction of any bank's design)
+    const guides = [
+      [8,8,'BANQUE', 9,'#999'],
+      [8,26,'Payez contre ce chèque', 8,'#999'],
+      [8,46,"À l'ordre de", 8,'#999'],
+      [95,64,'À', 8,'#999'],
+      [130,64,'Le', 8,'#999'],
+      [130,10,'DH', 8,'#999'],
+    ];
+    guides.forEach(([x,y,txt,fs,col])=>{
+      page.appendChild(div({style:{position:'absolute',left:(x*SCALE)+'px',top:(y*SCALE)+'px',fontSize:fs,color:col}},txt));
+    });
+    // Dynamic fields at calibrated positions
+    const dyn = [
+      [tpl.montantChiffresX, tpl.montantChiffresY, fmtN(f.montant||0), 700, '#1A2540'],
+      [tpl.montantLettresX, tpl.montantLettresY, montantLettres(), 600, '#1A2540'],
+      [tpl.beneficiaireX, tpl.beneficiaireY, f.beneficiaire||'(bénéficiaire)', 600, '#2563EB'],
+      [tpl.villeX, tpl.villeY, f.ville||'', 600, '#1A2540'],
+      [tpl.dateX, tpl.dateY, fmtDate(f.date), 600, '#1A2540'],
+    ];
+    dyn.forEach(([x,y,txt,fw,col])=>{
+      page.appendChild(div({style:{position:'absolute',left:(x*SCALE)+'px',top:(y*SCALE)+'px',fontSize:11,fontWeight:fw,color:col,maxWidth:(150*SCALE)+'px'}},txt));
+    });
+    previewBox.appendChild(div({style:{fontSize:11,color:'#6B7A99',marginBottom:6}},'Aperçu (mise en page générique, à titre indicatif) :'));
+    previewBox.appendChild(page);
+  }
+
+  function drawCalib(){
+    calibBox.innerHTML='';
+    const fields = [
+      ['montantChiffresX','montantChiffresY','Montant (chiffres)'],
+      ['montantLettresX','montantLettresY','Montant (lettres)'],
+      ['beneficiaireX','beneficiaireY','Bénéficiaire'],
+      ['villeX','villeY','Ville'],
+      ['dateX','dateY','Date'],
+    ];
+    fields.forEach(([xk,yk,label])=>{
+      const row = div({style:{display:'flex',alignItems:'center',gap:8,marginBottom:6}},
+        div({style:{fontSize:11,width:140,color:'#6B7A99'}},label),
+        el('label',{style:{fontSize:10,color:'#6B7A99'}},'X(mm)'),
+        Object.assign(el('input',{type:'number',value:tpl[xk],style:{width:60}}),{oninput:e=>{tpl[xk]=+e.target.value;drawPreview();}}),
+        el('label',{style:{fontSize:10,color:'#6B7A99'}},'Y(mm)'),
+        Object.assign(el('input',{type:'number',value:tpl[yk],style:{width:60}}),{oninput:e=>{tpl[yk]=+e.target.value;drawPreview();}}),
+      );
+      calibBox.appendChild(row);
+    });
+  }
+  drawCalib();
+  drawPreview();
+
+  function printCheque(){
+    const html = `
+      <div style="position:relative;width:175mm;height:80mm;">
+        <div style="position:absolute;left:${tpl.montantChiffresX}mm;top:${tpl.montantChiffresY}mm;font-size:13px;font-weight:700;">${fmtN(f.montant||0)}</div>
+        <div style="position:absolute;left:${tpl.montantLettresX}mm;top:${tpl.montantLettresY}mm;width:150mm;font-size:11px;font-weight:600;">${montantLettres()}</div>
+        <div style="position:absolute;left:${tpl.beneficiaireX}mm;top:${tpl.beneficiaireY}mm;font-size:11px;">${f.beneficiaire||''}</div>
+        <div style="position:absolute;left:${tpl.villeX}mm;top:${tpl.villeY}mm;font-size:11px;">${f.ville||''}</div>
+        <div style="position:absolute;left:${tpl.dateX}mm;top:${tpl.dateY}mm;font-size:11px;">${fmtDate(f.date)}</div>
+      </div>`;
+    printDoc(html, 'Chèque '+banque, {landscape:true});
+  }
+
+  const bankSelect = el('select',{});
+  BANQUES_MAROC.forEach(b=>bankSelect.innerHTML+=`<option ${banque===b?'selected':''}>${b}</option>`);
+  bankSelect.oninput = e=>{ banque=e.target.value; tpl=getChequeTemplate(banque); drawCalib(); drawPreview(); };
+
+  const fEl = div({style:{display:'flex',flexDirection:'column',gap:14}},
+    div({style:{fontSize:12,color:'#6B7A99'}},
+      "⚠️ Chaque banque a son propre modèle de chèque. Réglez l'aperçu ci-dessous, puis faites un essai sur papier normal avant d'imprimer sur un vrai chèque."
+    ),
+    div({className:'grid-2'},
+      div({},el('label',{className:'lbl'},'Banque'),bankSelect),
+      div({},el('label',{className:'lbl'},'Bénéficiaire'),Object.assign(el('input',{value:''}),{oninput:e=>{f.beneficiaire=e.target.value;drawPreview();}})),
+      div({},el('label',{className:'lbl'},'Montant (MAD)'),Object.assign(el('input',{type:'number',value:0}),{oninput:e=>{f.montant=+e.target.value;drawPreview();}})),
+      div({},el('label',{className:'lbl'},'Ville'),Object.assign(el('input',{value:f.ville}),{oninput:e=>{f.ville=e.target.value;drawPreview();}})),
+      div({},el('label',{className:'lbl'},'Date'),Object.assign(el('input',{type:'date',value:f.date}),{oninput:e=>{f.date=e.target.value;drawPreview();}})),
+    ),
+    div({className:'card',style:{padding:12,background:'#F8FAFD'}}, previewBox),
+    div({style:{borderTop:'1px solid #eee',paddingTop:10}},
+      div({style:{fontWeight:800,fontSize:13,marginBottom:8}},'⚙️ Calibrage de la position (en mm depuis le coin haut-gauche)'),
+      calibBox,
+      btn('💾 Enregistrer le calibrage pour '+banque,'btn-gray',()=>{saveChequeTemplate(banque,tpl);notify('Calibrage enregistré ✓');},{style:{fontSize:12,marginTop:6}})
+    ),
+    div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
+      btn('Fermer','btn-gray',()=>setState({modal:null})),
+      btn('🖨 Imprimer le chèque','btn-orange',printCheque)
+    )
+  );
+  setState({modal:{title:'Imprimer un Chèque',content:fEl,wide:true}});
+}
+
 function renderCheques(){
   const cheques=state.cheques||[];
   const totC=cheques.filter(c=>c.type==='Chèque').reduce((s,c)=>s+c.montant,0);
@@ -2933,27 +3103,10 @@ function renderCheques(){
     ),
     div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}},
       div({style:{fontSize:18,fontWeight:800}},'Chèques & Avances'),
-      btn('+ Ajouter','btn-orange',()=>{
-        let f={type:'Chèque',num:'',beneficiaire:'',montant:0,date:today(),echeance:'',banque:'',objet:'',statut:'En cours'};
-        const fEl=div({style:{display:'flex',flexDirection:'column',gap:12}},
-          div({className:'grid-2'},
-            div({},el('label',{className:'lbl'},'Type'),(()=>{const s=el('select',{});['Chèque','Avance'].forEach(x=>s.innerHTML+=`<option>${x}</option>`);s.oninput=e=>f.type=e.target.value;return s;})()),
-            div({},el('label',{className:'lbl'},'Numéro *'),Object.assign(el('input',{value:''}),{oninput:e=>f.num=e.target.value})),
-            div({},el('label',{className:'lbl'},'Bénéficiaire'),Object.assign(el('input',{value:''}),{oninput:e=>f.beneficiaire=e.target.value})),
-            div({},el('label',{className:'lbl'},'Montant (MAD) *'),Object.assign(el('input',{type:'number',value:0}),{oninput:e=>f.montant=+e.target.value})),
-            div({},el('label',{className:'lbl'},'Date'),Object.assign(el('input',{type:'date',value:f.date}),{oninput:e=>f.date=e.target.value})),
-            div({},el('label',{className:'lbl'},"Date d'échéance"),Object.assign(el('input',{type:'date',value:''}),{oninput:e=>f.echeance=e.target.value})),
-            div({},el('label',{className:'lbl'},'Banque'),Object.assign(el('input',{value:''}),{oninput:e=>f.banque=e.target.value})),
-            div({},el('label',{className:'lbl'},'Statut'),(()=>{const s=el('select',{});['En cours','Encaissé','Retourné'].forEach(x=>s.innerHTML+=`<option>${x}</option>`);s.oninput=e=>f.statut=e.target.value;return s;})()),
-            div({style:{gridColumn:'1/-1'}},el('label',{className:'lbl'},'Objet'),Object.assign(el('input',{value:''}),{oninput:e=>f.objet=e.target.value})),
-          ),
-          div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
-            btn('Annuler','btn-gray',()=>setState({modal:null})),
-            btn('Enregistrer','btn-orange',()=>{if(!f.num){alert('Numéro obligatoire');return;}setState({cheques:[...state.cheques,{id:Date.now(),...f}],modal:null});notify('Ajouté ✓');})
-          )
-        );
-        setState({modal:{title:'Nouveau Chèque / Avance',content:fEl,wide:true}});
-      })
+      div({style:{display:'flex',gap:8}},
+        btn('🖨 Imprimer un chèque','btn-blue',()=>openChequePrintForm()),
+        btn('+ Ajouter','btn-orange',()=>openChequeForm())
+      )
     ),
     div({className:'card'},
       el('table',{},
@@ -2973,7 +3126,10 @@ function renderCheques(){
           ),
           el('td',{style:{color:'#6B7A99'}},c.banque||'—'),el('td',{style:{fontSize:12,color:'#6B7A99'}},c.objet||'—'),
           el('td',{},el('button',{style:{background:c.statut==='Encaissé'?'#10B98120':'#FEF3C7',color:c.statut==='Encaissé'?'#10B981':'#F59E0B',border:'none',borderRadius:20,padding:'3px 10px',cursor:'pointer',fontWeight:700,fontSize:11},onclick:()=>{const nc=state.cheques.map((x,idx)=>idx!==i?x:{...x,statut:x.statut==='Encaissé'?'En cours':'Encaissé'});setState({cheques:nc});}},c.statut||'En cours')),
-          el('td',{},btn('✕','btn-red',()=>{if(confirmDelete())setState({cheques:state.cheques.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}}))
+          el('td',{},div({style:{display:'flex',gap:6}},
+            btn('✏️','btn-gray',()=>openChequeForm(c,i),{style:{padding:'4px 8px',fontSize:12}}),
+            btn('✕','btn-red',()=>{if(confirmDelete())setState({cheques:state.cheques.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}})
+          ))
         );
         }):[el('tr',{},el('td',{colSpan:10,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun chèque ou avance'))]))
       )
