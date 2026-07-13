@@ -403,6 +403,7 @@ const NAV = [
   {key:'depenses',icon:'💸',label:'Dépenses',children:[
     {key:'liste-depenses',label:'Liste des dépenses'},
   ]},
+  {key:'cheques',icon:'💵',label:'Chèques & Avances'},
   {section:'COMPTE'},
   {key:'profil',icon:'👤',label:'Mon Profil'},
   {key:'parametres',icon:'⚙',label:'Paramètres'},
@@ -2893,7 +2894,38 @@ function renderCheques(){
   const cheques=state.cheques||[];
   const totC=cheques.filter(c=>c.type==='Chèque').reduce((s,c)=>s+c.montant,0);
   const totA=cheques.filter(c=>c.type==='Avance').reduce((s,c)=>s+c.montant,0);
+
+  function echeanceInfo(c){
+    if(c.statut==='Encaissé' || !c.echeance) return {level:'ok'};
+    const todayD = new Date(today()+'T00:00:00');
+    const echD = new Date(c.echeance+'T00:00:00');
+    const diffDays = Math.round((echD-todayD)/(1000*60*60*24));
+    if(diffDays<0) return {level:'overdue', diffDays};
+    if(diffDays<=2) return {level:'soon', diffDays};
+    return {level:'ok', diffDays};
+  }
+
+  const alerts = cheques.map((c,i)=>({c,i,info:echeanceInfo(c)})).filter(x=>x.info.level!=='ok');
+  const overdue = alerts.filter(x=>x.info.level==='overdue');
+  const soon = alerts.filter(x=>x.info.level==='soon');
+
   return div({},
+    (overdue.length||soon.length) ? div({className:'card',style:{background:overdue.length?'#FEE2E2':'#FEF3C7',border:'1.5px solid '+(overdue.length?'#EF444450':'#F59E0B50'),marginBottom:16,padding:'14px 16px'}},
+      div({style:{fontWeight:800,color:overdue.length?'#EF4444':'#F59E0B',marginBottom:8,fontSize:13}},
+        '⚠️ '+(overdue.length?overdue.length+' chèque(s)/avance(s) en retard':'')+(overdue.length&&soon.length?' · ':'')+(soon.length?soon.length+' échéance(s) proche (≤ 2 jours)':'')
+      ),
+      div({style:{display:'flex',flexDirection:'column',gap:4}},
+        ...[...overdue,...soon].map(({c,info})=>
+          div({style:{fontSize:12,color:'#1A2540'}},
+            span({style:{fontWeight:700}},c.type+' N°'+c.num+' — '+(c.beneficiaire||'—')+' — '+fmt(c.montant)),
+            ' · échéance '+fmtDate(c.echeance)+' · ',
+            span({style:{fontWeight:800,color:info.level==='overdue'?'#EF4444':'#F59E0B'}},
+              info.level==='overdue' ? ('en retard de '+Math.abs(info.diffDays)+' jour(s) — toujours Non payé') : (info.diffDays===0?"échéance aujourd'hui":'échéance dans '+info.diffDays+' jour(s)')
+            )
+          )
+        )
+      )
+    ) : null,
     div({style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14,marginBottom:20}},
       ...([['Chèques',fmt(totC),'#2563EB'],['Avances',fmt(totA),'#E8730A'],['Total',fmt(totC+totA),'#10B981']].map(([k,v,c])=>
         div({className:'stat-card card',style:{background:c+'15',border:`1.5px solid ${c}30`}},div({style:{fontSize:11,color:c,fontWeight:700,marginBottom:4}},k),div({style:{fontSize:18,fontWeight:900}},v))
@@ -2926,15 +2958,24 @@ function renderCheques(){
     div({className:'card'},
       el('table',{},
         el('thead',{},el('tr',{},...['Type','N°','Bénéficiaire','Montant','Date','Échéance','Banque','Objet','Statut',''].map(h=>el('th',{},h)))),
-        el('tbody',{},...(cheques.length?cheques.map((c,i)=>el('tr',{},
+        el('tbody',{},...(cheques.length?cheques.map((c,i)=>{
+          const info = echeanceInfo(c);
+          const rowBg = info.level==='overdue' ? '#FEE2E2' : info.level==='soon' ? '#FEF3C7' : (i%2===0?'#fff':'#FAFBFD');
+          return el('tr',{style:{background:rowBg}},
           el('td',{},span({className:'badge',style:{background:c.type==='Chèque'?'#2563EB15':'#E8730A15',color:c.type==='Chèque'?'#2563EB':'#E8730A'}},c.type)),
           el('td',{style:{fontWeight:700}},c.num),el('td',{},c.beneficiaire||'—'),
           el('td',{style:{fontWeight:800,color:'#E8730A'}},fmt(c.montant)),
-          el('td',{},fmtDate(c.date)),el('td',{},fmtDate(c.echeance)),
+          el('td',{},fmtDate(c.date)),
+          el('td',{},
+            div({},fmtDate(c.echeance)),
+            info.level==='overdue' ? div({style:{fontSize:10,fontWeight:800,color:'#EF4444'}},'⚠️ En retard') :
+            info.level==='soon' ? div({style:{fontSize:10,fontWeight:800,color:'#F59E0B'}},'⏰ Proche') : null
+          ),
           el('td',{style:{color:'#6B7A99'}},c.banque||'—'),el('td',{style:{fontSize:12,color:'#6B7A99'}},c.objet||'—'),
           el('td',{},el('button',{style:{background:c.statut==='Encaissé'?'#10B98120':'#FEF3C7',color:c.statut==='Encaissé'?'#10B981':'#F59E0B',border:'none',borderRadius:20,padding:'3px 10px',cursor:'pointer',fontWeight:700,fontSize:11},onclick:()=>{const nc=state.cheques.map((x,idx)=>idx!==i?x:{...x,statut:x.statut==='Encaissé'?'En cours':'Encaissé'});setState({cheques:nc});}},c.statut||'En cours')),
           el('td',{},btn('✕','btn-red',()=>{if(confirmDelete())setState({cheques:state.cheques.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}}))
-        )):[el('tr',{},el('td',{colSpan:10,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun chèque ou avance'))]))
+        );
+        }):[el('tr',{},el('td',{colSpan:10,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun chèque ou avance'))]))
       )
     )
   );
