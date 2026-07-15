@@ -9,7 +9,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SMERAV">
-<link rel="apple-touch-icon" href="https://via.placeholder.com/192x192/E8730A/ffffff?text=SM">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -622,7 +624,7 @@ function renderClients(){
         el('tbody',{},...(clients.length?clients.map((c,i)=>
           el('tr',{},
             el('td',{style:{fontWeight:700}},c.nom),
-            el('td',{style:{color:C.muted}},c.ice||'—'),
+            el('td',{},c.ice ? span({style:{color:C.muted}},c.ice) : span({style:{color:'#F59E0B',fontWeight:700,fontSize:11}},'⚠️ ICE manquant')),
             el('td',{},c.adresse||'—'),
             el('td',{},c.tel||'—'),
             el('td',{},c.email||'—'),
@@ -645,7 +647,7 @@ function showClientForm(client=null, idx=null){
   const formEl = div({style:{display:'flex',flexDirection:'column',gap:12}},
     div({className:'grid-2'},
       labeledInput('Nom *', Object.assign(el('input',{value:f.nom||''}),{oninput:e=>f.nom=e.target.value})),
-      labeledInput('ICE', Object.assign(el('input',{value:f.ice||''}),{oninput:e=>f.ice=e.target.value})),
+      labeledInput('ICE (important pour la future facturation électronique)', Object.assign(el('input',{value:f.ice||''}),{oninput:e=>f.ice=e.target.value})),
       labeledInput('Téléphone', Object.assign(el('input',{value:f.tel||''}),{oninput:e=>f.tel=e.target.value})),
       labeledInput('Email', Object.assign(el('input',{value:f.email||''}),{oninput:e=>f.email=e.target.value})),
       labeledInput('RC', Object.assign(el('input',{value:f.rc||''}),{oninput:e=>f.rc=e.target.value})),
@@ -662,7 +664,7 @@ function showClientForm(client=null, idx=null){
         if(idx!==null) clients[idx]={...clients[idx],...f};
         else clients.push({id:Date.now(),...f});
         setState({clients,modal:null});
-        notify('Client enregistré ✓');
+        notify(f.ice ? 'Client enregistré ✓' : 'Client enregistré — pensez à ajouter l\'ICE plus tard ⚠️');
       })
     )
   );
@@ -1105,7 +1107,7 @@ function renderFournisseurs(){
     const formEl=div({style:{display:'flex',flexDirection:'column',gap:12}},
       div({className:'grid-2'},
         div({},el('label',{className:'lbl'},'Nom *'),Object.assign(el('input',{value:f.nom||''}),{oninput:e=>f.nom=e.target.value})),
-        div({},el('label',{className:'lbl'},'ICE'),Object.assign(el('input',{value:f.ice||''}),{oninput:e=>f.ice=e.target.value})),
+        div({},el('label',{className:'lbl'},'ICE (important pour la future facturation électronique)'),Object.assign(el('input',{value:f.ice||''}),{oninput:e=>f.ice=e.target.value})),
         div({},el('label',{className:'lbl'},'Téléphone'),Object.assign(el('input',{value:f.tel||''}),{oninput:e=>f.tel=e.target.value})),
         div({},el('label',{className:'lbl'},'Email'),Object.assign(el('input',{value:f.email||''}),{oninput:e=>f.email=e.target.value})),
       ),
@@ -1134,7 +1136,7 @@ function renderFournisseurs(){
         el('tbody',{},...(state.fournisseurs.length?state.fournisseurs.map((f,i)=>
           el('tr',{},
             el('td',{style:{fontWeight:700}},f.nom),
-            el('td',{style:{color:C.muted}},f.ice||'—'),
+            el('td',{},f.ice ? span({style:{color:C.muted}},f.ice) : span({style:{color:'#F59E0B',fontWeight:700,fontSize:11}},'⚠️ ICE manquant')),
             el('td',{},f.tel||'—'),
             el('td',{},f.email||'—'),
             el('td',{},f.adresse||'—'),
@@ -1194,6 +1196,8 @@ function renderContent(){
     case 'paiements-fourn': return renderPaiementsFourn();
     case 'paiements-fournisseurs': return renderPaiementsFourn();
     case 'catalogue': return renderCatalogue();
+    case 'liste-depenses': return renderDepenses();
+    case 'depenses': return renderDepenses();
     case 'ouvriers': return renderOuvriers();
     case 'employes': return renderOuvriers();
     case 'paie': return renderFichesPaie();
@@ -3058,6 +3062,67 @@ function openChequePrintForm(){
     )
   );
   setState({modal:{title:'Imprimer un Chèque',content:fEl,wide:true}});
+}
+
+// ── DÉPENSES GÉNÉRALES DE L'ENTREPRISE (hors chantier) ─────────────────────
+function renderDepenses(){
+  const CATS = ['Loyer & Bureau','Salaires Administratifs','Assurances','Impôts & Taxes','Marketing','Fournitures','Téléphone & Internet','Autre'];
+  const deps = (state.settings && state.settings.depenses) || [];
+  const total = deps.reduce((s,d)=>s+(d.montant||0),0);
+
+  function saveDeps(newDeps){
+    setState({settings:{...state.settings, depenses:newDeps}});
+  }
+
+  function openForm(item=null, idx=null){
+    let f = item ? {...item} : {designation:'', categorie:CATS[0], montant:0, date:today()};
+    const fEl = div({style:{display:'flex',flexDirection:'column',gap:12}},
+      div({},el('label',{className:'lbl'},'Désignation *'),Object.assign(el('input',{value:f.designation||''}),{oninput:e=>f.designation=e.target.value})),
+      div({className:'grid-2'},
+        div({},el('label',{className:'lbl'},'Catégorie'),(()=>{const s=el('select',{});CATS.forEach(c=>{const o=el('option',{},c);if(c===f.categorie)o.selected=true;s.appendChild(o);});s.oninput=e=>f.categorie=e.target.value;return s;})()),
+        div({},el('label',{className:'lbl'},'Montant (MAD) *'),Object.assign(el('input',{type:'number',value:f.montant||0}),{oninput:e=>f.montant=+e.target.value})),
+        div({},el('label',{className:'lbl'},'Date'),Object.assign(el('input',{type:'date',value:f.date||today()}),{oninput:e=>f.date=e.target.value})),
+      ),
+      div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
+        btn('Annuler','btn-gray',()=>setState({modal:null})),
+        btn('Enregistrer','btn-orange',()=>{
+          if(!f.designation){alert('Désignation obligatoire');return;}
+          const newDeps = idx===null ? [...deps,{id:Date.now(),...f}] : deps.map((d,di)=>di===idx?{...d,...f}:d);
+          saveDeps(newDeps);
+          setState({modal:null});
+          notify(idx===null?'Dépense ajoutée ✓':'Dépense modifiée ✓');
+        })
+      )
+    );
+    setState({modal:{title:item?'Modifier la dépense':'Nouvelle dépense',content:fEl}});
+  }
+
+  return div({},
+    div({className:'card',style:{background:'#2563EB10',border:'1.5px solid #2563EB30',marginBottom:16,padding:'12px 16px',fontSize:12,color:'#1A2540'}},
+      '💡 Cette section sert à suivre les ', el('strong',{},'dépenses générales de la société'),
+      ' — loyer du bureau, salaires administratifs, assurances, impôts, marketing... — c\'est-à-dire tout ce qui n\'est ',
+      el('strong',{},'pas lié à un chantier précis'), '. Pour les dépenses liées à un projet (pièces, carburant chantier, main d\'œuvre...), utilisez plutôt l\'onglet "Charges" à l\'intérieur de ce projet.'
+    ),
+    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}},
+      div({},div({style:{fontSize:18,fontWeight:800}},'Liste des dépenses'),div({style:{color:'#E8730A',fontWeight:700}},fmt(total))),
+      btn('+ Ajouter','btn-orange',()=>openForm())
+    ),
+    div({className:'card'},
+      el('table',{},
+        el('thead',{},el('tr',{},...['Désignation','Catégorie','Montant','Date',''].map(h=>el('th',{},h)))),
+        el('tbody',{},...(deps.length?deps.map((d,i)=>el('tr',{},
+          el('td',{style:{fontWeight:600}},d.designation),
+          el('td',{},span({className:'badge',style:{background:'#2563EB15',color:'#2563EB'}},d.categorie||'—')),
+          el('td',{style:{fontWeight:800,color:'#E8730A'}},fmt(d.montant||0)),
+          el('td',{},fmtDate(d.date)),
+          el('td',{},div({style:{display:'flex',gap:6}},
+            btn('✏️','btn-gray',()=>openForm(d,i),{style:{padding:'4px 8px',fontSize:12}}),
+            btn('✕','btn-red',()=>{if(confirmDelete())saveDeps(deps.filter((_,di)=>di!==i));},{style:{padding:'4px 8px',fontSize:12}})
+          ))
+        )):[el('tr',{},el('td',{colSpan:5,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune dépense enregistrée'))]))
+      )
+    )
+  );
 }
 
 function renderCheques(){
