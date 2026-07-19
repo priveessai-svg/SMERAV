@@ -3920,7 +3920,18 @@ function renderDecomptesSection(p, updateProject){
         const lignes = att.lignes||[];
         const totalHT = lignes.reduce((s,l)=>s+l.qteMois*(l.pu||0),0);
         const tva = totalHT*TVA, ttc = totalHT+tva;
-        const rg = att.definitif ? (att.rgManuel||0) : ttc*RG;
+        const rgCap = (p.budget||0)*0.07;
+        let cumulRGAvant=0;
+        for(let idx=0; idx<i; idx++){
+          const d2=atts[idx];
+          if(d2.definitif){ cumulRGAvant += (d2.rgManuel||0); continue; }
+          const th2=(d2.lignes||[]).reduce((ss,l)=>ss+(l.qteMois||0)*(l.pu||0),0);
+          const ttc2=th2*(1+TVA);
+          const remaining2=Math.max(0, rgCap-cumulRGAvant);
+          cumulRGAvant += Math.min(ttc2*RG, remaining2);
+        }
+        const remaining = Math.max(0, rgCap-cumulRGAvant);
+        const rg = att.definitif ? (att.rgManuel||0) : Math.min(ttc*RG, remaining);
         const n2 = ttc - rg;
         const cumHT = lignes.reduce((s,l)=>s+(l.cumul||0)*(l.pu||0),0);
         const cumN2 = cumHT*(1+TVA)*(1-RG);
@@ -4000,26 +4011,33 @@ function renderDecomptesSection(p, updateProject){
 }
 
 function printDecompte(att, p){
-  const TVA=0.20, RG=(p.tauxRG!=null ? p.tauxRG/100 : 0.10);
+  const TVA=0.20, RGrate=(p.tauxRG!=null ? p.tauxRG/100 : 0.10);
   const lignes=att.lignes||[];
   const cumHT=lignes.reduce((s,l)=>s+(l.cumul||0)*(l.pu||0),0);
-  // Le décompte est cumulatif : HT, TVA, TTC et RG sont calculés sur le cumul à date
+  // TOTAL EN DH HT / TVA / TOTAL TTC affichés = CUMULATIF à date (information/historique)
   const tva=cumHT*TVA,ttc=cumHT+tva;
-  // RG = taux normal (souvent 10%) sur le mois, SAUF pour le décompte définitif
-  // où l'utilisateur saisit lui-même le montant de la retenue de garantie
-  const rg = att.definitif ? (att.rgManuel||0) : ttc*RG;
-  // A Déduire = somme des NET À PAYER des décomptes précédents
-  // NET précédent = TTC précédent - RG précédent
+
+  // Le calcul de la Retenue de Garantie et du Net à Payer se fait UNIQUEMENT
+  // sur la Qté du mois (montant du mois), pas sur le cumul — avec un plafond
+  // progressif de 7% du budget total du marché.
   const atts2=p.attachements||[];
   const attIdx=atts2.indexOf(att);
-  const aDeduire=atts2.slice(0,attIdx).reduce((s,d2)=>{
+  const rgCap=(p.budget||0)*0.07;
+  const totalHTMois=lignes.reduce((s,l)=>s+(l.qteMois||0)*(l.pu||0),0);
+  const ttcMois=totalHTMois*(1+TVA);
+  let cumulRGAvant=0;
+  for(let idx=0; idx<attIdx; idx++){
+    const d2=atts2[idx];
+    if(d2.definitif){ cumulRGAvant += (d2.rgManuel||0); continue; }
     const th2=(d2.lignes||[]).reduce((ss,l)=>ss+(l.qteMois||0)*(l.pu||0),0);
     const ttc2=th2*(1+TVA);
-    const rg2=d2.definitif ? (d2.rgManuel||0) : ttc2*RG;
-    return s+(ttc2-rg2);
-  },0);
-  // NET À PAYER = (TTC - RG) - A Déduire
-  const n2=(ttc-rg)-aDeduire;
+    const remaining2=Math.max(0, rgCap-cumulRGAvant);
+    cumulRGAvant += Math.min(ttc2*RGrate, remaining2);
+  }
+  const remaining=Math.max(0, rgCap-cumulRGAvant);
+  const rg = att.definitif ? (att.rgManuel||0) : Math.min(ttcMois*RGrate, remaining);
+  // NET À PAYER = Total TTC du mois − Retenue de Garantie du mois
+  const n2 = ttcMois - rg;
   const s=getSettings();
   const logoHTML=s.logo?`<img src="${s.logo}" style="width:50px;height:50px;object-fit:contain;"/>`:
     `<div style="width:50px;height:50px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:10px;">SM</div>`;
@@ -4116,24 +4134,24 @@ function printDecompte(att, p){
   </table>
   <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;page-break-inside:avoid;">
     <tr>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:center;font-weight:700;">TOTAL EN DH HT</td>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:center;font-weight:700;">TOTAL CUMULÉ EN DH HT</td>
       <td style="border:1px solid #999;padding:6px 12px;text-align:right;font-weight:700;">${fmtN(cumHT)}</td>
     </tr>
     <tr>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:center;">TVA 20%</td>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:center;">TVA 20% (cumulé)</td>
       <td style="border:1px solid #999;padding:6px 12px;text-align:right;">${fmtN(tva)}</td>
     </tr>
     <tr>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:center;font-weight:700;">TOTAL TTC</td>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:center;font-weight:700;">TOTAL TTC CUMULÉ</td>
       <td style="border:1px solid #999;padding:6px 12px;text-align:right;font-weight:700;">${fmtN(ttc)}</td>
     </tr>
-    <tr>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:center;">RETENUE DE GARANTIE (10%)</td>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:right;">${fmtN(rg)}</td>
+    <tr style="background:#FFF7ED;">
+      <td style="border:1px solid #999;padding:6px 12px;text-align:center;font-weight:700;">TOTAL TTC DU MOIS</td>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:right;font-weight:700;">${fmtN(ttcMois)}</td>
     </tr>
     <tr>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:center;">A DÉDUIRE DÉCOMPTES PRÉCÉDENTS</td>
-      <td style="border:1px solid #999;padding:6px 12px;text-align:right;">${fmtN(aDeduire)}</td>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:center;">RETENUE DE GARANTIE DU MOIS (${(RGrate*100)}%)</td>
+      <td style="border:1px solid #999;padding:6px 12px;text-align:right;">${fmtN(rg)}</td>
     </tr>
     <tr style="background:#f5f5f5;">
       <td style="border:2px solid #333;padding:8px 12px;text-align:center;font-weight:900;font-size:13px;">NET À PAYER (DÉCOMPTE N° ${att.num})</td>
