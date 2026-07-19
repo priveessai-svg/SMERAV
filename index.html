@@ -3903,27 +3903,6 @@ function renderAttachementsSection(p, updateProject){
 }
 
 // ── DÉCOMPTES ────────────────────────────
-// Calcule la retenue de garantie (RG) réelle de chaque décompte, dans l'ordre,
-// en plafonnant le CUMUL à 7% du budget du marché — peu importe sur quel
-// décompte ce plafond est atteint (pas forcément le décompte définitif).
-function computeRGSeries(atts, TVA, RGrate, rgCap){
-  let cumulRG = 0;
-  return (atts||[]).map(a=>{
-    let rg;
-    if(a.definitif){
-      rg = a.rgManuel||0; // saisie manuelle : on fait confiance à l'utilisateur
-    } else {
-      const th = (a.lignes||[]).reduce((s,l)=>s+(l.qteMois||0)*(l.pu||0),0);
-      const ttc = th*(1+TVA);
-      const rgBrut = ttc*RGrate;
-      const remaining = Math.max(0, rgCap - cumulRG);
-      rg = Math.min(rgBrut, remaining);
-    }
-    cumulRG += rg;
-    return rg;
-  });
-}
-
 function renderDecomptesSection(p, updateProject){
   const atts = p.attachements||[];
   const TVA = 0.20, RG = (p.tauxRG!=null ? p.tauxRG/100 : 0.10);
@@ -3941,10 +3920,7 @@ function renderDecomptesSection(p, updateProject){
         const lignes = att.lignes||[];
         const totalHT = lignes.reduce((s,l)=>s+l.qteMois*(l.pu||0),0);
         const tva = totalHT*TVA, ttc = totalHT+tva;
-        const totalMarche = p.budget||0;
-        const rgCap = totalMarche * 0.07;
-        const rgSeries = computeRGSeries(atts, TVA, RG, rgCap);
-        const rg = rgSeries[i];
+        const rg = att.definitif ? (att.rgManuel||0) : ttc*RG;
         const n2 = ttc - rg;
         const cumHT = lignes.reduce((s,l)=>s+(l.cumul||0)*(l.pu||0),0);
         const cumN2 = cumHT*(1+TVA)*(1-RG);
@@ -4029,19 +4005,17 @@ function printDecompte(att, p){
   const cumHT=lignes.reduce((s,l)=>s+(l.cumul||0)*(l.pu||0),0);
   // Le décompte est cumulatif : HT, TVA, TTC et RG sont calculés sur le cumul à date
   const tva=cumHT*TVA,ttc=cumHT+tva;
-  // RG = taux normal (souvent 10%) sur le mois, plafonné à 7% du budget marché au total,
-  // SAUF pour le décompte définitif où l'utilisateur saisit lui-même le montant.
-  const atts2=p.attachements||[];
-  const attIdx=atts2.indexOf(att);
-  const rgCap=(p.budget||0)*0.07;
-  const rgSeries=computeRGSeries(atts2, TVA, RG, rgCap);
-  const rg=rgSeries[attIdx];
+  // RG = taux normal (souvent 10%) sur le mois, SAUF pour le décompte définitif
+  // où l'utilisateur saisit lui-même le montant de la retenue de garantie
+  const rg = att.definitif ? (att.rgManuel||0) : ttc*RG;
   // A Déduire = somme des NET À PAYER des décomptes précédents
   // NET précédent = TTC précédent - RG précédent
-  const aDeduire=atts2.slice(0,attIdx).reduce((s,d2,idx)=>{
+  const atts2=p.attachements||[];
+  const attIdx=atts2.indexOf(att);
+  const aDeduire=atts2.slice(0,attIdx).reduce((s,d2)=>{
     const th2=(d2.lignes||[]).reduce((ss,l)=>ss+(l.qteMois||0)*(l.pu||0),0);
     const ttc2=th2*(1+TVA);
-    const rg2=rgSeries[idx];
+    const rg2=d2.definitif ? (d2.rgManuel||0) : ttc2*RG;
     return s+(ttc2-rg2);
   },0);
   // NET À PAYER = (TTC - RG) - A Déduire
