@@ -1494,6 +1494,11 @@ function renderProjetInfoEdit(p, updateProject){
       el('label',{className:'lbl'},'Objet du marché'),
       Object.assign(el('textarea',{rows:3,style:{width:'100%',resize:'vertical'}},f.objet||''),{oninput:e=>f.objet=e.target.value})
     ),
+    div({className:'grid-2',style:{marginBottom:16}},
+      div({},el('label',{className:'lbl'},'Taux de retenue de garantie (%)'),
+        Object.assign(el('input',{type:'number',value:(f.tauxRG!=null?f.tauxRG:10),min:0,max:100,step:0.5}),{oninput:e=>f.tauxRG=+e.target.value})
+      )
+    ),
     (()=>{
       if(!f.signataires||!f.signataires.length) f.signataires=[{nom:f.maitreOuvrage||'SRM-FM',row:0},{nom:'SMERAV S.A.R.L.au',row:0}];
       f.signataires.forEach(sig=>{ if(sig.row==null) sig.row=0; });
@@ -3576,6 +3581,7 @@ function renderAttachementsSection(p, updateProject){
           return {id:b.id,designation:b.designation,unite:b.unite,qteBD,pu:b.pu||0,qtePrecedente:qteP,qteMois:0,cumul:qteP,pct:qteBD>0?Math.round(qteP/qteBD*1000)/10:0};
         });
         let formData = {date:today(),du:'',au:'',lignes};
+        let rgManuelBox;
 
         const lignesContainer = div({});
         const totalDiv = div({style:{textAlign:'right',padding:'10px 0',fontWeight:900,fontSize:16,color:'#E8730A'}});
@@ -3639,9 +3645,18 @@ function renderAttachementsSection(p, updateProject){
           ),
           div({className:'grid-3'},
             div({},el('label',{className:'lbl'},'Travail N°'),Object.assign(el('input',{type:'text',placeholder:'ex: 01',value:formData.travailNum||''}),{oninput:e=>formData.travailNum=e.target.value})),
-            div({}),
+            div({style:{display:'flex',alignItems:'flex-end',paddingBottom:8}},
+              el('label',{style:{display:'flex',alignItems:'center',gap:8,fontSize:13,fontWeight:600,cursor:'pointer'}},
+                Object.assign(el('input',{type:'checkbox'}),{onchange:e=>{formData.definitif=e.target.checked;rgManuelBox.style.display=e.target.checked?'block':'none';}}),
+                'Décompte définitif'
+              )
+            ),
             div({}),
           ),
+          (rgManuelBox = div({style:{display:formData.definitif?'block':'none',marginBottom:4}},
+            el('label',{className:'lbl'},'Retenue de garantie — montant (MAD), à saisir manuellement'),
+            Object.assign(el('input',{type:'number',value:formData.rgManuel||0,style:{width:'100%'}}),{oninput:e=>formData.rgManuel=+e.target.value})
+          )),
           div({style:{overflowX:'auto'}},lignesContainer),
           totalDiv,
           div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
@@ -3784,7 +3799,8 @@ function renderAttachementsSection(p, updateProject){
                 printDoc(html, 'Attachement N°'+a.num)},{style:{padding:'4px 8px',fontSize:12}}),
               btn('✏️','btn-orange',()=>{
                 const editLignes = JSON.parse(JSON.stringify(a.lignes||[]));
-                const editForm = {du:a.du,au:a.au,date:a.date,num:a.num,travailNum:a.travailNum||''};
+                const editForm = {du:a.du,au:a.au,date:a.date,num:a.num,travailNum:a.travailNum||'',definitif:!!a.definitif,rgManuel:a.rgManuel||0};
+                let editRgBox;
                 const lignesContainer = div({});
                 function renderEditLignes(){
                   lignesContainer.innerHTML='';
@@ -3844,6 +3860,16 @@ function renderAttachementsSection(p, updateProject){
                     div({},el('label',{className:'lbl'},'Du'),Object.assign(el('input',{type:'date',value:editForm.du||'',style:{width:'100%'}}),{oninput:e=>editForm.du=e.target.value})),
                     div({},el('label',{className:'lbl'},'Au'),Object.assign(el('input',{type:'date',value:editForm.au||'',style:{width:'100%'}}),{oninput:e=>editForm.au=e.target.value}))
                   ),
+                  div({},
+                    el('label',{style:{display:'flex',alignItems:'center',gap:8,fontSize:13,fontWeight:600,cursor:'pointer'}},
+                      Object.assign(el('input',{type:'checkbox',checked:!!editForm.definitif}),{onchange:e=>{editForm.definitif=e.target.checked;editRgBox.style.display=e.target.checked?'block':'none';}}),
+                      'Décompte définitif'
+                    )
+                  ),
+                  (editRgBox = div({style:{display:editForm.definitif?'block':'none',marginBottom:4}},
+                    el('label',{className:'lbl'},'Retenue de garantie — montant (MAD), à saisir manuellement'),
+                    Object.assign(el('input',{type:'number',value:editForm.rgManuel||0,style:{width:'100%'}}),{oninput:e=>editForm.rgManuel=+e.target.value})
+                  )),
                   div({style:{overflowX:'auto'}},lignesContainer),
                   btn('💾 Enregistrer','btn-green',()=>{
                     const total=editLignes.reduce((s,l)=>s+(l.qteMois||0)*(l.pu||0),0);
@@ -3879,7 +3905,7 @@ function renderAttachementsSection(p, updateProject){
 // ── DÉCOMPTES ────────────────────────────
 function renderDecomptesSection(p, updateProject){
   const atts = p.attachements||[];
-  const TVA = 0.20, RG = 0.10;
+  const TVA = 0.20, RG = (p.tauxRG!=null ? p.tauxRG/100 : 0.10);
 
   if(atts.length===0) return div({className:'card',style:{padding:40,textAlign:'center',color:'#6B7A99'}},
     div({style:{fontSize:28,marginBottom:8}},'💰'),
@@ -3898,12 +3924,13 @@ function renderDecomptesSection(p, updateProject){
         const rgCap = totalMarche * 0.07;
         // Cumul RG deja retenu dans les decomptes precedents
         const rgDejaRetenu = (p.attachements||[]).filter((_,xi)=>xi<(p.attachements||[]).indexOf(att)).reduce((s,a2)=>{
+          if(a2.definitif) return s+(a2.rgManuel||0);
           const th2=( a2.lignes||[]).reduce((ss,l)=>ss+(l.qteMois||0)*(l.pu||0),0);
           return s+th2*(1+TVA)*RG;
         },0);
         const rgBrut = ttc*RG;
         const rgRestant = Math.max(0, rgCap - rgDejaRetenu);
-        const rg = Math.min(rgBrut, rgRestant);
+        const rg = att.definitif ? (att.rgManuel||0) : Math.min(rgBrut, rgRestant);
         const n2 = ttc - rg;
         const cumHT = lignes.reduce((s,l)=>s+(l.cumul||0)*(l.pu||0),0);
         const cumN2 = cumHT*(1+TVA)*(1-RG);
@@ -3922,7 +3949,7 @@ function renderDecomptesSection(p, updateProject){
           ),
           div({style:{padding:'14px 18px'}},
             div({style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:10,marginBottom:14}},
-              ...([['Total HT',fmt(totalHT),'#2563EB'],['TVA 20%',fmt(tva),'#6B7A99'],['Total TTC',fmt(ttc),'#E8730A'],['Total N2 (RG 10%)',fmt(n2),'#10B981']].map(([k,v,c])=>
+              ...([['Total HT',fmt(totalHT),'#2563EB'],['TVA 20%',fmt(tva),'#6B7A99'],['Total TTC',fmt(ttc),'#E8730A'],['Total N2 (RG '+(RG*100)+'%)',fmt(n2),'#10B981']].map(([k,v,c])=>
                 div({style:{background:c+'10',border:'1px solid '+c+'30',borderRadius:8,padding:'8px 10px'}},
                   div({style:{fontSize:10,color:c,fontWeight:700}}),
                   div({style:{fontSize:10,color:'#6B7A99',marginBottom:3}},k),
@@ -3983,13 +4010,14 @@ function renderDecomptesSection(p, updateProject){
 }
 
 function printDecompte(att, p){
-  const TVA=0.20,RG=0.10;
+  const TVA=0.20, RG=(p.tauxRG!=null ? p.tauxRG/100 : 0.10);
   const lignes=att.lignes||[];
   const cumHT=lignes.reduce((s,l)=>s+(l.cumul||0)*(l.pu||0),0);
   // Le décompte est cumulatif : HT, TVA, TTC et RG sont calculés sur le cumul à date
   const tva=cumHT*TVA,ttc=cumHT+tva;
-  // RG = 10% du TTC (cumulatif)
-  const rg=ttc*RG;
+  // RG = taux normal (souvent 10%) sur le cumul, SAUF pour le décompte définitif
+  // où l'utilisateur saisit lui-même le montant de la retenue de garantie
+  const rg = att.definitif ? (att.rgManuel||0) : ttc*RG;
   // A Déduire = somme des NET À PAYER des décomptes précédents
   // NET précédent = TTC précédent - RG précédent
   const atts2=p.attachements||[];
@@ -3997,7 +4025,7 @@ function printDecompte(att, p){
   const aDeduire=atts2.slice(0,attIdx).reduce((s,d2)=>{
     const th2=(d2.lignes||[]).reduce((ss,l)=>ss+(l.qteMois||0)*(l.pu||0),0);
     const ttc2=th2*(1+TVA);
-    const rg2=ttc2*RG;
+    const rg2=d2.definitif ? (d2.rgManuel||0) : ttc2*RG;
     return s+(ttc2-rg2);
   },0);
   // NET À PAYER = (TTC - RG) - A Déduire
