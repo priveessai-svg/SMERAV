@@ -350,6 +350,9 @@ function getSettings(){ return state.settings; }
 
 function headerHTML(){
   const s = getSettings();
+  if(s.enTeteImg){
+    return `<div style="margin-bottom:14px;"><img src="${s.enTeteImg}" style="width:100%;max-height:35mm;object-fit:contain;display:block;"/></div>`;
+  }
   const logoHTML = s.logo ? `<img src="${s.logo}" style="height:70px;object-fit:contain;"/>` :
     `<div style="width:70px;height:70px;background:linear-gradient(135deg,#E8730A,#F59B2B);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#fff;flex-shrink:0;">SM</div>`;
   return `
@@ -3732,6 +3735,7 @@ function renderAttachementsSection(p, updateProject){
                 }).join('');
 
                 const html = `
+                ${s.enTeteImg?'<img src="'+s.enTeteImg+'" style="width:100%;max-height:35mm;object-fit:contain;display:block;margin-bottom:6px;"/>':''}
                 <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:13px;">
                   <tr>
                     <td style="border:1px solid #999;padding:7px 10px;width:30%;vertical-align:top">
@@ -4062,6 +4066,7 @@ function printDecompte(att, p){
   const clientRC = clientInfo.rc || '';
   const clientIF = clientInfo.if_ || '';
   const html=`
+  ${s.enTeteImg?'<img src="'+s.enTeteImg+'" style="width:100%;max-height:35mm;object-fit:contain;display:block;margin-bottom:6px;"/>':''}
   <table style="width:100%;border-collapse:collapse;margin-bottom:0;font-size:11px;">
     <tr>
       <td colspan="2" style="border:1px solid #999;padding:6px 10px;">
