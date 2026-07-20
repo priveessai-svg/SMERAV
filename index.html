@@ -3768,55 +3768,53 @@ function renderAttachementsSection(p, updateProject){
                 }).join('');
 
                 const html = `
+                <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:13px;">
+                  <tr>
+                    <td style="border:1px solid #999;padding:7px 10px;width:30%;vertical-align:top">
+                      <span style="font-size:8px;color:#666;display:block">Maître d'ouvrage</span>
+                      <span style="font-weight:700">${p.maitreOuvrage||p.client||''}</span>
+                    </td>
+                    <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
+                      <span style="font-size:8px;color:#666;display:block">Marché N°</span>
+                      <span style="font-weight:700">${p.marcheNum||'—'}</span>
+                    </td>
+                    <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
+                      <span style="font-size:8px;color:#666;display:block">ORDRE DE SERVICE N°</span>
+                      <span style="font-weight:700">${p.ordreService||'—'}</span>
+                    </td>
+                    <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
+                      <span style="font-size:8px;color:#666;display:block">Date OS</span>
+                      <span style="font-weight:700">${p.dateOS?new Date(p.dateOS).toLocaleDateString('fr-MA'):'—'}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
+                      <span style="font-size:8px;color:#666;display:block">Titulaire du Marché</span>
+                      <span style="font-weight:700">${s.titulaire||s.nom||'SMERAV S.A.R.L.au'}</span>
+                    </td>
+                    <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
+                      <span style="font-size:8px;color:#666;display:block">Travail N°</span>
+                      <span style="font-weight:700">${a.travailNum||'—'}</span>
+                    </td>
+                    <td colspan="2" style="border:1px solid #999;padding:7px 10px;vertical-align:top">
+                      <span style="font-size:8px;color:#666;display:block">Travaux Attachés DU <strong>${a.du?new Date(a.du).toLocaleDateString('fr-MA'):'—'}</strong> AU <strong>${a.au?new Date(a.au).toLocaleDateString('fr-MA'):'—'}</strong></span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="4" style="border:1px solid #999;padding:4px 7px;">
+                      <span style="font-size:8px;color:#666;display:block">Objet</span>
+                      <span style="font-weight:700">${p.nom||''}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="4" style="border:1px solid #999;padding:6px;text-align:center;font-weight:900;font-size:12px;background:#e0e0e0">
+                      ATTACHEMENT PROVISOIRE N° ${a.num}/${p.marcheNum||'—'}
+                    </td>
+                  </tr>
+                </table>
+
                 <table style="width:100%;border-collapse:collapse;font-size:9px;table-layout:fixed;">
                   <thead>
-                    ${s.enTeteHeaderImg?'<tr><td colspan="8" style="border:none;padding:0 0 6px 0;"><img src="'+s.enTeteHeaderImg+'" style="width:100%;display:block;"/></td></tr>':''}
-                    <tr><td colspan="8" style="border:none;padding:0;">
-                      <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:13px;">
-                        <tr>
-                          <td style="border:1px solid #999;padding:7px 10px;width:30%;vertical-align:top">
-                            <span style="font-size:8px;color:#666;display:block">Maître d'ouvrage</span>
-                            <span style="font-weight:700">${p.maitreOuvrage||p.client||''}</span>
-                          </td>
-                          <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
-                            <span style="font-size:8px;color:#666;display:block">Marché N°</span>
-                            <span style="font-weight:700">${p.marcheNum||'—'}</span>
-                          </td>
-                          <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
-                            <span style="font-size:8px;color:#666;display:block">ORDRE DE SERVICE N°</span>
-                            <span style="font-weight:700">${p.ordreService||'—'}</span>
-                          </td>
-                          <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
-                            <span style="font-size:8px;color:#666;display:block">Date OS</span>
-                            <span style="font-weight:700">${p.dateOS?new Date(p.dateOS).toLocaleDateString('fr-MA'):'—'}</span>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
-                            <span style="font-size:8px;color:#666;display:block">Titulaire du Marché</span>
-                            <span style="font-weight:700">${s.titulaire||s.nom||'SMERAV S.A.R.L.au'}</span>
-                          </td>
-                          <td style="border:1px solid #999;padding:7px 10px;vertical-align:top">
-                            <span style="font-size:8px;color:#666;display:block">Travail N°</span>
-                            <span style="font-weight:700">${a.travailNum||'—'}</span>
-                          </td>
-                          <td colspan="2" style="border:1px solid #999;padding:7px 10px;vertical-align:top">
-                            <span style="font-size:8px;color:#666;display:block">Travaux Attachés DU <strong>${a.du?new Date(a.du).toLocaleDateString('fr-MA'):'—'}</strong> AU <strong>${a.au?new Date(a.au).toLocaleDateString('fr-MA'):'—'}</strong></span>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td colspan="4" style="border:1px solid #999;padding:4px 7px;">
-                            <span style="font-size:8px;color:#666;display:block">Objet</span>
-                            <span style="font-weight:700">${p.nom||''}</span>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td colspan="4" style="border:1px solid #999;padding:6px;text-align:center;font-weight:900;font-size:12px;background:#e0e0e0">
-                            ATTACHEMENT PROVISOIRE N° ${a.num}/${p.marcheNum||'—'}
-                          </td>
-                        </tr>
-                      </table>
-                    </td></tr>
                     <tr style="background:#d0d0d0;">
                       <th style="border:1px solid #999;padding:8px 4px;width:6%;text-align:center;font-size:12px;">N° Prix</th>
                       <th style="border:1px solid #999;padding:8px 6px;width:46%;text-align:center;font-size:12px;">DESIGNATION DES ARTICLES</th>
@@ -3828,7 +3826,6 @@ function renderAttachementsSection(p, updateProject){
                       <th style="border:1px solid #999;padding:8px 4px;width:7%;text-align:center;font-size:12px;">%</th>
                     </tr>
                   </thead>
-                  ${s.enTeteFooterImg?'<tfoot style="display:table-footer-group;"><tr><td colspan="8" style="border:none;padding:6px 0 0 0;"><img src="'+s.enTeteFooterImg+'" style="width:100%;display:block;"/></td></tr></tfoot>':''}
                   <tbody>
                     ${rows}
                   </tbody>
@@ -4101,65 +4098,62 @@ function printDecompte(att, p){
   const clientRC = clientInfo.rc || '';
   const clientIF = clientInfo.if_ || '';
   const html=`
+  <table style="width:100%;border-collapse:collapse;margin-bottom:0;font-size:11px;">
+    <tr>
+      <td colspan="2" style="border:1px solid #999;padding:6px 10px;">
+        <div style="font-weight:900;font-size:13px;">${s.nom||'SMERAV S.A.R.L.au'}</div>
+        <div style="margin-top:2px;font-size:10px;">${s.adresse||''}</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #999;padding:5px 10px;width:50%;font-size:11px;">R.C : <strong>${s.rc||'—'}</strong> &nbsp;&nbsp; Patente : <strong>${s.tp||'—'}</strong></td>
+      <td style="border:1px solid #999;padding:5px 10px;font-size:11px;">I.F : <strong>${s.if_||'—'}</strong> &nbsp;&nbsp; CNSS : <strong>${s.cnss||'—'}</strong></td>
+    </tr>
+    <tr>
+      <td colspan="2" style="border:1px solid #999;padding:5px 10px;font-size:11px;">ICE : <strong>${s.ice||'—'}</strong></td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #999;padding:5px 10px;font-size:11px;"><strong>Maître d'ouvrage :</strong> ${p.maitreOuvrage||'—'}</td>
+      <td style="border:1px solid #999;padding:5px 10px;font-size:11px;">ICE : <strong>${clientICE||'—'}</strong></td>
+    </tr>
+  </table>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px;">
+    <tr>
+      <td style="border:1px solid #999;padding:6px 10px;width:35%;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Marché N°</span>
+        <span style="font-weight:700">${p.marcheNum||'—'}</span>
+      </td>
+      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">ORDRE DE SERVICE N°</span>
+        <span style="font-weight:700">${p.ordreService||'—'}</span>
+      </td>
+      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Date OS</span>
+        <span style="font-weight:700">${p.dateOS?new Date(p.dateOS).toLocaleDateString('fr-MA'):'—'}</span>
+      </td>
+      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Travaux Du — Au</span>
+        <span style="font-weight:700">${att.du?new Date(att.du).toLocaleDateString('fr-MA'):'—'} — ${att.au?new Date(att.au).toLocaleDateString('fr-MA'):'—'}</span>
+      </td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Titulaire du Marché</span>
+        <span style="font-weight:700">${s.nom||'SMERAV S.A.R.L.au'}</span>
+      </td>
+      <td colspan="3" style="border:1px solid #999;padding:6px 10px;vertical-align:top">
+        <span style="font-size:8px;color:#666;display:block">Objet</span>
+        <span style="font-weight:700">${p.objet||p.nom||''}</span>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="4" style="border:1px solid #999;padding:7px;text-align:center;font-weight:900;font-size:13px;background:#e0e0e0;letter-spacing:0.5px;">
+        DÉCOMPTE PROVISOIRE N° ${att.num}/${p.marcheNum||'—'}
+      </td>
+    </tr>
+  </table>
   <table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;">
     <thead>
-      ${s.enTeteHeaderImg?'<tr><td colspan="9" style="border:none;padding:0 0 6px 0;"><img src="'+s.enTeteHeaderImg+'" style="width:100%;display:block;"/></td></tr>':''}
-      <tr><td colspan="9" style="border:none;padding:0;">
-        <table style="width:100%;border-collapse:collapse;margin-bottom:0;font-size:11px;">
-          <tr>
-            <td colspan="2" style="border:1px solid #999;padding:6px 10px;">
-              <div style="font-weight:900;font-size:13px;">${s.nom||'SMERAV S.A.R.L.au'}</div>
-              <div style="margin-top:2px;font-size:10px;">${s.adresse||''}</div>
-            </td>
-          </tr>
-          <tr>
-            <td style="border:1px solid #999;padding:5px 10px;width:50%;font-size:11px;">R.C : <strong>${s.rc||'—'}</strong> &nbsp;&nbsp; Patente : <strong>${s.tp||'—'}</strong></td>
-            <td style="border:1px solid #999;padding:5px 10px;font-size:11px;">I.F : <strong>${s.if_||'—'}</strong> &nbsp;&nbsp; CNSS : <strong>${s.cnss||'—'}</strong></td>
-          </tr>
-          <tr>
-            <td colspan="2" style="border:1px solid #999;padding:5px 10px;font-size:11px;">ICE : <strong>${s.ice||'—'}</strong></td>
-          </tr>
-          <tr>
-            <td style="border:1px solid #999;padding:5px 10px;font-size:11px;"><strong>Maître d'ouvrage :</strong> ${p.maitreOuvrage||'—'}</td>
-            <td style="border:1px solid #999;padding:5px 10px;font-size:11px;">ICE : <strong>${clientICE||'—'}</strong></td>
-          </tr>
-        </table>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px;">
-          <tr>
-            <td style="border:1px solid #999;padding:6px 10px;width:35%;vertical-align:top">
-              <span style="font-size:8px;color:#666;display:block">Marché N°</span>
-              <span style="font-weight:700">${p.marcheNum||'—'}</span>
-            </td>
-            <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
-              <span style="font-size:8px;color:#666;display:block">ORDRE DE SERVICE N°</span>
-              <span style="font-weight:700">${p.ordreService||'—'}</span>
-            </td>
-            <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
-              <span style="font-size:8px;color:#666;display:block">Date OS</span>
-              <span style="font-weight:700">${p.dateOS?new Date(p.dateOS).toLocaleDateString('fr-MA'):'—'}</span>
-            </td>
-            <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
-              <span style="font-size:8px;color:#666;display:block">Travaux Du — Au</span>
-              <span style="font-weight:700">${att.du?new Date(att.du).toLocaleDateString('fr-MA'):'—'} — ${att.au?new Date(att.au).toLocaleDateString('fr-MA'):'—'}</span>
-            </td>
-          </tr>
-          <tr>
-            <td style="border:1px solid #999;padding:6px 10px;vertical-align:top">
-              <span style="font-size:8px;color:#666;display:block">Titulaire du Marché</span>
-              <span style="font-weight:700">${s.nom||'SMERAV S.A.R.L.au'}</span>
-            </td>
-            <td colspan="3" style="border:1px solid #999;padding:6px 10px;vertical-align:top">
-              <span style="font-size:8px;color:#666;display:block">Objet</span>
-              <span style="font-weight:700">${p.objet||p.nom||''}</span>
-            </td>
-          </tr>
-          <tr>
-            <td colspan="4" style="border:1px solid #999;padding:7px;text-align:center;font-weight:900;font-size:13px;background:#e0e0e0;letter-spacing:0.5px;">
-              DÉCOMPTE PROVISOIRE N° ${att.num}/${p.marcheNum||'—'}
-            </td>
-          </tr>
-        </table>
-      </td></tr>
       <tr style="background:#d0d0d0;">
         <th style="border:1px solid #999;padding:8px 4px;width:6%;text-align:center;font-weight:900;">N° Prix</th>
         <th style="border:1px solid #999;padding:8px 6px;width:40%;text-align:center;font-weight:900;">DÉSIGNATION DES ARTICLES</th>
@@ -4172,7 +4166,6 @@ function printDecompte(att, p){
         <th style="border:1px solid #999;padding:8px 4px;width:7%;text-align:center;font-weight:900;">Total HT Cumul</th>
       </tr>
     </thead>
-    ${s.enTeteFooterImg?'<tfoot style="display:table-footer-group;"><tr><td colspan="9" style="border:none;padding:6px 0 0 0;"><img src="'+s.enTeteFooterImg+'" style="width:100%;display:block;"/></td></tr></tfoot>':''}
     <tbody>${rowsHTML}</tbody>
   </table>
   <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;page-break-inside:avoid;">
