@@ -479,7 +479,7 @@ function printDoc(htmlContent, title, opts={}){
     doc.write('@media print{');
     doc.write('.no-print-bar{display:none!important;}');
     doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
-    doc.write('@page{size:'+(opts.landscape?'A4 landscape':'A4')+';margin:30mm 15mm 30mm 15mm;}');
+    doc.write('@page{size:'+(opts.landscape?'A4 landscape':'A4')+';margin:'+(opts.fullBleed?'0':'30mm 15mm 30mm 15mm')+';}');
     doc.write('thead{display:table-header-group;}');
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('table{page-break-inside:auto;}');
@@ -492,7 +492,7 @@ function printDoc(htmlContent, title, opts={}){
     doc.write('</div>');
     doc.write('<script>function saveExcel(){var main=document.getElementById("main");if(!main){alert("Pas de contenu");return;}var wb="<html xmlns:o=\'urn:schemas-microsoft-com:office:office\' xmlns:x=\'urn:schemas-microsoft-com:office:excel\'><head><meta charset=\'UTF-8\'><style>table{border-collapse:collapse;}td,th{border:1px solid #000;padding:5px 8px;font-size:11pt;}th{background:#f0f0f0;font-weight:bold;}</style></head><body>"+main.innerHTML+"</body></html>";var b=new Blob([wb],{type:"application/vnd.ms-excel;charset=utf-8"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="Attachement.xls";document.body.appendChild(a);a.click();document.body.removeChild(a);}<\/script>');
     doc.write('<div id="main" style="padding:0;">'+htmlContent+'</div>');
-    doc.write('<style>@page{margin:30mm 15mm 30mm 15mm;@bottom-right{content:"Page " counter(page) " / " counter(pages);font-size:9px;font-family:Arial;color:#444;}}</style>');
+    doc.write('<style>@page{margin:'+(opts.fullBleed?'0':'30mm 15mm 30mm 15mm')+';@bottom-right{content:"Page " counter(page) " / " counter(pages);font-size:9px;font-family:Arial;color:#444;}}</style>');
     doc.write('</body></html>');
     doc.close();
   }catch(e){alert('Erreur: '+e.message);}
@@ -988,8 +988,11 @@ function renderParametres(){
       div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:32,marginBottom:28}},
         div({},
           el('label',{className:'lbl'},'LOGO OFFICIEL'),
-          div({style:{width:'100%',height:150,border:'2px dashed #E5E9F2',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',background:'#F8FAFD',overflow:'hidden',marginBottom:10}},
-            s.logo ? Object.assign(el('img',{src:s.logo,style:{maxHeight:130,objectFit:'contain'}})) :
+          div({style:{width:'100%',height:'150px',border:'2px dashed #E5E9F2',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',background:'#F8FAFD',overflow:'hidden',marginBottom:10,position:'relative'}},
+            s.logo ? [
+              Object.assign(el('img',{src:s.logo,style:{maxHeight:'130px',maxWidth:'100%',objectFit:'contain'}})),
+              btn('✕','btn-red',()=>{s.logo=null;setState({settings:s});notify('Logo supprimé');},{style:{position:'absolute',top:6,right:6,fontSize:11,padding:'3px 10px'}})
+            ] :
             div({style:{color:'#6B7A99',fontSize:12,textAlign:'center',padding:10}},'Cliquez pour ajouter votre logo')
           ),
           el('label',{style:{cursor:'pointer',color:C.blue,fontSize:12,fontWeight:700}},
@@ -1015,7 +1018,7 @@ function renderParametres(){
         div({style:{width:'100%',border:'2px dashed #E5E9F2',borderRadius:12,background:'#F8FAFD',overflow:'hidden',marginBottom:12,minHeight:120,display:'flex',alignItems:'center',justifyContent:'center'}},
           s.enTeteImg
             ? div({style:{width:'100%',position:'relative'}},
-                Object.assign(el('img',{src:s.enTeteImg,style:{width:'100%',objectFit:'contain',maxHeight:200,display:'block'}})),
+                Object.assign(el('img',{src:s.enTeteImg,style:{width:'100%',objectFit:'contain',maxHeight:'200px',display:'block'}})),
                 btn('✕ Supprimer','btn-red',()=>{s.enTeteImg=null;setState({settings:s});notify('Image supprimée');},{style:{position:'absolute',top:6,right:6,fontSize:11,padding:'3px 10px'}})
               )
             : div({style:{textAlign:'center',padding:24,color:'#6B7A99'}},
@@ -1037,7 +1040,15 @@ function renderParametres(){
         ),
         s.enTeteImg
           ? div({style:{marginTop:10,fontSize:11,color:'#16a34a',fontWeight:700}},'✓ Image active — sera utilisée sur tous les documents')
-          : div({style:{marginTop:10,fontSize:11,color:'#6B7A99'}},'Sans image → le logo + nom seront utilisés comme en-tête')
+          : div({style:{marginTop:10,fontSize:11,color:'#6B7A99'}},'Sans image → le logo + nom seront utilisés comme en-tête'),
+        s.enTeteImg ? div({style:{marginTop:18,paddingTop:16,borderTop:'1px solid #E5E9F2'}},
+          div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',marginBottom:8}},"RÉGLAGE DE L'ESPACE RÉSERVÉ (pour Attachement / Décompte)"),
+          div({style:{fontSize:11,color:'#6B7A99',marginBottom:10}},"Votre image contient l'en-tête (haut) et le pied de page (bas) de votre papier. Indiquez la hauteur (en mm) à laisser vide en haut et en bas sur chaque page imprimée, pour que le texte ne recouvre pas votre en-tête/pied de page."),
+          div({className:'grid-2'},
+            div({},el('label',{className:'lbl'},'Espace réservé EN HAUT (mm)'),Object.assign(el('input',{type:'number',value:s.enTeteMargeHaut||35,min:0,max:100}),{oninput:e=>s.enTeteMargeHaut=+e.target.value})),
+            div({},el('label',{className:'lbl'},'Espace réservé EN BAS (mm)'),Object.assign(el('input',{type:'number',value:s.enTeteMargeBas||25,min:0,max:100}),{oninput:e=>s.enTeteMargeBas=+e.target.value}))
+          )
+        ) : null
       )
     );
     if(activeTab==='docs') return div({style:{padding:28,flex:1}},
@@ -3735,7 +3746,7 @@ function renderAttachementsSection(p, updateProject){
                 }).join('');
 
                 const html = `
-                ${s.enTeteImg?'<div style="position:fixed;top:0;left:0;width:100%;"><img src="'+s.enTeteImg+'" style="width:100%;max-height:28mm;object-fit:contain;display:block;"/></div><div style="height:30mm;"></div>':''}
+                ${s.enTeteImg?'<div style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;"><img src="'+s.enTeteImg+'" style="width:100%;height:100%;object-fit:fill;display:block;"/></div><div style="height:'+(s.enTeteMargeHaut||35)+'mm;"></div>':''}
                 <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:13px;">
                   <tr>
                     <td style="border:1px solid #999;padding:7px 10px;width:30%;vertical-align:top">
@@ -3799,8 +3810,9 @@ function renderAttachementsSection(p, updateProject){
                   </tbody>
                 </table>
                 ${buildSignatureHTML(p, s.titulaire||s.nom)}
+                ${s.enTeteImg?'<div style="height:'+(s.enTeteMargeBas||25)+'mm;"></div>':''}
                 `;
-                printDoc(html, 'Attachement N°'+a.num)},{style:{padding:'4px 8px',fontSize:12}}),
+                printDoc(html, 'Attachement N°'+a.num, {fullBleed: !!s.enTeteImg})},{style:{padding:'4px 8px',fontSize:12}}),
               btn('✏️','btn-orange',()=>{
                 const editLignes = JSON.parse(JSON.stringify(a.lignes||[]));
                 const editForm = {du:a.du,au:a.au,date:a.date,num:a.num,travailNum:a.travailNum||'',definitif:!!a.definitif,rgManuel:a.rgManuel||0};
@@ -4066,7 +4078,7 @@ function printDecompte(att, p){
   const clientRC = clientInfo.rc || '';
   const clientIF = clientInfo.if_ || '';
   const html=`
-  ${s.enTeteImg?'<div style="position:fixed;top:0;left:0;width:100%;"><img src="'+s.enTeteImg+'" style="width:100%;max-height:28mm;object-fit:contain;display:block;"/></div><div style="height:30mm;"></div>':''}
+  ${s.enTeteImg?'<div style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;"><img src="'+s.enTeteImg+'" style="width:100%;height:100%;object-fit:fill;display:block;"/></div><div style="height:'+(s.enTeteMargeHaut||35)+'mm;"></div>':''}
   <table style="width:100%;border-collapse:collapse;margin-bottom:0;font-size:11px;">
     <tr>
       <td colspan="2" style="border:1px solid #999;padding:6px 10px;">
@@ -4165,8 +4177,9 @@ function printDecompte(att, p){
   </table>
   <p style="font-size:11px;font-style:italic;margin-top:8px;">Arrêté le présent décompte à la somme de : <strong>${numToWords(n2)}</strong></p>
   ${buildSignatureHTML(p, s.nom)}
+  ${s.enTeteImg?'<div style="height:'+(s.enTeteMargeBas||25)+'mm;"></div>':''}
   `;
-  printDoc(html,'Décompte N°'+att.num);
+  printDoc(html,'Décompte N°'+att.num,{fullBleed: !!s.enTeteImg});
 }
 
 // ── RAPPORT CHANTIER ─────────────────────
