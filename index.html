@@ -1069,8 +1069,22 @@ function renderParametres(){
           })
         ),
         (s.enTeteHeaderImg||s.enTeteFooterImg)
-          ? div({style:{marginTop:14,fontSize:11,color:'#16a34a',fontWeight:700}},'✓ En-tête actif — sera utilisé sur Attachement et Décompte')
+          ? div({style:{marginTop:14,fontSize:11,color:'#16a34a',fontWeight:700}},'✓ En-tête actif — sera utilisé sur Factures, Devis et Bons de Commande')
           : div({style:{marginTop:14,fontSize:11,color:'#6B7A99'}},'Sans image → le logo + nom seront utilisés comme en-tête')
+      ),
+      div({style:{borderTop:'1px solid #E5E9F2',paddingTop:24,marginTop:24}},
+        div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',letterSpacing:1,marginBottom:16}},'ACCÈS RESTREINT — CHEF DE CHANTIER (Pointage uniquement)'),
+        div({style:{fontSize:12,color:'#6B7A99',marginBottom:14}},"Donnez ce lien et ce mot de passe au chef de chantier. Il pourra uniquement cocher les présences (Pointage) — sans accéder au reste de l'application. Tout ce qu'il coche apparaît immédiatement dans Fiches de paie."),
+        div({className:'grid-2'},
+          div({},el('label',{className:'lbl'},'Mot de passe Chef de Chantier'),
+            Object.assign(el('input',{type:'text',value:s.chefPass||'chantier2026'}),{oninput:e=>{s.chefPass=e.target.value;}})
+          ),
+        ),
+        btn('💾 Enregistrer le mot de passe','btn-gray',()=>{saveSettings();notify('Mot de passe enregistré ✓');},{style:{marginTop:10,fontSize:12}}),
+        div({style:{marginTop:16,padding:14,background:'#F8FAFD',borderRadius:10,border:'1px solid #E5E9F2'}},
+          div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',marginBottom:6}},'LIEN À PARTAGER AU CHEF DE CHANTIER'),
+          div({style:{fontSize:13,fontWeight:700,color:'#2563EB',wordBreak:'break-all'}}, window.location.origin+window.location.pathname+'?pointage=1')
+        )
       )
     );
     if(activeTab==='docs') return div({style:{padding:28,flex:1}},
@@ -1372,7 +1386,107 @@ function renderLogin(){
   draw();
 }
 
+// ── ACCÈS RESTREINT "CHEF DE CHANTIER" (Pointage uniquement) ──────────────
+const CHEF_AUTH = {
+  isLoggedIn: () => sessionStorage.getItem('smerav_chef_auth') === 'ok',
+  login: (p) => {
+    const s = getSettings();
+    const chefPass = s.chefPass || 'chantier2026';
+    if(p === chefPass){ sessionStorage.setItem('smerav_chef_auth','ok'); return true; }
+    return false;
+  },
+  logout: () => { sessionStorage.removeItem('smerav_chef_auth'); renderPointageOnly(); }
+};
+
+function renderPointageOnly(){
+  const app = document.getElementById('app');
+  app.innerHTML='';
+
+  if(!CHEF_AUTH.isLoggedIn()){
+    let errMsg=null;
+    const passInput = el('input',{type:'password',placeholder:'Mot de passe',style:{marginBottom:12,padding:'12px 16px',fontSize:15,borderRadius:10,border:'2px solid #1E2D4A',background:'#1A2540',color:'#fff',outline:'none',width:'100%'}});
+    const doLogin=()=>{
+      if(CHEF_AUTH.login(passInput.value.trim())){ renderPointageOnly(); }
+      else { errMsg='❌ Mot de passe incorrect'; renderPointageOnly(); }
+    };
+    passInput.addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+    app.appendChild(
+      div({style:{minHeight:'100vh',background:'#0F1628',display:'flex',alignItems:'center',justifyContent:'center',padding:20}},
+        div({style:{background:'#162030',borderRadius:20,padding:'40px 36px',width:'100%',maxWidth:360,border:'1px solid #1E2D4A'}},
+          div({style:{textAlign:'center',marginBottom:24}},
+            div({style:{fontSize:20,fontWeight:800,color:'#E8730A'}},'SMERAV'),
+            div({style:{fontSize:12,color:'#6B7A99',marginTop:2}},'Pointage — Chef de Chantier')
+          ),
+          passInput,
+          errMsg?div({style:{color:'#EF4444',fontSize:12,marginBottom:12,textAlign:'center'}},errMsg):null,
+          el('button',{style:{width:'100%',padding:'13px',background:'#E8730A',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:15,cursor:'pointer'},onclick:doLogin},'🔐 Se connecter')
+        )
+      )
+    );
+    return;
+  }
+
+  if(!renderPointageOnly._mois) renderPointageOnly._mois = today().slice(0,7);
+  const mois = renderPointageOnly._mois;
+  const ouvriers = state.ouvriers||[];
+  function daysInMonth(m){ const [y,mm]=m.split('-').map(Number); return new Date(y,mm,0).getDate(); }
+  const nDays = daysInMonth(mois);
+  const dayNums = Array.from({length:nDays},(_,i)=>i+1);
+  function getRec(o){ const paie=o.paie||{}; return paie[mois]||{jours:{},avance:0,statut:'En attente',datePaiement:''}; }
+  function ttj(o){ const j=getRec(o).jours||{}; return Object.values(j).reduce((s,v)=>s+(+v||0),0); }
+  function saveRec(oId, patch){
+    const updated = ouvriers.map(o=>{
+      if(o.id!==oId) return o;
+      const paie={...(o.paie||{})};
+      paie[mois]={...getRec(o),...patch};
+      return {...o,paie};
+    });
+    setState({ouvriers:updated});
+  }
+  const moisInput = Object.assign(el('input',{type:'month',value:mois}),{oninput:e=>{renderPointageOnly._mois=e.target.value;renderPointageOnly();}});
+
+  app.appendChild(
+    div({style:{minHeight:'100vh',background:'#F4F6FA'}},
+      div({style:{background:'#0F1628',padding:'16px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}},
+        div({style:{color:'#fff',fontWeight:800,fontSize:16}},'🕐 Pointage — Chef de Chantier'),
+        btn('🚪 Déconnexion','btn-red',()=>{if(confirm('Se déconnecter ?'))CHEF_AUTH.logout();},{style:{padding:'6px 14px',fontSize:12}})
+      ),
+      div({style:{padding:20}},
+        div({style:{display:'flex',alignItems:'center',gap:10,marginBottom:14}},el('label',{className:'lbl'},'Mois'),moisInput),
+        div({className:'card',style:{overflowX:'auto'}},
+          el('table',{style:{fontSize:11}},
+            el('thead',{},el('tr',{},
+              el('th',{style:{minWidth:30}},'N°'),
+              el('th',{style:{minWidth:140,textAlign:'left'}},'Nom & Prénom'),
+              el('th',{style:{minWidth:60}},'Fonction'),
+              ...dayNums.map(d=>el('th',{style:{padding:'4px 2px',minWidth:22}},String(d))),
+              el('th',{style:{minWidth:45,background:'#E8730A',color:'#fff'}},'TTJ')
+            )),
+            el('tbody',{},...(ouvriers.length?ouvriers.map((o,i)=>{
+              const rec = getRec(o);
+              return el('tr',{},
+                el('td',{style:{textAlign:'center',color:'#6B7A99'}},i+1),
+                el('td',{style:{fontWeight:700,whiteSpace:'nowrap'}},o.nom+' '+(o.prenom||'')),
+                el('td',{style:{textAlign:'center'}},o.specialite||'—'),
+                ...dayNums.map(d=>{
+                  const val=(rec.jours||{})[d]?1:0;
+                  const cb=el('input',{type:'checkbox'});
+                  cb.checked=val===1;
+                  cb.onchange=e=>{ const jours={...(rec.jours||{})}; jours[d]=e.target.checked?1:0; saveRec(o.id,{jours}); };
+                  return el('td',{style:{textAlign:'center',padding:'2px'}},cb);
+                }),
+                el('td',{style:{fontWeight:900,color:'#E8730A',textAlign:'center',background:'#FFF7ED'}},ttj(o))
+              );
+            }):[el('tr',{},el('td',{colSpan:4+nDays,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun employé'))]))
+          )
+        )
+      )
+    )
+  );
+}
+
 function render(){
+  if(new URLSearchParams(window.location.search).get('pointage')==='1'){ renderPointageOnly(); return; }
   if(!AUTH.isLoggedIn()){ renderLogin(); return; }
 
   const app = document.getElementById('app');
