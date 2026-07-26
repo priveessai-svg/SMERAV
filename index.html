@@ -1445,6 +1445,34 @@ function renderPointageOnly(){
   }
   const moisInput = Object.assign(el('input',{type:'month',value:mois}),{oninput:e=>{renderPointageOnly._mois=e.target.value;renderPointageOnly();}});
 
+  const addBox = div({});
+  function drawAddBox(open){
+    addBox.innerHTML='';
+    if(!open){
+      addBox.appendChild(btn('+ Ajouter un employé','btn-orange',()=>drawAddBox(true),{style:{marginBottom:14}}));
+      return;
+    }
+    let f={nom:'',prenom:'',specialite:''};
+    addBox.appendChild(
+      div({className:'card',style:{marginBottom:14,padding:16}},
+        div({style:{fontWeight:800,marginBottom:10,fontSize:13}},'Nouvel employé'),
+        div({style:{display:'flex',gap:10,flexWrap:'wrap',marginBottom:12}},
+          Object.assign(el('input',{placeholder:'Nom *',style:{flex:1,minWidth:120}}),{oninput:e=>f.nom=e.target.value}),
+          Object.assign(el('input',{placeholder:'Prénom',style:{flex:1,minWidth:120}}),{oninput:e=>f.prenom=e.target.value}),
+          Object.assign(el('input',{placeholder:'Fonction (ex: Maçon)',style:{flex:1,minWidth:120}}),{oninput:e=>f.specialite=e.target.value})
+        ),
+        div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
+          btn('Annuler','btn-gray',()=>drawAddBox(false)),
+          btn('Enregistrer','btn-orange',()=>{
+            if(!f.nom){alert('Nom obligatoire');return;}
+            setState({ouvriers:[...(state.ouvriers||[]),{id:Date.now(),nom:f.nom,prenom:f.prenom,specialite:f.specialite,statut:'Actif',paie:{}}]});
+          })
+        )
+      )
+    );
+  }
+  drawAddBox(false);
+
   app.appendChild(
     div({style:{minHeight:'100vh',background:'#F4F6FA'}},
       div({style:{background:'#0F1628',padding:'16px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}},
@@ -1453,6 +1481,7 @@ function renderPointageOnly(){
       ),
       div({style:{padding:20}},
         div({style:{display:'flex',alignItems:'center',gap:10,marginBottom:14}},el('label',{className:'lbl'},'Mois'),moisInput),
+        addBox,
         div({className:'card',style:{overflowX:'auto'}},
           el('table',{style:{fontSize:11}},
             el('thead',{},el('tr',{},
@@ -1460,7 +1489,8 @@ function renderPointageOnly(){
               el('th',{style:{minWidth:140,textAlign:'left'}},'Nom & Prénom'),
               el('th',{style:{minWidth:60}},'Fonction'),
               ...dayNums.map(d=>el('th',{style:{padding:'4px 2px',minWidth:22}},String(d))),
-              el('th',{style:{minWidth:45,background:'#E8730A',color:'#fff'}},'TTJ')
+              el('th',{style:{minWidth:45,background:'#E8730A',color:'#fff'}},'TTJ'),
+              el('th',{style:{minWidth:30}},'')
             )),
             el('tbody',{},...(ouvriers.length?ouvriers.map((o,i)=>{
               const rec = getRec(o);
@@ -1475,9 +1505,12 @@ function renderPointageOnly(){
                   cb.onchange=e=>{ const jours={...(rec.jours||{})}; jours[d]=e.target.checked?1:0; saveRec(o.id,{jours}); };
                   return el('td',{style:{textAlign:'center',padding:'2px'}},cb);
                 }),
-                el('td',{style:{fontWeight:900,color:'#E8730A',textAlign:'center',background:'#FFF7ED'}},ttj(o))
+                el('td',{style:{fontWeight:900,color:'#E8730A',textAlign:'center',background:'#FFF7ED'}},ttj(o)),
+                el('td',{},btn('✕','btn-red',()=>{
+                  if(confirm('Supprimer cet employé ?')) setState({ouvriers:(state.ouvriers||[]).filter(x=>x.id!==o.id)});
+                },{style:{padding:'3px 7px',fontSize:11}}))
               );
-            }):[el('tr',{},el('td',{colSpan:4+nDays,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun employé'))]))
+            }):[el('tr',{},el('td',{colSpan:5+nDays,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun employé'))]))
           )
         )
       )
