@@ -3795,10 +3795,9 @@ function renderProfil(){
 // ── BORDEREAU D'ENVOI ────────────────────
 function printBordereauEnvoi(env, p){
   const s = getSettings();
-  const piecesHTML = (env.pieces||[]).map((pc,i)=>`
+  const piecesHTML = (env.pieces||[]).map(pc=>`
     <tr>
-      <td style="text-align:center">${i+1}</td>
-      <td>${pc.designation||''}</td>
+      <td>* ${pc.designation||''}</td>
       <td style="text-align:center">${pc.nbExemplaires||1}</td>
       <td>${pc.observation||''}</td>
     </tr>`).join('');
@@ -3806,17 +3805,18 @@ function printBordereauEnvoi(env, p){
   <div style="display:flex;flex-direction:column;min-height:281mm;">
   <div>
     ${headerHTML()}
-    <h2 style="text-align:center;text-decoration:underline;margin:14px 0;">BORDEREAU D'ENVOI</h2>
-    <table style="margin-bottom:14px;">
-      <tbody>
-        <tr><td style="font-weight:700;width:25%;">N°</td><td>${env.num||''}</td><td style="font-weight:700;width:20%;">Date</td><td>${fmtDate(env.date)}</td></tr>
-        <tr><td style="font-weight:700;">Destinataire</td><td colspan="3">${env.destinataire||p.maitreOuvrage||'—'}</td></tr>
-        <tr><td style="font-weight:700;">Objet</td><td colspan="3">${env.objet||''}</td></tr>
-        <tr><td style="font-weight:700;">Marché N°</td><td colspan="3">${p.marcheNum||'—'} — ${p.nom||''}</td></tr>
-      </tbody>
-    </table>
+    <div style="text-align:right;font-size:12px;margin-bottom:24px;">${s.ville||'Fès'} , le : ${fmtDate(env.date)}</div>
+    <div style="text-align:center;font-style:italic;font-weight:700;font-size:13px;line-height:1.6;margin-bottom:20px;">
+      A<br>
+      MONSIEUR LE DIRECTEUR GÉNÉRAL<br>
+      DE LA ${(env.destinataire||p.maitreOuvrage||'').toUpperCase()}
+    </div>
+    <div style="text-align:center;font-style:italic;font-weight:700;font-size:12px;line-height:1.6;margin-bottom:28px;">
+      Objet : Marché N° ${p.marcheNum||'—'}, relatif au ${(env.objet||p.nom||'').toUpperCase()}
+    </div>
+    <div style="text-align:center;font-style:italic;font-weight:700;font-size:13px;text-decoration:underline;margin-bottom:14px;">BORDEREAU D'ENVOI</div>
     <table>
-      <thead><tr><th>N°</th><th>Désignation des pièces</th><th>Nb Exemplaires</th><th>Observations</th></tr></thead>
+      <thead><tr><th style="font-style:italic;">DÉSIGNATION</th><th style="font-style:italic;">NBRE</th><th style="font-style:italic;">OBSERVATION</th></tr></thead>
       <tbody>${piecesHTML}</tbody>
     </table>
     <div style="margin-top:50px;display:flex;justify-content:space-between;font-size:11px;">
