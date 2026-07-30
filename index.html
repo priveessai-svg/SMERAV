@@ -3799,7 +3799,6 @@ function printBordereauEnvoi(env, p){
     <tr>
       <td>* ${pc.designation||''}</td>
       <td style="text-align:center">${pc.nbExemplaires||1}</td>
-      <td>${pc.observation||''}</td>
     </tr>`).join('');
   const html = `
   <div style="display:flex;flex-direction:column;min-height:281mm;">
@@ -3816,9 +3815,10 @@ function printBordereauEnvoi(env, p){
     </div>
     <div style="text-align:center;font-style:italic;font-weight:700;font-size:13px;text-decoration:underline;margin-bottom:14px;">BORDEREAU D'ENVOI</div>
     <table>
-      <thead><tr><th style="font-style:italic;">DÉSIGNATION</th><th style="font-style:italic;">NBRE</th><th style="font-style:italic;">OBSERVATION</th></tr></thead>
+      <thead><tr><th style="font-style:italic;">DÉSIGNATION</th><th style="font-style:italic;">NBRE</th></tr></thead>
       <tbody>${piecesHTML}</tbody>
     </table>
+    ${env.observation?'<div style="text-align:center;font-style:italic;font-weight:700;font-size:12px;margin-top:14px;">'+env.observation+'</div>':''}
     <div style="margin-top:50px;display:flex;justify-content:space-between;font-size:11px;">
       <div>Signature Destinataire</div><div>Signature SMERAV${cachetHTML()}</div>
     </div>
@@ -3831,17 +3831,56 @@ function printBordereauEnvoi(env, p){
 function renderBordereauEnvoiSection(p, updateProject){
   const envs = p.bordereauxEnvoi||[];
 
+  function buildPdfFromImage(imgData, onReady){
+    const img = new Image();
+    img.onload = ()=>{
+      const { jsPDF } = window.jspdf;
+      const pageW=210, pageH=297;
+      const ratio = Math.min((pageW-20)/img.width, (pageH-20)/img.height);
+      const w = img.width*ratio, h = img.height*ratio;
+      const x = (pageW-w)/2, y = (pageH-h)/2;
+      const docPdf = new jsPDF({unit:'mm',format:'a4'});
+      docPdf.addImage(imgData, 'JPEG', x, y, w, h);
+      onReady(docPdf.output('datauristring'));
+    };
+    img.src = imgData;
+  }
+
+  function captureReception(idx){
+    const input = el('input',{type:'file',accept:'image/*',capture:'environment',style:{display:'none'}});
+    input.onchange = e=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = ev=>{
+        buildPdfFromImage(ev.target.result, (pdfDataUrl)=>{
+          const newList = envs.map((x,xi)=>xi===idx?{...x,receptionPdf:pdfDataUrl,receptionDate:today()}:x);
+          updateProject({bordereauxEnvoi:newList});
+          notify('Copie de réception enregistrée (PDF) ✓');
+        });
+      };
+      reader.readAsDataURL(file);
+    };
+    document.body.appendChild(input);
+    input.click();
+    setTimeout(()=>document.body.removeChild(input),1000);
+  }
+
+  function viewReception(env){
+    const w = window.open('');
+    if(w) w.document.write('<iframe src="'+env.receptionPdf+'" style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;"></iframe>');
+  }
+
   function openForm(item=null, idx=null){
-    let f = item ? {...item, pieces:(item.pieces||[]).map(pc=>({...pc}))} : {num:'BE-'+String(envs.length+1).padStart(4,'0'),date:today(),destinataire:p.maitreOuvrage||'',objet:'',pieces:[]};
+    let f = item ? {...item, pieces:(item.pieces||[]).map(pc=>({...pc}))} : {num:'BE-'+String(envs.length+1).padStart(4,'0'),date:today(),destinataire:p.maitreOuvrage||'',objet:'',observation:'',pieces:[]};
     const lC = div({});
     function rL(){
       lC.innerHTML='';
       lC.appendChild(el('table',{},
-        el('thead',{},el('tr',{},...['Désignation','Nb Ex.','Observation',''].map(h=>el('th',{style:{fontSize:10,padding:'5px'}},h)))),
+        el('thead',{},el('tr',{},...['Désignation','Nb Ex.',''].map(h=>el('th',{style:{fontSize:10,padding:'5px'}},h)))),
         el('tbody',{},...f.pieces.map((pc,i)=>el('tr',{},
-          el('td',{style:{padding:'3px'}},Object.assign(el('input',{value:pc.designation||'',style:{width:220}}),{oninput:e=>f.pieces[i].designation=e.target.value})),
+          el('td',{style:{padding:'3px'}},Object.assign(el('input',{value:pc.designation||'',style:{width:260}}),{oninput:e=>f.pieces[i].designation=e.target.value})),
           el('td',{style:{padding:'3px'}},Object.assign(el('input',{type:'number',value:pc.nbExemplaires||1,style:{width:55}}),{oninput:e=>f.pieces[i].nbExemplaires=+e.target.value})),
-          el('td',{style:{padding:'3px'}},Object.assign(el('input',{value:pc.observation||'',style:{width:160}}),{oninput:e=>f.pieces[i].observation=e.target.value})),
           el('td',{},el('button',{style:{background:'#FEE2E2',color:'#EF4444',border:'none',borderRadius:4,padding:'3px 7px',cursor:'pointer'},onclick:()=>{f.pieces.splice(i,1);rL();}},'✕'))
         )))
       ));
@@ -3856,7 +3895,8 @@ function renderBordereauEnvoiSection(p, updateProject){
       ),
       div({style:{fontWeight:700,fontSize:12,marginTop:6}},'Pièces jointes'),
       lC,
-      btn('+ Pièce','btn-blue',()=>{f.pieces.push({designation:'',nbExemplaires:1,observation:''});rL();},{style:{padding:'4px 12px',fontSize:12,width:'fit-content'}}),
+      btn('+ Pièce','btn-blue',()=>{f.pieces.push({designation:'',nbExemplaires:1});rL();},{style:{padding:'4px 12px',fontSize:12,width:'fit-content'}}),
+      div({},el('label',{className:'lbl'},'Observation (commune, affichée centrée)'),Object.assign(el('input',{value:f.observation||''}),{oninput:e=>f.observation=e.target.value})),
       div({style:{display:'flex',gap:10,justifyContent:'flex-end',marginTop:10}},
         btn('Annuler','btn-gray',()=>setState({modal:null})),
         btn('Enregistrer','btn-orange',()=>{
@@ -3877,19 +3917,24 @@ function renderBordereauEnvoiSection(p, updateProject){
     ),
     div({className:'card'},
       el('table',{},
-        el('thead',{},el('tr',{},...['N°','Date','Destinataire','Objet','Pièces',''].map(h=>el('th',{},h)))),
+        el('thead',{},el('tr',{},...['N°','Date','Destinataire','Objet','Pièces','Réception',''].map(h=>el('th',{},h)))),
         el('tbody',{},...(envs.length?envs.map((e,i)=>el('tr',{},
           el('td',{style:{fontWeight:700,color:'#2563EB'}},e.num),
           el('td',{},fmtDate(e.date)),
           el('td',{style:{fontWeight:600}},e.destinataire||'—'),
           el('td',{style:{color:'#6B7A99'}},e.objet||'—'),
           el('td',{style:{textAlign:'center'}},(e.pieces||[]).length),
+          el('td',{},e.receptionPdf
+            ? span({className:'badge',style:{background:'#10B98120',color:'#10B981',cursor:'pointer'},onclick:()=>viewReception(e)},'✓ Voir ('+fmtDate(e.receptionDate)+')')
+            : span({style:{color:'#6B7A99',fontSize:11}},'—')
+          ),
           el('td',{},div({style:{display:'flex',gap:6}},
             btn('✏️','btn-gray',()=>openForm(e,i),{style:{padding:'4px 8px',fontSize:12}}),
             btn('🖨','btn-blue',()=>printBordereauEnvoi(e,p),{style:{padding:'4px 8px',fontSize:12}}),
+            btn('📷','btn-orange',()=>captureReception(i),{style:{padding:'4px 8px',fontSize:12},title:'Scanner la copie de réception (cachet)'}),
             btn('✕','btn-red',()=>{if(confirmDelete())updateProject({bordereauxEnvoi:envs.filter((_,xi)=>xi!==i)});},{style:{padding:'4px 8px',fontSize:12}})
           ))
-        )):[el('tr',{},el('td',{colSpan:6,style:{padding:40,textAlign:'center',color:'#6B7A99'}},"Aucun bordereau d'envoi"))]))
+        )):[el('tr',{},el('td',{colSpan:7,style:{padding:40,textAlign:'center',color:'#6B7A99'}},"Aucun bordereau d'envoi"))]))
       )
     )
   );
