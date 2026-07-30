@@ -3795,10 +3795,13 @@ function renderProfil(){
 // ── BORDEREAU D'ENVOI ────────────────────
 function printBordereauEnvoi(env, p){
   const s = getSettings();
-  const piecesHTML = (env.pieces||[]).map(pc=>`
+  const pieces = env.pieces||[];
+  const nb = pieces.length||1;
+  const piecesHTML = pieces.map((pc,i)=>`
     <tr>
       <td>* ${pc.designation||''}</td>
       <td style="text-align:center">${pc.nbExemplaires||1}</td>
+      ${i===0?'<td rowspan="'+nb+'" style="text-align:center;vertical-align:middle;font-style:italic;font-weight:700;">'+(env.observation||'')+'</td>':''}
     </tr>`).join('');
   const html = `
   <div style="display:flex;flex-direction:column;min-height:281mm;">
@@ -3815,10 +3818,9 @@ function printBordereauEnvoi(env, p){
     </div>
     <div style="text-align:center;font-style:italic;font-weight:700;font-size:13px;text-decoration:underline;margin-bottom:14px;">BORDEREAU D'ENVOI</div>
     <table>
-      <thead><tr><th style="font-style:italic;">DÉSIGNATION</th><th style="font-style:italic;">NBRE</th></tr></thead>
+      <thead><tr><th style="font-style:italic;">DÉSIGNATION</th><th style="font-style:italic;">NBRE</th><th style="font-style:italic;">OBSERVATION</th></tr></thead>
       <tbody>${piecesHTML}</tbody>
     </table>
-    ${env.observation?'<div style="text-align:center;font-style:italic;font-weight:700;font-size:12px;margin-top:14px;">'+env.observation+'</div>':''}
     <div style="margin-top:50px;display:flex;justify-content:space-between;font-size:11px;">
       <div>Signature Destinataire</div><div>Signature SMERAV${cachetHTML()}</div>
     </div>
