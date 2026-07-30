@@ -3796,14 +3796,15 @@ function renderProfil(){
 function printBordereauEnvoi(env, p){
   const s = getSettings();
   const pieces = env.pieces||[];
-  const nb = pieces.length||1;
   const rowH = env.hauteurCases||30;
-  const piecesHTML = pieces.map((pc,i)=>`
+  const designationsHTML = pieces.map(pc=>'* '+(pc.designation||'')).join('<br><br>');
+  const nbresHTML = pieces.map(pc=>pc.nbExemplaires||1).join('<br><br>');
+  const piecesHTML = `
     <tr>
-      <td style="height:${rowH}mm;">* ${pc.designation||''}</td>
-      <td style="height:${rowH}mm;text-align:center">${pc.nbExemplaires||1}</td>
-      ${i===0?'<td rowspan="'+nb+'" style="text-align:center;vertical-align:middle;font-style:italic;font-weight:700;">'+(env.observation||'')+'</td>':''}
-    </tr>`).join('');
+      <td style="min-height:${rowH}mm;">${designationsHTML}</td>
+      <td style="min-height:${rowH}mm;text-align:center">${nbresHTML}</td>
+      <td style="text-align:center;vertical-align:middle;font-style:italic;font-weight:700;">${env.observation||''}</td>
+    </tr>`;
   const html = `
   <div style="display:flex;flex-direction:column;min-height:281mm;">
   <div>
