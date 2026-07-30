@@ -3797,12 +3797,13 @@ function printBordereauEnvoi(env, p){
   const s = getSettings();
   const pieces = env.pieces||[];
   const rowH = env.hauteurCases||30;
+  const padV = Math.max(4, rowH)+'mm';
   const designationsHTML = pieces.map(pc=>'* '+(pc.designation||'')).join('<br><br>');
   const nbresHTML = pieces.map(pc=>pc.nbExemplaires||1).join('<br><br>');
   const piecesHTML = `
     <tr>
-      <td style="min-height:${rowH}mm;">${designationsHTML}</td>
-      <td style="min-height:${rowH}mm;text-align:center">${nbresHTML}</td>
+      <td style="padding-top:${padV};padding-bottom:${padV};">${designationsHTML}</td>
+      <td style="padding-top:${padV};padding-bottom:${padV};text-align:center">${nbresHTML}</td>
       <td style="text-align:center;vertical-align:middle;font-style:italic;font-weight:700;">${env.observation||''}</td>
     </tr>`;
   const html = `
