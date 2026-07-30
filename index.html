@@ -482,7 +482,7 @@ function printDoc(htmlContent, title, opts={}){
     doc.write('@media print{');
     doc.write('.no-print-bar{display:none!important;}');
     doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
-    doc.write('@page{size:'+(opts.landscape?'A4 landscape':'A4')+';margin:'+(opts.fullBleed?'0':'30mm 15mm 30mm 15mm')+';}');
+    doc.write('@page{size:'+(opts.landscape?'A4 landscape':'A4')+';margin:'+(opts.margin||(opts.fullBleed?'0':'30mm 15mm 30mm 15mm'))+';}');
     doc.write('thead{display:table-header-group;}');
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('table{page-break-inside:auto;}');
@@ -495,7 +495,7 @@ function printDoc(htmlContent, title, opts={}){
     doc.write('</div>');
     doc.write('<script>function saveExcel(){var main=document.getElementById("main");if(!main){alert("Pas de contenu");return;}var wb="<html xmlns:o=\'urn:schemas-microsoft-com:office:office\' xmlns:x=\'urn:schemas-microsoft-com:office:excel\'><head><meta charset=\'UTF-8\'><style>table{border-collapse:collapse;}td,th{border:1px solid #000;padding:5px 8px;font-size:11pt;}th{background:#f0f0f0;font-weight:bold;}</style></head><body>"+main.innerHTML+"</body></html>";var b=new Blob([wb],{type:"application/vnd.ms-excel;charset=utf-8"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="Attachement.xls";document.body.appendChild(a);a.click();document.body.removeChild(a);}<\/script>');
     doc.write('<div id="main" style="padding:0;">'+htmlContent+'</div>');
-    doc.write('<style>@page{margin:'+(opts.fullBleed?'0':'30mm 15mm 30mm 15mm')+';@bottom-right{content:"Page " counter(page) " / " counter(pages);font-size:9px;font-family:Arial;color:#444;}}</style>');
+    doc.write('<style>@page{margin:'+(opts.margin||(opts.fullBleed?'0':'30mm 15mm 30mm 15mm'))+';@bottom-right{content:"Page " counter(page) " / " counter(pages);font-size:9px;font-family:Arial;color:#444;}}</style>');
     doc.write('</body></html>');
     doc.close();
   }catch(e){alert('Erreur: '+e.message);}
@@ -883,6 +883,9 @@ function printFacture(f){
     </tr>
   `).join('');
   const html = `
+  <div style="display:flex;flex-direction:column;min-height:281mm;">
+  <div>
+  ${headerHTML()}
   <table style="margin:10px 0;border:none;">
     <tr>
       <td style="border:none;width:50%;vertical-align:top;">
@@ -938,9 +941,11 @@ function printFacture(f){
     <div style="font-style:italic;font-size:10px;margin-top:4px">${numToWords(f.montantTTC||0)}</div>
   </div>
   <div style="text-align:right;font-size:9px;color:#999;margin-top:8px">Page : 1/1</div>
-  ${footerHTML()}
+  </div>
+  <div style="margin-top:auto;">${footerHTML()}</div>
+  </div>
   `;
-  printDoc(html, 'Facture '+f.num);
+  printDoc(html, 'Facture '+f.num, {margin:'8mm 15mm 8mm 15mm'});
 }
 
 // ── PARAMETRES ───────────────────────────
@@ -2283,6 +2288,9 @@ function printDevis(d){
   const lignesHTML=(d.lignes||[]).map((l,i)=>`<tr><td>${l.designation||''}</td><td style="text-align:center">${fmtN(l.qte)}</td><td style="text-align:center">${l.unite||''}</td><td style="text-align:right">${fmtN(l.pu)}</td><td style="text-align:right">${fmtN((l.qte||0)*(l.pu||0))}</td></tr>`).join('');
   const s=getSettings();
   const html=`
+  <div style="display:flex;flex-direction:column;min-height:281mm;">
+  <div>
+  ${headerHTML()}
   <table style="margin:10px 0;border:none;">
     <tr><td style="border:none;vertical-align:top;width:50%"><div style="font-size:18px;font-weight:900">DEVIS N° : ${d.num||''}</div><div style="font-size:11px;color:#666;font-style:italic">${s.ville||'FES'}, Le : ${fmtDate(d.date)}</div></td>
     <td style="border:1px solid #ccc;padding:10px;vertical-align:top;width:50%"><div style="font-weight:700">${d.client||''}</div></td></tr>
@@ -2296,9 +2304,43 @@ function printDevis(d){
     <tr style="background:#fff3e0"><td style="border:none;font-weight:900">Total TTC</td><td style="border:none;text-align:right;font-weight:900;color:#E8730A">${fmtN(d.montantTTC||0)}</td></tr>
   </table>
   <div style="margin-top:12px;font-size:10px;color:#666">Validité du devis : ${d.validite||30} jours · ${numToWords(d.montantTTC||0)}</div>
-  ${footerHTML()}
+  </div>
+  <div style="margin-top:auto;">${footerHTML()}</div>
+  </div>
   `;
-  printDoc(html,'Devis '+d.num);
+  printDoc(html,'Devis '+d.num, {margin:'8mm 15mm 8mm 15mm'});
+}
+
+function printBL(b){
+  const rowsHTML = (b.lignes||[]).map(l=>`
+    <tr>
+      <td>${l.designation||''}</td>
+      <td style="text-align:center">${l.qte||0}</td>
+      <td style="text-align:center">${l.unite||'U'}</td>
+    </tr>`).join('');
+  const html = `
+  <div style="display:flex;flex-direction:column;min-height:281mm;">
+  <div>
+    ${headerHTML()}
+    <h2 style="text-align:center;text-decoration:underline;margin:14px 0;">BON DE LIVRAISON</h2>
+    <table style="margin-bottom:14px;">
+      <tbody>
+        <tr><td style="font-weight:700;width:30%;">N° BL</td><td>${b.num}</td><td style="font-weight:700;width:20%;">Date</td><td>${fmtDate(b.date)}</td></tr>
+        <tr><td style="font-weight:700;">Client</td><td colspan="3">${b.client||'—'}</td></tr>
+        ${b.objet?'<tr><td style="font-weight:700;">Objet</td><td colspan="3">'+b.objet+'</td></tr>':''}
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Désignation</th><th>Qté livrée</th><th>Unité</th></tr></thead>
+      <tbody>${rowsHTML}</tbody>
+    </table>
+    <div style="margin-top:50px;display:flex;justify-content:space-between;font-size:11px;">
+      <div>Signature Client</div><div>Signature SMERAV</div>
+    </div>
+  </div>
+  <div style="margin-top:auto;">${footerHTML()}</div>
+  </div>`;
+  printDoc(html, 'Bon de Livraison '+b.num, {margin:'8mm 15mm 8mm 15mm'});
 }
 
 // ── BONS DE LIVRAISON ─────────────────────
@@ -2348,7 +2390,10 @@ function renderBonsLivraison(){
         el('tbody',{},...(bls.length?bls.map((b,i)=>el('tr',{},
           el('td',{style:{fontWeight:700,color:'#2563EB'}},b.num),
           el('td',{},fmtDate(b.date)),el('td',{style:{fontWeight:600}},b.client||'—'),el('td',{style:{color:'#6B7A99'}},b.objet||'—'),
-          el('td',{},btn('✕','btn-red',()=>{if(confirmDelete())setState({bls:state.bls.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}}))
+          el('td',{},div({style:{display:'flex',gap:6}},
+            btn('🖨','btn-blue',()=>printBL(b),{style:{padding:'4px 8px',fontSize:12}}),
+            btn('✕','btn-red',()=>{if(confirmDelete())setState({bls:state.bls.filter((_,idx)=>idx!==i)});},{style:{padding:'4px 8px',fontSize:12}})
+          ))
         )):[el('tr',{},el('td',{colSpan:5,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucun bon de livraison'))]))
       )
     )
@@ -2598,6 +2643,7 @@ function printBC(b){
       <td style="text-align:right">${fmtN((l.qte||0)*(l.pu||0))}</td>
     </tr>`).join('');
   const html = `
+    <div style="display:flex;flex-direction:column;min-height:281mm;">
     <div>
       ${headerHTML()}
       <h2 style="text-align:center;text-decoration:underline;margin:14px 0;">BON DE COMMANDE</h2>
@@ -2619,9 +2665,10 @@ function printBC(b){
       <div style="margin-top:50px;display:flex;justify-content:space-between;font-size:11px;">
         <div>Signature Fournisseur</div><div>Signature SMERAV</div>
       </div>
-      ${footerHTML()}
+    </div>
+    <div style="margin-top:auto;">${footerHTML()}</div>
     </div>`;
-  printDoc(html, 'Bon de Commande '+b.num);
+  printDoc(html, 'Bon de Commande '+b.num, {margin:'8mm 15mm 8mm 15mm'});
 }
 
 function renderBonsCommande(){
@@ -2703,9 +2750,10 @@ function printBR(b){
       <td style="text-align:center">${l.unite||'U'}</td>
     </tr>`).join('');
   const html = `
+    <div style="display:flex;flex-direction:column;min-height:281mm;">
     <div>
       ${headerHTML()}
-      <h2 style="text-align:center;text-decoration:underline;margin:14px 0;">BON DE LIVRAISON / RÉCEPTION</h2>
+      <h2 style="text-align:center;text-decoration:underline;margin:14px 0;">BON DE RÉCEPTION</h2>
       <table style="margin-bottom:14px;">
         <tbody>
           <tr><td style="font-weight:700;width:30%;">N° BR</td><td>${b.num}</td><td style="font-weight:700;width:20%;">Date</td><td>${fmtDate(b.date)}</td></tr>
@@ -2714,15 +2762,16 @@ function printBR(b){
         </tbody>
       </table>
       <table>
-        <thead><tr><th>Désignation</th><th>Qté livrée/reçue</th><th>Unité</th></tr></thead>
+        <thead><tr><th>Désignation</th><th>Qté reçue</th><th>Unité</th></tr></thead>
         <tbody>${rowsHTML}</tbody>
       </table>
       <div style="margin-top:50px;display:flex;justify-content:space-between;font-size:11px;">
         <div>Signature Fournisseur</div><div>Signature SMERAV</div>
       </div>
-      ${footerHTML()}
+    </div>
+    <div style="margin-top:auto;">${footerHTML()}</div>
     </div>`;
-  printDoc(html, 'Bon de Livraison '+b.num);
+  printDoc(html, 'Bon de Réception '+b.num, {margin:'8mm 15mm 8mm 15mm'});
 }
 
 function renderBonsReception(){
