@@ -314,9 +314,25 @@ function setState(updates){
     try {
       sessionStorage.setItem('smerav_nav', JSON.stringify({page:state.page, selProject:state.selProject, ficheSection:state.ficheSection}));
     } catch(e){}
+    // Push a history entry (unless this update came from a back/forward navigation)
+    // so the phone's back button moves within the app instead of closing it.
+    if(!updates._fromPopstate && (updates.page!==undefined || updates.selProject!==undefined || updates.ficheSection!==undefined)){
+      try {
+        history.pushState({page:state.page, selProject:state.selProject, ficheSection:state.ficheSection}, '');
+      } catch(e){}
+    }
   }
   render();
 }
+
+window.addEventListener('popstate', (ev)=>{
+  const s = ev.state;
+  if(s){
+    setState({page:s.page, selProject:s.selProject, ficheSection:s.ficheSection, _fromPopstate:true});
+  } else {
+    setState({page:'dashboard', selProject:null, ficheSection:'info', _fromPopstate:true});
+  }
+});
 
 function notify(msg, type='success'){
   setState({notif:{msg,type}});
@@ -1346,16 +1362,16 @@ const AUTH = {
   email: localStorage.getItem('smerav_email') || '',
   secQuestion: localStorage.getItem('smerav_secq') || '',
   secAnswer: localStorage.getItem('smerav_seca') || '',
-  isLoggedIn: () => sessionStorage.getItem('smerav_auth') === 'ok',
+  isLoggedIn: () => localStorage.getItem('smerav_auth') === 'ok',
   login: (u, p) => {
     const uOk = (u === AUTH.user) || (AUTH.email && u.trim().toLowerCase() === AUTH.email.trim().toLowerCase());
     if(uOk && p === AUTH.pass){
-      sessionStorage.setItem('smerav_auth','ok');
+      localStorage.setItem('smerav_auth','ok');
       return true;
     }
     return false;
   },
-  logout: () => { sessionStorage.removeItem('smerav_auth'); render(); }
+  logout: () => { localStorage.removeItem('smerav_auth'); render(); }
 };
 
 function renderLogin(){
@@ -1465,14 +1481,14 @@ function renderLogin(){
 
 // ── ACCÈS RESTREINT "CHEF DE CHANTIER" (Pointage uniquement) ──────────────
 const CHEF_AUTH = {
-  isLoggedIn: () => sessionStorage.getItem('smerav_chef_auth') === 'ok',
+  isLoggedIn: () => localStorage.getItem('smerav_chef_auth') === 'ok',
   login: (p) => {
     const s = getSettings();
     const chefPass = s.chefPass || 'chantier2026';
-    if(p === chefPass){ sessionStorage.setItem('smerav_chef_auth','ok'); return true; }
+    if(p === chefPass){ localStorage.setItem('smerav_chef_auth','ok'); return true; }
     return false;
   },
-  logout: () => { sessionStorage.removeItem('smerav_chef_auth'); renderPointageOnly(); }
+  logout: () => { localStorage.removeItem('smerav_chef_auth'); renderPointageOnly(); }
 };
 
 function renderPointageOnly(){
