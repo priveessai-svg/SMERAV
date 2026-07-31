@@ -3880,22 +3880,23 @@ function renderBordereauEnvoiSection(p, updateProject){
 
   function captureReception(idx){
     const input = el('input',{type:'file',accept:'image/*',capture:'environment',style:{display:'none'}});
+    const cleanup = ()=>{ if(input.parentNode) document.body.removeChild(input); };
     input.onchange = e=>{
       const file = e.target.files[0];
-      if(!file) return;
+      if(!file){ cleanup(); return; }
       const reader = new FileReader();
       reader.onload = ev=>{
         buildPdfFromImage(ev.target.result, (pdfDataUrl)=>{
           const newList = envs.map((x,xi)=>xi===idx?{...x,receptionPdf:pdfDataUrl,receptionDate:today()}:x);
           updateProject({bordereauxEnvoi:newList});
           notify('Copie de réception enregistrée (PDF) ✓');
+          cleanup();
         });
       };
       reader.readAsDataURL(file);
     };
     document.body.appendChild(input);
     input.click();
-    setTimeout(()=>document.body.removeChild(input),1000);
   }
 
   function viewReception(env){
