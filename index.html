@@ -199,34 +199,45 @@ const DB = {
     return this._cache;
   },
   _syncTimer: null,
+  _pendingSync: false,
+  _doSync(){
+    this._pendingSync = true;
+    return supa.from('smerav_data').upsert({
+      id: 'main',
+      projects: this._cache.projects||[],
+      clients: this._cache.clients||[],
+      factures: this._cache.factures||[],
+      devis: this._cache.devis||[],
+      bls: this._cache.bls||[],
+      fournisseurs: this._cache.fournisseurs||[],
+      bcs: this._cache.bcs||[],
+      brs: this._cache.brs||[],
+      factures_achat: this._cache.facturesAchat||[],
+      cheques: this._cache.cheques||[],
+      ouvriers: this._cache.ouvriers||[],
+      specialites: this._cache.specialites||[],
+      stock: this._cache.stock||[],
+      paiements_clients: this._cache.paiementsClients||[],
+      paiements_fourn: this._cache.paiementsFourn||[],
+      settings: this._cache.settings||{},
+      updated_at: new Date().toISOString(),
+    }).then(()=>{ this._pendingSync = false; }).catch(e=>{ this._pendingSync = false; console.log('Sync error:', e); });
+  },
   _syncToSupabase(){
     clearTimeout(this._syncTimer);
-    this._syncTimer = setTimeout(async ()=>{
-      try {
-        await supa.from('smerav_data').upsert({
-          id: 'main',
-          projects: this._cache.projects||[],
-          clients: this._cache.clients||[],
-          factures: this._cache.factures||[],
-          devis: this._cache.devis||[],
-          bls: this._cache.bls||[],
-          fournisseurs: this._cache.fournisseurs||[],
-          bcs: this._cache.bcs||[],
-          brs: this._cache.brs||[],
-          factures_achat: this._cache.facturesAchat||[],
-          cheques: this._cache.cheques||[],
-          ouvriers: this._cache.ouvriers||[],
-          specialites: this._cache.specialites||[],
-          stock: this._cache.stock||[],
-          paiements_clients: this._cache.paiementsClients||[],
-          paiements_fourn: this._cache.paiementsFourn||[],
-          settings: this._cache.settings||{},
-          updated_at: new Date().toISOString(),
-        });
-      } catch(e){ console.log('Sync error:', e); }
-    }, 1000);
+    this._syncTimer = setTimeout(()=>{ this._doSync(); }, 250);
+  },
+  flushNow(){
+    clearTimeout(this._syncTimer);
+    return this._doSync();
   }
 };
+
+// Flush any pending save immediately if the user navigates away or refreshes,
+// so quick "Enregistrer puis Actualiser" never loses data.
+window.addEventListener('beforeunload', ()=>{ if(DB._syncTimer) DB.flushNow(); });
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && DB._syncTimer) DB.flushNow(); });
+
 
 // ══════════════════════════════════════════
 // DEFAULT DATA
@@ -269,6 +280,17 @@ let state = {
   modal: null, selProject: null, ficheSection: 'info', notif: null, syncing: false, expandedNav: {},
 };
 
+// Restore the last navigation position (page / selected project / tab) so a
+// refresh doesn't send the user back to the dashboard.
+try {
+  const savedNav = JSON.parse(sessionStorage.getItem('smerav_nav')||'null');
+  if(savedNav){
+    if(savedNav.page) state.page = savedNav.page;
+    if(savedNav.selProject!==undefined) state.selProject = savedNav.selProject;
+    if(savedNav.ficheSection) state.ficheSection = savedNav.ficheSection;
+  }
+} catch(e){}
+
 // Load from Supabase on start
 DB.load().then(cache => {
   if(Object.keys(cache).length > 0){
@@ -288,6 +310,11 @@ function setState(updates){
    'facturesAchat','cheques','ouvriers','specialites','stock','paiementsClients','paiementsFourn'].forEach(k=>{
     if(updates[k] !== undefined) DB.set(k, updates[k]);
   });
+  if(updates.page!==undefined || updates.selProject!==undefined || updates.ficheSection!==undefined){
+    try {
+      sessionStorage.setItem('smerav_nav', JSON.stringify({page:state.page, selProject:state.selProject, ficheSection:state.ficheSection}));
+    } catch(e){}
+  }
   render();
 }
 
