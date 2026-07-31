@@ -3911,11 +3911,11 @@ function renderBordereauEnvoiSection(p, updateProject){
     img.onload = ()=>{
       const { jsPDF } = window.jspdf;
       const pageW=210, pageH=297;
-      const ratio = Math.min((pageW-20)/img.width, (pageH-20)/img.height);
+      const ratio = Math.min((pageW-10)/img.width, (pageH-10)/img.height);
       const w = img.width*ratio, h = img.height*ratio;
       const x = (pageW-w)/2, y = (pageH-h)/2;
-      const docPdf = new jsPDF({unit:'mm',format:'a4'});
-      docPdf.addImage(imgData, 'JPEG', x, y, w, h);
+      const docPdf = new jsPDF({unit:'mm',format:'a4',compress:false});
+      docPdf.addImage(imgData, 'JPEG', x, y, w, h, undefined, 'NONE');
       onReady(docPdf.output('datauristring'));
     };
     img.src = imgData;
@@ -4016,11 +4016,11 @@ function renderBordereauEnvoiSection(p, updateProject){
             ? span({className:'badge',style:{background:'#10B98120',color:'#10B981',cursor:'pointer'},onclick:()=>viewReception(e)},'✓ Voir ('+fmtDate(e.receptionDate)+')')
             : span({style:{color:'#6B7A99',fontSize:11}},'—')
           ),
-          el('td',{},div({style:{display:'flex',gap:6}},
-            btn('✏️','btn-gray',()=>openForm(e,i),{style:{padding:'4px 8px',fontSize:12}}),
-            btn('🖨','btn-blue',()=>printBordereauEnvoi(e,p),{style:{padding:'4px 8px',fontSize:12}}),
-            btn('📷','btn-orange',()=>captureReception(i),{style:{padding:'4px 8px',fontSize:12},title:'Scanner la copie de réception (cachet)'}),
-            btn('✕','btn-red',()=>{if(confirmDelete())updateProject({bordereauxEnvoi:envs.filter((_,xi)=>xi!==i)});},{style:{padding:'4px 8px',fontSize:12}})
+          el('td',{},div({style:{display:'flex',gap:14}},
+            el('span',{style:{cursor:'pointer',fontSize:18},onclick:()=>openForm(e,i),title:'Modifier'},'✏️'),
+            el('span',{style:{cursor:'pointer',fontSize:18},onclick:()=>printBordereauEnvoi(e,p),title:'Imprimer'},'🖨️'),
+            el('span',{style:{cursor:'pointer',fontSize:18},onclick:()=>captureReception(i),title:'Scanner la copie de réception (cachet)'},'➕'),
+            el('span',{style:{cursor:'pointer',fontSize:18},onclick:()=>{if(confirmDelete())updateProject({bordereauxEnvoi:envs.filter((_,xi)=>xi!==i)});},title:'Supprimer'},'❌')
           ))
         )):[el('tr',{},el('td',{colSpan:7,style:{padding:40,textAlign:'center',color:'#6B7A99'}},"Aucun bordereau d'envoi"))]))
       )
