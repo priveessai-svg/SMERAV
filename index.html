@@ -3929,16 +3929,11 @@ function renderBordereauEnvoiSection(p, updateProject){
       if(!file){ cleanup(); return; }
       const reader = new FileReader();
       reader.onload = ev=>{
-        cleanup();
-        showCapturePreview(ev.target.result, {
-          onRetake: ()=>captureReception(idx),
-          onConfirm: (imgData)=>{
-            buildPdfFromImage(imgData, (pdfDataUrl)=>{
-              const newList = envs.map((x,xi)=>xi===idx?{...x,receptionPdf:pdfDataUrl,receptionDate:today()}:x);
-              updateProject({bordereauxEnvoi:newList});
-              notify('Copie de réception enregistrée (PDF) ✓');
-            });
-          }
+        buildPdfFromImage(ev.target.result, (pdfDataUrl)=>{
+          const newList = envs.map((x,xi)=>xi===idx?{...x,receptionPdf:pdfDataUrl,receptionDate:today()}:x);
+          updateProject({bordereauxEnvoi:newList});
+          notify('Copie de réception enregistrée (PDF) ✓');
+          cleanup();
         });
       };
       reader.readAsDataURL(file);
