@@ -3840,7 +3840,7 @@ function printBordereauEnvoi(env, p){
     <div style="text-align:right;font-size:12px;margin-bottom:24px;">${s.ville||'Fès'} , le : ${fmtDate(env.date)}</div>
     <div style="text-align:center;font-style:italic;font-weight:700;font-size:13px;line-height:1.6;margin-bottom:20px;">
       A<br>
-      MONSIEUR LE DIRECTEUR GÉNÉRAL<br>
+      ${(env.titreDestinataire||'MONSIEUR LE DIRECTEUR GÉNÉRAL').toUpperCase()}<br>
       DE LA ${(env.destinataire||p.maitreOuvrage||'').toUpperCase()}
     </div>
     <div style="text-align:center;font-style:italic;font-weight:700;font-size:12px;line-height:1.6;margin-bottom:28px;">
@@ -3913,6 +3913,7 @@ function renderBordereauEnvoiSection(p, updateProject){
         div({},el('label',{className:'lbl'},'N°'),Object.assign(el('input',{value:f.num}),{oninput:e=>f.num=e.target.value})),
         div({},el('label',{className:'lbl'},'Date'),Object.assign(el('input',{type:'date',value:f.date}),{oninput:e=>f.date=e.target.value})),
         div({},el('label',{className:'lbl'},'Destinataire'),Object.assign(el('input',{value:f.destinataire||''}),{oninput:e=>f.destinataire=e.target.value})),
+        div({},el('label',{className:'lbl'},'Titre du destinataire'),Object.assign(el('input',{value:f.titreDestinataire||'MONSIEUR LE DIRECTEUR GÉNÉRAL'}),{oninput:e=>f.titreDestinataire=e.target.value})),
         div({},el('label',{className:'lbl'},'Objet'),Object.assign(el('input',{value:f.objet||''}),{oninput:e=>f.objet=e.target.value})),
       ),
       div({style:{fontWeight:700,fontSize:12,marginTop:6}},'Pièces jointes'),
