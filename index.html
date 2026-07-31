@@ -391,6 +391,60 @@ function labeledInput(lbl_text, inputEl){
 
 function getSettings(){ return state.settings; }
 
+// Full-screen preview after taking a photo: retake or confirm before saving.
+// In-app camera (no native camera app) using getUserMedia, with retake/confirm preview.
+function openInAppCamera(onConfirm){
+  const overlay = div({style:{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',background:'#000',zIndex:99999,display:'flex',flexDirection:'column'}});
+  const video = el('video',{autoplay:true,playsinline:true,style:{flex:1,width:'100%',height:'100%',objectFit:'cover',background:'#000'}});
+  const closeBtn = el('button',{style:{position:'absolute',top:16,right:16,width:36,height:36,borderRadius:'50%',background:'rgba(0,0,0,0.5)',color:'#fff',border:'none',fontSize:18,cursor:'pointer',zIndex:2}},'✕');
+  const shootBtn = el('button',{style:{width:70,height:70,borderRadius:'50%',background:'#fff',border:'4px solid #E8730A',cursor:'pointer',margin:'0 auto'}});
+  let stream = null;
+
+  function stopStream(){ if(stream) stream.getTracks().forEach(t=>t.stop()); }
+  function close(){ stopStream(); if(overlay.parentNode) document.body.removeChild(overlay); }
+
+  closeBtn.onclick = close;
+  shootBtn.onclick = ()=>{
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video,0,0);
+    const imgData = canvas.toDataURL('image/jpeg',0.9);
+    close();
+    showCapturePreview(imgData, {
+      onRetake: ()=>openInAppCamera(onConfirm),
+      onConfirm: onConfirm
+    });
+  };
+
+  const videoWrap = div({style:{position:'relative',flex:1}}, video, closeBtn);
+  overlay.appendChild(videoWrap);
+  overlay.appendChild(div({style:{padding:20,background:'#111',display:'flex',justifyContent:'center'}}, shootBtn));
+  document.body.appendChild(overlay);
+
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false})
+    .then(s=>{ stream=s; video.srcObject=s; })
+    .catch(err=>{
+      notify("Impossible d'accéder à la caméra — autorisez l'accès dans les paramètres du navigateur");
+      close();
+    });
+}
+
+function showCapturePreview(imgData, {onRetake, onConfirm}){
+  const overlay = div({style:{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',background:'#000',zIndex:99999,display:'flex',flexDirection:'column'}});
+  overlay.appendChild(
+    div({style:{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:'auto',padding:10}},
+      el('img',{src:imgData,style:{maxWidth:'100%',maxHeight:'100%',objectFit:'contain'}})
+    )
+  );
+  overlay.appendChild(
+    div({style:{padding:16,display:'flex',gap:12,background:'#111'}},
+      el('button',{style:{flex:1,padding:'14px',background:'#374151',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:15,cursor:'pointer'},onclick:()=>{document.body.removeChild(overlay); if(onRetake) onRetake();}},'🔄 Reprendre'),
+      el('button',{style:{flex:1,padding:'14px',background:'#E8730A',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:15,cursor:'pointer'},onclick:()=>{document.body.removeChild(overlay); if(onConfirm) onConfirm(imgData);}},'✓ Confirmer')
+    )
+  );
+  document.body.appendChild(overlay);
+}
+
 function headerHTML(){
   const s = getSettings();
   if(s.enTeteHeaderImg){
@@ -3905,24 +3959,13 @@ function renderBordereauEnvoiSection(p, updateProject){
   }
 
   function captureReception(idx){
-    const input = el('input',{type:'file',accept:'image/*',capture:'environment',style:{display:'none'}});
-    const cleanup = ()=>{ if(input.parentNode) document.body.removeChild(input); };
-    input.onchange = e=>{
-      const file = e.target.files[0];
-      if(!file){ cleanup(); return; }
-      const reader = new FileReader();
-      reader.onload = ev=>{
-        buildPdfFromImage(ev.target.result, (pdfDataUrl)=>{
-          const newList = envs.map((x,xi)=>xi===idx?{...x,receptionPdf:pdfDataUrl,receptionDate:today()}:x);
-          updateProject({bordereauxEnvoi:newList});
-          notify('Copie de réception enregistrée (PDF) ✓');
-          cleanup();
-        });
-      };
-      reader.readAsDataURL(file);
-    };
-    document.body.appendChild(input);
-    input.click();
+    openInAppCamera((imgData)=>{
+      buildPdfFromImage(imgData, (pdfDataUrl)=>{
+        const newList = envs.map((x,xi)=>xi===idx?{...x,receptionPdf:pdfDataUrl,receptionDate:today()}:x);
+        updateProject({bordereauxEnvoi:newList});
+        notify('Copie de réception enregistrée (PDF) ✓');
+      });
+    });
   }
 
   function viewReception(env){
