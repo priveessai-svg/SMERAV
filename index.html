@@ -447,6 +447,7 @@ function cachetHTML(){
 // ══════════════════════════════════════════
 const NAV = [
   {key:'dashboard',icon:'⊞',label:'Tableau de bord',section:'GÉRER'},
+  {key:'bibliotheque-societe',icon:'📚',label:'Bibliothèque'},
   {key:'projets',icon:'🏗',label:'Projets',children:[
     {key:'liste-projets',label:'Liste des projets'},
     {key:'nouveau-projet',label:'Nouveau projet'},
@@ -607,7 +608,7 @@ function renderSidebar(){
     } else {
       navEl.appendChild(div({
         className:'nav-item'+(state.page===item.key?' active':''),
-        onclick:()=>{ if(item.action==='logout'){ if(confirm('Se déconnecter ?')) AUTH.logout(); } else { setState({page:item.key}); } }
+        onclick:()=>{ if(item.action==='logout'){ if(confirm('Se déconnecter ?')) AUTH.logout(); } else { if(item.key==='bibliotheque-societe'){ renderBibliothequeSociete._cat=null; } setState({page:item.key}); } }
       },
         span({style:{fontSize:16}},item.icon),
         item.label
@@ -1325,7 +1326,7 @@ function renderComingSoon(title){
 // ══════════════════════════════════════════
 function getPageTitle(){
   const pages = {
-    'dashboard':'Tableau de bord','liste-projets':'Projets','liste-clients':'Clients',
+    'dashboard':'Tableau de bord','bibliotheque-societe':'Bibliothèque','liste-projets':'Projets','liste-clients':'Clients',
     'factures':'Factures','devis':'Devis','bons-livraison':'Bons de livraison',
     'paiements-clients':'Paiements Clients','fournisseurs':'Fournisseurs',
     'bons-commande':'Bons de commande','bons-reception':'Bons de réception',
@@ -1339,6 +1340,7 @@ function getPageTitle(){
 function renderContent(){
   switch(state.page){
     case 'dashboard': return renderDashboard();
+    case 'bibliotheque-societe': return renderBibliothequeSociete();
     case 'fiche-projet': return renderFicheProjet();
     case 'liste-projets': return renderListeProjets();
     case 'nouveau-projet': return renderNouveauProjet();
@@ -1668,7 +1670,6 @@ function renderFicheProjet(){
     ['bordereau-envoi',"📤 Bordereau D'envoi"],
     ['attachements','📎 Attachements'],['decomptes','💰 Décomptes'],
     ['rapport','📄 Rapport'],['charges','💳 Charges'],['documents','📁 Documents'],
-    ['bibliotheque','📚 Bibliothèque'],
   ];
   const sec = state.ficheSection||'info';
 
@@ -1711,7 +1712,7 @@ function renderFicheProjet(){
     // Tabs
     div({style:{display:'flex',gap:6,marginBottom:20,flexWrap:'wrap'}},
       ...tabs.map(([key,label])=>
-        btn(label, sec===key?'btn-orange':'btn-gray', ()=>{if(key==='rapport'){p._rapportView='months';p._selMonth=null;}if(key==='bibliotheque'){renderProjetBibliotheque._cat=null;}setState({ficheSection:key});},
+        btn(label, sec===key?'btn-orange':'btn-gray', ()=>{if(key==='rapport'){p._rapportView='months';p._selMonth=null;}setState({ficheSection:key});},
           {style:{fontSize:12,padding:'7px 14px'}})
       )
     ),
@@ -1725,7 +1726,6 @@ function renderFicheProjet(){
     sec==='rapport' ? renderRapportSection(p, updateProject) :
     sec==='charges' ? renderProjetCharges(p, updateProject) :
     sec==='documents' ? renderProjetDocuments(p, updateProject) :
-    sec==='bibliotheque' ? renderProjetBibliotheque(p, updateProject) :
     renderComingSoon(sec)
   );
 }
@@ -2099,15 +2099,27 @@ function renderProjetDocuments(p, updateProject){
 }
 
 
-function renderProjetBibliotheque(p, updateProject){
+function renderBibliothequeSociete(){
   const CATS = [
-    {key:'administratif', label:'Administratif', icon:'📋', color:'#2563EB', desc:'Marché, OS, PV de réunion, correspondances'},
-    {key:'technique',     label:'Technique',     icon:'⚙️', color:'#E8730A', desc:'Plans, notes de calcul, fiches techniques'},
-    {key:'financier',     label:'Financier',     icon:'💰', color:'#10B981', desc:'Décomptes, factures, cautions, garanties'},
-    {key:'additif',       label:'Additif',       icon:'➕', color:'#8B5CF6', desc:'Avenants, ordres de service modificatifs'},
+    {key:'administratif', label:'Administratif', icon:'📋', color:'#2563EB', desc:'RC, TP, IF, ICE, CNSS, statuts, attestations'},
+    {key:'technique',     label:'Technique',     icon:'⚙️', color:'#E8730A', desc:'Agréments, qualifications, moyens matériels, références'},
+    {key:'financier',     label:'Financier',     icon:'💰', color:'#10B981', desc:'Bilans, attestations fiscales, RIB, cautions bancaires'},
+    {key:'additif',       label:'Additif',       icon:'➕', color:'#8B5CF6', desc:'Documents divers, pièces complémentaires'},
   ];
-  const biblio = p.bibliotheque || {};
-  const openCat = renderProjetBibliotheque._cat || null;
+  const biblio = (state.settings && state.settings.bibliotheque) || {};
+  const openCat = renderBibliothequeSociete._cat || null;
+
+  function saveBiblio(next){
+    setState({settings:{...state.settings, bibliotheque:next}});
+  }
+  function addDoc(catKey, newDoc){
+    const list = biblio[catKey] || [];
+    saveBiblio({...biblio, [catKey]:[...list, newDoc]});
+  }
+  function removeDoc(catKey, id){
+    const list = biblio[catKey] || [];
+    saveBiblio({...biblio, [catKey]:list.filter(x=>x.id!==id)});
+  }
 
   function buildPdfFromImage(imgData, onReady){
     const img = new Image();
@@ -2124,22 +2136,13 @@ function renderProjetBibliotheque(p, updateProject){
     img.src = imgData;
   }
 
-  function addDoc(catKey, newDoc){
-    const list = biblio[catKey] || [];
-    updateProject({bibliotheque:{...biblio, [catKey]:[...list, newDoc]}});
-  }
-  function removeDoc(catKey, id){
-    const list = biblio[catKey] || [];
-    updateProject({bibliotheque:{...biblio, [catKey]:list.filter(x=>x.id!==id)}});
-  }
-
   function handleFile(file, catKey){
     const isPdf = file.type==='application/pdf';
     const reader = new FileReader();
     reader.onload = (e)=>{
       const fileData = e.target.result;
       let nomVal = '';
-      const nameInput = el('input',{type:'text',placeholder:'ex: Ordre de service N°1'});
+      const nameInput = el('input',{type:'text',placeholder:'ex: Attestation CNSS 2026'});
       nameInput.oninput = ev=>nomVal=ev.target.value;
       const fEl = div({style:{display:'flex',flexDirection:'column',gap:12}},
         div({},el('label',{className:'lbl'},'Nom du document'),nameInput),
@@ -2189,7 +2192,7 @@ function renderProjetBibliotheque(p, updateProject){
     return div({},
       fileInput,
       div({style:{display:'flex',alignItems:'center',gap:8,marginBottom:16,fontSize:13}},
-        span({style:{color:'#E8730A',cursor:'pointer',fontWeight:700},onclick:()=>{renderProjetBibliotheque._cat=null;render();}},'← Bibliothèque'),
+        span({style:{color:'#E8730A',cursor:'pointer',fontWeight:700},onclick:()=>{renderBibliothequeSociete._cat=null;render();}},'← Bibliothèque'),
         span({style:{color:'#6B7A99'}},'›'),
         span({style:{fontWeight:700}},cat.label)
       ),
@@ -2227,10 +2230,15 @@ function renderProjetBibliotheque(p, updateProject){
   // ── Vue d'ensemble : les 4 parties ─────────────────────
   const total = CATS.reduce((s,c)=>s+((biblio[c.key]||[]).length),0);
   return div({},
-    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:8}},
+    div({style:{background:'linear-gradient(135deg,#0F1628,#1A2D50)',borderRadius:14,padding:'20px 24px',marginBottom:20,color:'#fff',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}},
       div({},
-        div({style:{fontSize:15,fontWeight:800}},'📚 Bibliothèque du projet'),
-        div({style:{color:'#6B7A99',fontSize:12}},total+' document(s) au total')
+        div({style:{fontSize:20,fontWeight:900}},'📚 Bibliothèque de la société'),
+        div({style:{fontSize:13,color:'#8AA0C0',marginTop:4}},'Documents généraux de SMERAV S.A.R.L')
+      ),
+      div({style:{textAlign:'right'}},
+        div({style:{fontSize:11,color:'#6A8099'}},'TOTAL'),
+        div({style:{fontSize:22,fontWeight:900,color:'#E8730A'}},total),
+        div({style:{fontSize:11,color:'#6A8099'}},'document'+(total>1?'s':''))
       )
     ),
     div({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:14}},
@@ -2247,7 +2255,7 @@ function renderProjetBibliotheque(p, updateProject){
           ),
           div({style:{fontSize:11,color:'#6B7A99',lineHeight:1.5}},c.desc)
         );
-        card.onclick = ()=>{ renderProjetBibliotheque._cat = c.key; render(); };
+        card.onclick = ()=>{ renderBibliothequeSociete._cat = c.key; render(); };
         return card;
       })
     )
