@@ -15,6 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root {
   --navy:#0F1628; --navy2:#1A2540; --navy3:#1E3A6E; --navyBorder:#1E2D4A;
@@ -536,6 +537,9 @@ function printDoc(htmlContent, title, opts={}){
       ? '<img src="'+enTeteImgSrc+'" style="width:100%;max-height:30mm;object-fit:contain;display:block;"/>'
       : '<div style="display:flex;align-items:center;gap:10px;">'+logoHTML+'<div style="flex:1;text-align:center;"><div style="font-size:16px;font-weight:900;">'+nom+'</div>'+(ent?'<div style="font-size:9px;font-style:italic;color:#444;">'+ent+'</div>':'')+(ftr?'<div style="font-size:8px;color:#555;margin-top:3px;border-top:1px solid #ddd;padding-top:2px;">'+ftr+'</div>':'')+'</div></div>';
 
+    var xlName = (title||'Document').replace(/[\\/:*?"<>|\n\r]+/g,'-').replace(/\s+/g,' ').trim() || 'Document';
+    var excelScript = `function saveExcel(){var main=document.getElementById("main");if(!main){alert("Pas de contenu");return;}var XLNAME=${JSON.stringify(xlName)};var X=parent.XLSX;var tbls=main.querySelectorAll("table");try{if(X&&tbls.length){var wb=X.utils.book_new();for(var i=0;i<tbls.length;i++){var ws=X.utils.table_to_sheet(tbls[i],{raw:true});X.utils.book_append_sheet(wb,ws,tbls.length>1?("Feuille"+(i+1)):"Document");}X.writeFile(wb,XLNAME+".xlsx");return;}}catch(e){}var h="<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:x='urn:schemas-microsoft-com:office:excel'><head><meta charset='UTF-8'><style>table{border-collapse:collapse;}td,th{border:1px solid #000;padding:5px 8px;font-size:11pt;}th{background:#f0f0f0;font-weight:bold;}</style></head><body>"+main.innerHTML+"</body></html>";var b=new Blob([h],{type:"application/vnd.ms-excel;charset=utf-8"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=XLNAME+".xls";document.body.appendChild(a);a.click();document.body.removeChild(a);}`;
+
     doc.open();
     doc.write('<!DOCTYPE html><html><head><title>'+(title||'Document')+'</title>');
     doc.write('<style>');
@@ -562,7 +566,7 @@ function printDoc(htmlContent, title, opts={}){
     doc.write('<button onclick="saveExcel()" style="background:#16A34A;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;margin-right:6px;">&#128202; Excel</button>');
     doc.write('<button onclick="parent.document.getElementById(\'__printFrame\').remove()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">&#x2715; Fermer</button>');
     doc.write('</div>');
-    doc.write('<script>function saveExcel(){var main=document.getElementById("main");if(!main){alert("Pas de contenu");return;}var wb="<html xmlns:o=\'urn:schemas-microsoft-com:office:office\' xmlns:x=\'urn:schemas-microsoft-com:office:excel\'><head><meta charset=\'UTF-8\'><style>table{border-collapse:collapse;}td,th{border:1px solid #000;padding:5px 8px;font-size:11pt;}th{background:#f0f0f0;font-weight:bold;}</style></head><body>"+main.innerHTML+"</body></html>";var b=new Blob([wb],{type:"application/vnd.ms-excel;charset=utf-8"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="Attachement.xls";document.body.appendChild(a);a.click();document.body.removeChild(a);}<\/script>');
+    doc.write('<scr'+'ipt>'+excelScript+'<\/scr'+'ipt>');
     doc.write('<div id="main" style="padding:0;">'+htmlContent+'</div>');
     doc.write('<style>@page{margin:'+(opts.margin||(opts.fullBleed?'0':'30mm 15mm 30mm 15mm'))+';@bottom-right{content:"Page " counter(page) " / " counter(pages);font-size:9px;font-family:Arial;color:#444;}}</style>');
     doc.write('</body></html>');
@@ -1035,6 +1039,7 @@ function renderParametres(){
     {key:'ice',      label:'ICE',        sub:'IDENTIFIANTS FISCAUX'},
     {key:'perso',    label:'Personnalisation', sub:'LOGO & COULEURS'},
     {key:'docs',     label:'Documents',  sub:'FORMAT & PDF'},
+    {key:'sauvegarde', label:'Sauvegarde', sub:'BACKUP & EXPORT'},
   ];
 
   const container = div({style:{display:'flex',minHeight:480}});
@@ -1214,6 +1219,84 @@ function renderParametres(){
       Object.assign(el('textarea',{rows:3,style:{resize:'vertical',fontSize:11,width:'100%'}},s.piedPage||''),{oninput:e=>s.piedPage=e.target.value}),
       div({style:{fontSize:11,color:'#6B7A99',marginTop:6}},'Ces informations apparaîtront en bas de tous vos documents imprimés.')
     );
+    if(activeTab==='sauvegarde'){
+      const KEYS_BK = ['settings','projects','clients','factures','devis','bls','fournisseurs','bcs','brs','facturesAchat','cheques','ouvriers','specialites','stock','paiementsClients','paiementsFourn'];
+      const sanitize = (n)=>String(n||'sans-nom').replace(/[\\/:*?"<>|\n\r\t]+/g,'-').replace(/\s+/g,' ').trim().slice(0,80) || 'sans-nom';
+      const extOf = (u)=>{ const m=(u||'').match(/^data:([^;]+)/); const mime=m?m[1]:''; return mime.indexOf('png')>-1?'png':(mime.indexOf('jpeg')>-1||mime.indexOf('jpg')>-1)?'jpg':'pdf'; };
+      const b64 = (u)=>String(u||'').split(',')[1]||'';
+      const docCount = (state.projects||[]).reduce((a,p)=>a+((p.documents||[]).length),0) + Object.values((state.settings&&state.settings.bibliotheque)||{}).reduce((a,arr)=>a+((arr||[]).length),0);
+
+      function doBackup(){
+        const data={}; KEYS_BK.forEach(k=>{ data[k]=state[k]; });
+        const payload={_app:'SMERAV',_version:1,_date:new Date().toISOString(),data};
+        const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
+        const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+        a.download='smerav-backup-'+today()+'.json';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        notify('Sauvegarde téléchargée ✓');
+      }
+      function doRestore(file){
+        const reader=new FileReader();
+        reader.onload=ev=>{
+          let payload;
+          try{ payload=JSON.parse(ev.target.result); }catch(e){ alert('❌ Fichier illisible (JSON invalide).'); return; }
+          const data=(payload&&payload.data)?payload.data:payload;
+          if(!data || (data.projects===undefined && data.settings===undefined)){ alert('❌ Ce fichier n\'est pas une sauvegarde SMERAV valide.'); return; }
+          if(!confirm('⚠️ ATTENTION : ceci va REMPLACER toutes les données actuelles par celles de la sauvegarde.\n\nContinuer ?')) return;
+          if(!confirmDelete()) return;
+          const updates={}; KEYS_BK.forEach(k=>{ if(data[k]!==undefined) updates[k]=data[k]; });
+          setState(updates);
+          notify('✓ Données restaurées');
+          setTimeout(()=>setState({page:'dashboard'}),600);
+        };
+        reader.readAsText(file);
+      }
+      async function doExportDocs(){
+        if(typeof JSZip==='undefined'){ alert('Module ZIP en cours de chargement, réessayez dans un instant.'); return; }
+        if(docCount===0){ alert('Aucun document à exporter pour le moment.'); return; }
+        notify('Préparation du ZIP…');
+        const zip=new JSZip();
+        (state.projects||[]).forEach(p=>{
+          const folder='Projets/'+sanitize(p.ref||p.nom||('projet-'+p.id));
+          (p.documents||[]).forEach((d,i)=>{ zip.file(folder+'/'+sanitize(d.nom)+'-'+(i+1)+'.'+extOf(d.dataUrl), b64(d.dataUrl), {base64:true}); });
+        });
+        const biblio=(state.settings&&state.settings.bibliotheque)||{};
+        const labels={administratif:'Administratif',technique:'Technique',financier:'Financier',additif:'Additif'};
+        Object.keys(biblio).forEach(cat=>{
+          (biblio[cat]||[]).forEach((d,i)=>{ zip.file('Bibliotheque/'+(labels[cat]||cat)+'/'+sanitize(d.nom)+'-'+(i+1)+'.'+extOf(d.dataUrl), b64(d.dataUrl), {base64:true}); });
+        });
+        try{
+          const blob=await zip.generateAsync({type:'blob'});
+          const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+          a.download='smerav-documents-'+today()+'.zip';
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          notify(docCount+' document(s) exporté(s) ✓');
+        }catch(e){ alert('Erreur lors de la création du ZIP : '+e.message); }
+      }
+
+      const restoreInput = el('input',{type:'file',accept:'application/json,.json',style:{display:'none'}});
+      restoreInput.onchange = e=>{ if(e.target.files[0]) doRestore(e.target.files[0]); e.target.value=''; };
+
+      const mkCard = (accent,icon,title,desc,button)=> div({style:{border:'1px solid #E9EDF5',borderLeft:'4px solid '+accent,borderRadius:14,padding:'18px 20px',marginBottom:16,background:'#fff'}},
+        div({style:{display:'flex',alignItems:'center',gap:10,marginBottom:6}}, span({style:{fontSize:20}},icon), div({style:{fontSize:15,fontWeight:800,color:'#1A2540'}},title)),
+        div({style:{fontSize:12.5,color:'#6B7A99',lineHeight:1.5,marginBottom:14}},desc),
+        button
+      );
+
+      return div({style:{padding:28,flex:1}},
+        restoreInput,
+        div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',letterSpacing:1,marginBottom:8}},'SAUVEGARDE & SÉCURITÉ DES DONNÉES'),
+        div({style:{fontSize:12.5,color:'#6B7A99',marginBottom:20,lineHeight:1.5}},'Gardez une copie de vos données sur votre PC (par ex. dans D:\\SMERAV). En cas de problème sur le programme, vous pourrez tout restaurer.'),
+        div({style:{display:'flex',gap:14,marginBottom:22,flexWrap:'wrap'}},
+          div({style:{flex:1,minWidth:120,background:'#EFF6FF',border:'1px solid #DBEAFE',borderRadius:12,padding:'12px 16px'}}, div({style:{fontSize:22,fontWeight:900,color:'#2563EB'}},String((state.projects||[]).length)), div({style:{fontSize:11,color:'#6B7A99',fontWeight:700}},'PROJETS')),
+          div({style:{flex:1,minWidth:120,background:'#ECFDF5',border:'1px solid #D1FAE5',borderRadius:12,padding:'12px 16px'}}, div({style:{fontSize:22,fontWeight:900,color:'#10B981'}},String(docCount)), div({style:{fontSize:11,color:'#6B7A99',fontWeight:700}},'DOCUMENTS'))
+        ),
+        mkCard('#2563EB','💾','Sauvegarde complète','Télécharge un seul fichier .json contenant TOUT : projets, clients, RH, achats, stock, dépenses et les documents. Gardez-le dans D:\\SMERAV.', btn('⬇️ Télécharger la sauvegarde','btn-blue',doBackup,{style:{fontSize:13}})),
+        mkCard('#E8730A','📥','Restaurer une sauvegarde','Remplace les données actuelles par celles d\'un fichier de sauvegarde. À utiliser en cas de problème. (Mot de passe requis.)', btn('📂 Choisir un fichier .json','btn-gray',()=>restoreInput.click(),{style:{fontSize:13}})),
+        mkCard('#10B981','📄','Exporter les documents (PDF)','Télécharge tous vos documents en vrais fichiers PDF, rangés par projet et par partie, dans un .zip — ouvrables même sans le programme.', btn('⬇️ Télécharger les documents (.zip)','btn-green',doExportDocs,{style:{fontSize:13}})),
+        div({style:{marginTop:8,padding:14,background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:10,fontSize:12,color:'#9A5B1E',lineHeight:1.55}},'💡 Astuce : dans Chrome, réglez le dossier de téléchargement sur D:\\SMERAV — ainsi chaque sauvegarde y arrive directement. Faites une sauvegarde chaque semaine et gardez 2 à 3 copies.')
+      );
+    }
   }
 
   function render(){
@@ -1229,7 +1312,7 @@ function renderParametres(){
         onclick:()=>{activeTab=t.key;render();}
       },
         div({style:{width:32,height:32,borderRadius:8,background:active?'rgba(255,255,255,0.2)':'#F4F6FA',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0}},
-          t.key==='identite'?'🏢':t.key==='ice'?'🛡️':t.key==='perso'?'🎨':'📄'
+          t.key==='identite'?'🏢':t.key==='ice'?'🛡️':t.key==='perso'?'🎨':t.key==='sauvegarde'?'💾':'📄'
         ),
         div({},
           div({style:{fontWeight:700,fontSize:13}},t.label),
