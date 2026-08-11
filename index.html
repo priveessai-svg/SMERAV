@@ -1226,14 +1226,25 @@ function renderParametres(){
       const b64 = (u)=>String(u||'').split(',')[1]||'';
       const docCount = (state.projects||[]).reduce((a,p)=>a+((p.documents||[]).length),0) + Object.values((state.settings&&state.settings.bibliotheque)||{}).reduce((a,arr)=>a+((arr||[]).length),0);
 
-      function doBackup(){
+      const COL_MAP = {projects:'projects',clients:'clients',factures:'factures',devis:'devis',bls:'bls',fournisseurs:'fournisseurs',bcs:'bcs',brs:'brs',facturesAchat:'factures_achat',cheques:'cheques',ouvriers:'ouvriers',specialites:'specialites',stock:'stock',paiementsClients:'paiements_clients',paiementsFourn:'paiements_fourn',settings:'settings'};
+      const LOCAL_KEYS = ['smerav_pwd','smerav_email','smerav_secq','smerav_seca'];
+      async function doBackup(){
+        notify('Préparation de la sauvegarde…');
         const data={}; KEYS_BK.forEach(k=>{ data[k]=state[k]; });
-        const payload={_app:'SMERAV',_version:1,_date:new Date().toISOString(),data};
+        // Récupère la copie complète et à jour directement depuis Supabase (source de vérité)
+        try{
+          const res = await supa.from('smerav_data').select('*').eq('id','main').single();
+          const row = res && res.data;
+          if(row){ Object.keys(COL_MAP).forEach(sk=>{ const col=COL_MAP[sk]; const v=state[sk]; const empty = v===undefined||v===null||(Array.isArray(v)&&v.length===0)||(typeof v==='object'&&!Array.isArray(v)&&Object.keys(v||{}).length===0); if(empty && row[col]!==undefined && row[col]!==null) data[sk]=row[col]; }); }
+        }catch(e){ /* hors ligne : on garde les données locales */ }
+        // Inclut la config de connexion (mot de passe, email, question secrète) pour une restauration totale
+        const local={}; LOCAL_KEYS.forEach(k=>{ try{ const v=localStorage.getItem(k); if(v!==null) local[k]=v; }catch(e){} });
+        const payload={_app:'SMERAV',_version:2,_date:new Date().toISOString(),data,local};
         const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
         const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
         a.download='smerav-backup-'+today()+'.json';
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        notify('Sauvegarde téléchargée ✓');
+        notify('Sauvegarde complète téléchargée ✓');
       }
       function doRestore(file){
         const reader=new FileReader();
@@ -1246,8 +1257,10 @@ function renderParametres(){
           if(!confirmDelete()) return;
           const updates={}; KEYS_BK.forEach(k=>{ if(data[k]!==undefined) updates[k]=data[k]; });
           setState(updates);
+          if(payload.local){ LOCAL_KEYS.forEach(k=>{ if(payload.local[k]!==undefined){ try{ localStorage.setItem(k, payload.local[k]); }catch(e){} } }); }
+          try{ if(DB && DB.flushNow) DB.flushNow(); }catch(e){}
           notify('✓ Données restaurées');
-          setTimeout(()=>setState({page:'dashboard'}),600);
+          setTimeout(()=>setState({page:'dashboard'}),700);
         };
         reader.readAsText(file);
       }
@@ -1291,7 +1304,7 @@ function renderParametres(){
           div({style:{flex:1,minWidth:120,background:'#EFF6FF',border:'1px solid #DBEAFE',borderRadius:12,padding:'12px 16px'}}, div({style:{fontSize:22,fontWeight:900,color:'#2563EB'}},String((state.projects||[]).length)), div({style:{fontSize:11,color:'#6B7A99',fontWeight:700}},'PROJETS')),
           div({style:{flex:1,minWidth:120,background:'#ECFDF5',border:'1px solid #D1FAE5',borderRadius:12,padding:'12px 16px'}}, div({style:{fontSize:22,fontWeight:900,color:'#10B981'}},String(docCount)), div({style:{fontSize:11,color:'#6B7A99',fontWeight:700}},'DOCUMENTS'))
         ),
-        mkCard('#2563EB','💾','Sauvegarde complète','Télécharge un seul fichier .json contenant TOUT : projets, clients, RH, achats, stock, dépenses et les documents. Gardez-le dans D:\\SMERAV.', btn('⬇️ Télécharger la sauvegarde','btn-blue',doBackup,{style:{fontSize:13}})),
+        mkCard('#2563EB','💾','Sauvegarde complète','Télécharge un seul fichier .json contenant TOUT : projets, clients, RH, achats, stock, dépenses, documents ET vos identifiants de connexion. Récupéré aussi depuis le cloud pour ne rien manquer. Gardez-le dans D:\\SMERAV (fichier privé).', btn('⬇️ Télécharger la sauvegarde','btn-blue',doBackup,{style:{fontSize:13}})),
         mkCard('#E8730A','📥','Restaurer une sauvegarde','Remplace les données actuelles par celles d\'un fichier de sauvegarde. À utiliser en cas de problème. (Mot de passe requis.)', btn('📂 Choisir un fichier .json','btn-gray',()=>restoreInput.click(),{style:{fontSize:13}})),
         mkCard('#10B981','📄','Exporter les documents (PDF)','Télécharge tous vos documents en vrais fichiers PDF, rangés par projet et par partie, dans un .zip — ouvrables même sans le programme.', btn('⬇️ Télécharger les documents (.zip)','btn-green',doExportDocs,{style:{fontSize:13}})),
         div({style:{marginTop:8,padding:14,background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:10,fontSize:12,color:'#9A5B1E',lineHeight:1.55}},'💡 Astuce : dans Chrome, réglez le dossier de téléchargement sur D:\\SMERAV — ainsi chaque sauvegarde y arrive directement. Faites une sauvegarde chaque semaine et gardez 2 à 3 copies.')
