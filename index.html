@@ -449,6 +449,9 @@ function cachetHTML(){
 const NAV = [
   {key:'dashboard',icon:'⊞',label:'Tableau de bord',section:'GÉRER'},
   {key:'bibliotheque-societe',icon:'📚',label:'Bibliothèque'},
+  {key:'rentabilite',icon:'📈',label:'Rentabilité',section:'PILOTAGE'},
+  {key:'tresorerie',icon:'💰',label:'Trésorerie'},
+  {key:'appels-offres',icon:'📋',label:"Appels d'offres"},
   {key:'projets',icon:'🏗',label:'Projets',children:[
     {key:'liste-projets',label:'Liste des projets'},
     {key:'nouveau-projet',label:'Nouveau projet'},
@@ -1422,7 +1425,7 @@ function renderComingSoon(title){
 // ══════════════════════════════════════════
 function getPageTitle(){
   const pages = {
-    'dashboard':'Tableau de bord','bibliotheque-societe':'Bibliothèque','liste-projets':'Projets','liste-clients':'Clients',
+    'dashboard':'Tableau de bord','bibliotheque-societe':'Bibliothèque','rentabilite':'Rentabilité','tresorerie':'Trésorerie','appels-offres':"Appels d'offres",'liste-projets':'Projets','liste-clients':'Clients',
     'factures':'Factures','devis':'Devis','bons-livraison':'Bons de livraison',
     'paiements-clients':'Paiements Clients','fournisseurs':'Fournisseurs',
     'bons-commande':'Bons de commande','bons-reception':'Bons de réception',
@@ -1437,6 +1440,9 @@ function renderContent(){
   switch(state.page){
     case 'dashboard': return renderDashboard();
     case 'bibliotheque-societe': return renderBibliothequeSociete();
+    case 'rentabilite': return renderRentabilite();
+    case 'tresorerie': return renderTresorerie();
+    case 'appels-offres': return renderAppelsOffres();
     case 'fiche-projet': return renderFicheProjet();
     case 'liste-projets': return renderListeProjets();
     case 'nouveau-projet': return renderNouveauProjet();
@@ -2404,6 +2410,192 @@ function renderBibliothequeSociete(){
     : div({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:16}}, ...CATS.map(smallCard));
 
   return div({}, header, body);
+}
+
+function getRealiseHT(p){
+  const atts = p.attachements||[];
+  if(!atts.length) return 0;
+  const last = atts[atts.length-1];
+  return (last.lignes||[]).reduce((s,l)=>s+(l.cumul||0)*(l.pu||0),0);
+}
+
+function renderRentabilite(){
+  const projects = state.projects||[];
+  const rows = projects.map(p=>{
+    const realiseHT = getRealiseHT(p);
+    const couts = (p.charges||[]).reduce((s,c)=>s+(+c.montant||0),0);
+    const marge = realiseHT - couts;
+    const margePct = realiseHT>0 ? (marge/realiseHT*100) : 0;
+    return {p, realiseHT, couts, marge, margePct};
+  }).sort((a,b)=>b.marge-a.marge);
+  const totReal = rows.reduce((s,r)=>s+r.realiseHT,0);
+  const totCout = rows.reduce((s,r)=>s+r.couts,0);
+  const totMarge = totReal - totCout;
+  const stat=(label,val,color)=>div({style:{flex:1,minWidth:150,background:'#fff',border:'1px solid '+C.border,borderRadius:14,padding:'16px 18px'}},
+    div({style:{fontSize:11,color:C.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:.5}},label),
+    div({style:{fontSize:20,fontWeight:900,color:color,marginTop:4}},fmt(val)));
+  return div({},
+    div({style:{fontSize:18,fontWeight:900,marginBottom:4}},'📈 Rentabilité des projets'),
+    div({style:{color:C.muted,fontSize:12.5,marginBottom:18}},"Comparaison entre le montant réalisé (décompté HT) et les charges saisies dans chaque chantier."),
+    div({style:{display:'flex',gap:14,flexWrap:'wrap',marginBottom:20}},
+      stat('Réalisé HT',totReal,C.blue),
+      stat('Charges',totCout,C.orange),
+      stat('Marge globale',totMarge, totMarge>=0?C.green:C.red)
+    ),
+    div({className:'card',style:{overflow:'hidden'}},
+      el('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:13}},
+        el('thead',{},el('tr',{style:{background:'#F4F6FA'}},
+          ...['Projet','Réalisé HT','Charges','Marge','Marge %'].map((h,i)=>el('th',{style:{padding:'10px 12px',textAlign:i===0?'left':'right',fontSize:11,color:C.muted,textTransform:'uppercase'}},h)))),
+        el('tbody',{}, rows.length? rows.map(r=>{
+          const col = r.marge>=0?C.green:C.red;
+          return el('tr',{style:{borderTop:'1px solid '+C.border,cursor:'pointer'},onclick:()=>setState({page:'fiche-projet',selProject:r.p.id,ficheSection:'charges'})},
+            el('td',{style:{padding:'10px 12px',fontWeight:700}},r.p.nom||r.p.ref||'—'),
+            el('td',{style:{padding:'10px 12px',textAlign:'right'}},fmtN(r.realiseHT)),
+            el('td',{style:{padding:'10px 12px',textAlign:'right'}},fmtN(r.couts)),
+            el('td',{style:{padding:'10px 12px',textAlign:'right',fontWeight:800,color:col}},fmtN(r.marge)),
+            el('td',{style:{padding:'10px 12px',textAlign:'right',fontWeight:800,color:col}},(r.margePct>=0?'+':'')+r.margePct.toFixed(1)+'%')
+          );
+        }) : [el('tr',{},el('td',{colSpan:5,style:{padding:40,textAlign:'center',color:C.muted}},'Aucun projet'))])
+      )
+    ),
+    div({style:{marginTop:14,padding:12,background:'#EFF6FF',border:'1px solid #DBEAFE',borderRadius:10,fontSize:12,color:'#1E4F9E',lineHeight:1.5}},"💡 Le « Réalisé HT » vient des attachements. Les « Charges » viennent de l'onglet Charges de chaque projet. Cliquez sur une ligne pour ouvrir le projet.")
+  );
+}
+
+function renderTresorerie(){
+  const payC = state.paiementsClients||[];
+  const payF = state.paiementsFourn||[];
+  const deps = (state.settings&&state.settings.depenses)||[];
+  const cheques = state.cheques||[];
+  const factures = state.factures||[];
+  const encaisse = payC.reduce((s,x)=>s+(+x.montant||0),0);
+  const decaisseF = payF.reduce((s,x)=>s+(+x.montant||0),0);
+  const decaisseDep = deps.reduce((s,x)=>s+(+x.montant||0),0);
+  const decaisse = decaisseF + decaisseDep;
+  const solde = encaisse - decaisse;
+  const aEncaisser = factures.filter(f=>f.statut!=='Payée').reduce((s,f)=>s+(+f.montantTTC||0),0);
+  const tdy = today();
+  const chq = cheques.filter(c=>c.echeance).map(c=>{
+    const days = Math.round((new Date(c.echeance)-new Date(tdy))/86400000);
+    return {c,d:c.echeance,days};
+  }).sort((a,b)=>new Date(a.d)-new Date(b.d));
+  const stat=(label,val,color,sub)=>div({style:{flex:1,minWidth:150,background:'#fff',border:'1px solid '+C.border,borderRadius:14,padding:'16px 18px'}},
+    div({style:{fontSize:11,color:C.muted,fontWeight:700,textTransform:'uppercase',letterSpacing:.5}},label),
+    div({style:{fontSize:20,fontWeight:900,color,marginTop:4}},fmt(val)),
+    sub?div({style:{fontSize:11,color:C.muted,marginTop:2}},sub):null);
+  return div({},
+    div({style:{fontSize:18,fontWeight:900,marginBottom:4}},'💰 Trésorerie'),
+    div({style:{color:C.muted,fontSize:12.5,marginBottom:18}},"Vue d'ensemble des encaissements, décaissements et échéances à venir."),
+    div({style:{display:'flex',gap:14,flexWrap:'wrap',marginBottom:16}},
+      stat('Encaissé (clients)',encaisse,C.green),
+      stat('Décaissé (fourn.+dépenses)',decaisse,C.orange),
+      stat('Solde net',solde, solde>=0?C.blue:C.red)
+    ),
+    div({style:{display:'flex',gap:14,flexWrap:'wrap',marginBottom:22}},
+      stat('Reste à encaisser',aEncaisser,C.yellow,'Factures non payées')
+    ),
+    div({style:{fontSize:15,fontWeight:800,marginBottom:10}},'📅 Échéancier des chèques'),
+    div({className:'card',style:{overflow:'hidden'}},
+      el('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:13}},
+        el('thead',{},el('tr',{style:{background:'#F4F6FA'}},
+          ...['Échéance','Type','Bénéficiaire','Montant','Statut'].map((h,i)=>el('th',{style:{padding:'10px 12px',textAlign:i>=3?'right':'left',fontSize:11,color:C.muted,textTransform:'uppercase'}},h)))),
+        el('tbody',{}, chq.length? chq.map(({c,d,days})=>{
+          const paid = (c.statut==='Payé'||c.statut==='Encaissé');
+          const overdue = days<0 && !paid;
+          const soon = days>=0 && days<=7 && !paid;
+          const badge = overdue?'#FEE2E2':soon?'#FEF3C7':'#F4F6FA';
+          const bcol = overdue?C.red:soon?'#B45309':C.muted;
+          return el('tr',{style:{borderTop:'1px solid '+C.border}},
+            el('td',{style:{padding:'10px 12px'}},fmtDate(d)+' '+(days<0?'('+Math.abs(days)+'j retard)':days===0?'(auj.)':'(dans '+days+'j)')),
+            el('td',{style:{padding:'10px 12px'}},c.type||'Chèque'),
+            el('td',{style:{padding:'10px 12px'}},c.beneficiaire||'—'),
+            el('td',{style:{padding:'10px 12px',textAlign:'right',fontWeight:700}},fmtN(+c.montant||0)),
+            el('td',{style:{padding:'10px 12px',textAlign:'right'}},span({style:{background:badge,color:bcol,padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700}},c.statut||'En cours'))
+          );
+        }) : [el('tr',{},el('td',{colSpan:5,style:{padding:40,textAlign:'center',color:C.muted}},'Aucun chèque avec échéance'))])
+      )
+    ),
+    div({style:{marginTop:14,padding:12,background:'#EFF6FF',border:'1px solid #DBEAFE',borderRadius:10,fontSize:12,color:'#1E4F9E',lineHeight:1.5}},"💡 Encaissé = paiements clients. Décaissé = paiements fournisseurs + dépenses. Les chèques figurent dans l'échéancier.")
+  );
+}
+
+function renderAppelsOffres(){
+  const list = (state.settings&&state.settings.appelsOffres)||[];
+  const STATUTS = ['En préparation','Soumis','Gagné','Perdu'];
+  const STCOL = {'En préparation':C.muted,'Soumis':C.blue,'Gagné':C.green,'Perdu':C.red};
+  function save(next){ setState({settings:{...state.settings, appelsOffres:next}}); }
+  function openForm(item, idx){
+    const f = item ? {...item} : {id:Date.now(), objet:'', maitreOuvrage:'', montantEstime:0, dateOuverture:'', cautionProvisoire:0, statut:'En préparation', note:''};
+    const inp=(label,key,type)=>div({},el('label',{className:'lbl'},label),Object.assign(el('input',{type:type||'text',value:f[key]!=null?f[key]:''}),{oninput:e=>f[key]=(type==='number'? +e.target.value : e.target.value)}));
+    const fEl=div({style:{display:'flex',flexDirection:'column',gap:12}},
+      inp("Objet de l'appel d'offres",'objet'),
+      div({className:'grid-2'},
+        inp("Maître d'ouvrage",'maitreOuvrage'),
+        inp('Date ouverture des plis','dateOuverture','date'),
+        inp('Montant estimé (MAD)','montantEstime','number'),
+        inp('Caution provisoire (MAD)','cautionProvisoire','number'),
+        div({},el('label',{className:'lbl'},'Statut'),(()=>{const s=el('select',{});STATUTS.forEach(st=>{const o=el('option',{},st);if(st===f.statut)o.selected=true;s.appendChild(o);});s.oninput=e=>f.statut=e.target.value;return s;})())
+      ),
+      div({},el('label',{className:'lbl'},'Note'),Object.assign(el('input',{value:f.note||''}),{oninput:e=>f.note=e.target.value})),
+      div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
+        btn('Annuler','btn-gray',()=>setState({modal:null})),
+        btn('Enregistrer','btn-orange',()=>{
+          if(!(f.objet||'').trim()){alert('Objet obligatoire');return;}
+          let next; if(idx==null) next=[...list, f]; else { next=list.slice(); next[idx]=f; }
+          save(next); setState({modal:null}); notify('Enregistré ✓');
+        })
+      )
+    );
+    setState({modal:{title:item?"Modifier l'appel d'offres":"Nouvel appel d'offres",content:fEl}});
+  }
+  function convertToProject(item, idx){
+    if(!confirm("Convertir cet appel d'offres en projet ? (l'appel sera marqué « Gagné »)")) return;
+    const proj = {id:Date.now(), ref:'AO-'+(item.id||Date.now()), nom:item.objet||'Projet', client:item.maitreOuvrage||'', maitreOuvrage:item.maitreOuvrage||'', budget:+item.montantEstime||0, progression:0, statut:'En cours', dateDebut:today(), charges:[], attachements:[], decomptes:[], documents:[]};
+    const nextProjects=[...(state.projects||[]), proj];
+    const next=list.slice(); next[idx]={...item, statut:'Gagné'};
+    setState({projects:nextProjects, settings:{...state.settings, appelsOffres:next}});
+    notify('Converti en projet ✓');
+  }
+  const soumis = list.filter(a=>a.statut==='Soumis'||a.statut==='Gagné'||a.statut==='Perdu').length;
+  const gagnes = list.filter(a=>a.statut==='Gagné').length;
+  const perdus = list.filter(a=>a.statut==='Perdu').length;
+  const taux = (gagnes+perdus)>0 ? Math.round(gagnes/(gagnes+perdus)*100) : 0;
+  const stat=(label,val,color)=>div({style:{flex:1,minWidth:120,background:'#fff',border:'1px solid '+C.border,borderRadius:14,padding:'14px 16px'}},
+    div({style:{fontSize:11,color:C.muted,fontWeight:700,textTransform:'uppercase'}},label),
+    div({style:{fontSize:20,fontWeight:900,color,marginTop:4}},String(val)));
+  return div({},
+    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:6}},
+      div({style:{fontSize:18,fontWeight:900}},"📋 Appels d'offres"),
+      btn("+ Nouvel appel d'offres",'btn-orange',()=>openForm(null,null))
+    ),
+    div({style:{color:C.muted,fontSize:12.5,marginBottom:18}},"Suivi des soumissions, du dépôt au résultat. Un appel gagné peut être converti en projet."),
+    div({style:{display:'flex',gap:14,flexWrap:'wrap',marginBottom:20}},
+      stat('Total',list.length,C.navy),
+      stat('Soumis',soumis,C.blue),
+      stat('Gagnés',gagnes,C.green),
+      stat('Taux réussite',taux+'%',C.orange)
+    ),
+    div({className:'card',style:{overflow:'hidden'}},
+      el('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:13}},
+        el('thead',{},el('tr',{style:{background:'#F4F6FA'}},
+          ...['Objet',"Maître d'ouvrage",'Ouverture','Montant est.','Statut',''].map((h,i)=>el('th',{style:{padding:'10px 12px',textAlign:(i===3)?'right':'left',fontSize:11,color:C.muted,textTransform:'uppercase'}},h)))),
+        el('tbody',{}, list.length? list.map((a,idx)=>
+          el('tr',{style:{borderTop:'1px solid '+C.border}},
+            el('td',{style:{padding:'10px 12px',fontWeight:700}},a.objet||'—'),
+            el('td',{style:{padding:'10px 12px'}},a.maitreOuvrage||'—'),
+            el('td',{style:{padding:'10px 12px'}},a.dateOuverture?fmtDate(a.dateOuverture):'—'),
+            el('td',{style:{padding:'10px 12px',textAlign:'right'}},fmtN(+a.montantEstime||0)),
+            el('td',{style:{padding:'10px 12px'}},span({style:{background:(STCOL[a.statut]||C.muted)+'22',color:STCOL[a.statut]||C.muted,padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700}},a.statut||'—')),
+            el('td',{style:{padding:'10px 12px',textAlign:'right',whiteSpace:'nowrap'}},
+              btn('✎','btn-gray',()=>openForm(a,idx),{style:{padding:'4px 8px',fontSize:12}}),
+              a.statut!=='Gagné'?btn('→ Projet','btn-blue',()=>convertToProject(a,idx),{style:{padding:'4px 8px',fontSize:12,marginLeft:4}}):null,
+              btn('✕','btn-red',()=>{if(confirmDelete()){const n=list.slice();n.splice(idx,1);save(n);}},{style:{padding:'4px 8px',fontSize:12,marginLeft:4}})
+            )
+          )
+        ) : [el('tr',{},el('td',{colSpan:6,style:{padding:40,textAlign:'center',color:C.muted}},"Aucun appel d'offres — cliquez sur « + Nouvel appel d'offres »"))])
+      )
+    )
+  );
 }
 
 function getMontantAttache(p){
