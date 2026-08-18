@@ -579,7 +579,7 @@ function printDoc(htmlContent, title, opts={}){
     var _pageMargin = opts.margin || (opts.fullBleed?'0':'30mm 15mm 30mm 15mm');
     if(!_hasHF && /^\s*8mm/.test(_pageMargin)){ _pageMargin = '22mm 15mm 22mm 15mm'; }
     if(_hasHF){
-      doc.write('<style>.pf-wrap{width:100%;border-collapse:collapse;} .pf-wrap>thead{display:table-header-group;} .pf-wrap>thead>tr>td,.pf-wrap>tbody>tr>td{border:none!important;padding:0!important;vertical-align:top;} .pf-thead-inner{padding-bottom:4mm;} .pf-foot{margin-top:10mm;} .pf-wrap img,.pf-foot img{max-width:100%;display:block;} @media print{ .pf-foot{position:fixed;bottom:0;left:0;right:0;margin-top:0;} }</style>');
+      doc.write('<style>.pf-wrap{width:100%;border-collapse:collapse;} .pf-wrap>thead{display:table-header-group;} .pf-wrap>thead>tr>td,.pf-wrap>tbody>tr>td{border:none!important;padding:0!important;vertical-align:top;} .pf-thead-inner{padding-bottom:4mm;} .pf-foot{position:fixed;bottom:0;left:0;right:0;} .pf-wrap img,.pf-foot img{max-width:100%;display:block;}</style>');
       doc.write('<table class="pf-wrap"><thead><tr><td><div class="pf-thead-inner">'+(opts.headerHTML||'')+'</div></td></tr></thead>');
       doc.write('<tbody><tr><td><div id="main" style="padding:0;">'+htmlContent+'</div></td></tr></tbody></table>');
       if(_hasFooter) doc.write('<div class="pf-foot">'+opts.footerHTML+'</div>');
