@@ -412,6 +412,7 @@ function showCapturePreview(imgData, {onRetake, onConfirm}){
 
 function headerHTML(){
   const s = getSettings();
+  if(s.enTeteActif===false) return '';
   if(s.enTeteHeaderImg){
     return `<div style="margin-bottom:14px;"><img src="${s.enTeteHeaderImg}" style="width:100%;display:block;"/></div>`;
   }
@@ -429,6 +430,7 @@ function headerHTML(){
 
 function footerHTML(){
   const s = getSettings();
+  if(s.enTeteActif===false) return '';
   if(s.enTeteFooterImg){
     return `<div style="margin-top:10px;"><img src="${s.enTeteFooterImg}" style="width:100%;display:block;"/></div>`;
   }
@@ -1027,7 +1029,7 @@ function printFacture(f){
   </div>
   </div>
   `;
-  printDoc(html, 'Facture '+f.num, {margin:'25mm 15mm 25mm 15mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+  printDoc(html, 'Facture '+f.num, {margin:'8mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
 }
 
 // ── PARAMETRES ───────────────────────────
@@ -1160,9 +1162,13 @@ function renderParametres(){
             }
           })
         ),
-        (s.enTeteHeaderImg||s.enTeteFooterImg)
-          ? div({style:{marginTop:14,fontSize:11,color:'#16a34a',fontWeight:700}},'✓ En-tête actif — sera utilisé sur Factures, Devis et Bons de Commande')
-          : div({style:{marginTop:14,fontSize:11,color:'#6B7A99'}},'Sans image → le logo + nom seront utilisés comme en-tête')
+        el('label',{style:{marginTop:14,cursor:'pointer',fontSize:12,fontWeight:700,display:'inline-flex',alignItems:'center',gap:8}},
+          Object.assign(el('input',{type:'checkbox'}),{checked:s.enTeteActif!==false,onchange:e=>{s.enTeteActif=e.target.checked;setState({settings:s});saveSettings();}}),
+          span({style:{color:s.enTeteActif!==false?'#16a34a':'#6B7A99'}}, s.enTeteActif!==false ? '✓ En-tête & pied de page activés (Facture, Devis, BC, BL, BR...)' : 'En-tête & pied de page masqués sur les documents')
+        ),
+        (!(s.enTeteHeaderImg||s.enTeteFooterImg) && s.enTeteActif!==false)
+          ? div({style:{marginTop:8,fontSize:11,color:'#6B7A99'}},'Sans image → le logo + nom seront utilisés comme en-tête')
+          : null
       ),
       div({style:{borderTop:'1px solid #E5E9F2',paddingTop:24,marginTop:24}},
         div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',letterSpacing:1,marginBottom:16}},'CACHET DE LA SOCIÉTÉ'),
@@ -3050,7 +3056,7 @@ function printDevis(d){
   </div>
   </div>
   `;
-  printDoc(html,'Devis '+d.num, {margin:'25mm 15mm 25mm 15mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+  printDoc(html,'Devis '+d.num, {margin:'8mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
 }
 
 function printBL(b){
@@ -3078,7 +3084,7 @@ function printBL(b){
       <div>Signature Client</div><div>Signature SMERAV${cachetHTML()}</div>
     </div>
   </div>`;
-  printDoc(html, 'Bon de Livraison '+b.num, {margin:'25mm 15mm 25mm 15mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+  printDoc(html, 'Bon de Livraison '+b.num, {margin:'8mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
 }
 
 // ── BONS DE LIVRAISON ─────────────────────
@@ -3402,7 +3408,7 @@ function printBC(b){
         <div>Signature Fournisseur</div><div>Signature SMERAV${cachetHTML()}</div>
       </div>
     </div>`;
-  printDoc(html, 'Bon de Commande '+b.num, {margin:'25mm 15mm 25mm 15mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+  printDoc(html, 'Bon de Commande '+b.num, {margin:'8mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
 }
 
 function renderBonsCommande(){
@@ -3501,7 +3507,7 @@ function printBR(b){
         <div>Signature Fournisseur</div><div>Signature SMERAV${cachetHTML()}</div>
       </div>
     </div>`;
-  printDoc(html, 'Bon de Réception '+b.num, {margin:'25mm 15mm 25mm 15mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+  printDoc(html, 'Bon de Réception '+b.num, {margin:'8mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
 }
 
 function renderBonsReception(){
@@ -3820,7 +3826,7 @@ function renderFichesPaie(){
             <tbody>${rowsHTML}</tbody>
           </table>
         </div>`;
-      printDoc(html, 'Tableau de paiement - '+mois, {margin:'25mm 15mm 25mm 15mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+      printDoc(html, 'Tableau de paiement - '+mois, {margin:'8mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
     }
 
     return div({},
@@ -3896,7 +3902,7 @@ function renderFichesPaie(){
           <div>Signature Employeur</div><div>Signature Employé</div>
         </div>
       </div>`;
-    printDoc(html, 'Fiche de paie - '+o.nom+' - '+mois, {margin:'25mm 15mm 25mm 15mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+    printDoc(html, 'Fiche de paie - '+o.nom+' - '+mois, {margin:'8mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
   }
 
   return div({},
@@ -4507,7 +4513,7 @@ function printBordereauEnvoi(env, p){
       <div>Signature Destinataire</div><div>Signature SMERAV${cachetHTML()}</div>
     </div>
   </div>`;
-  printDoc(html, "Bordereau d'envoi "+env.num, {margin:'25mm 15mm 25mm 15mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+  printDoc(html, "Bordereau d'envoi "+env.num, {margin:'8mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
 }
 
 function renderBordereauEnvoiSection(p, updateProject){
