@@ -1001,11 +1001,10 @@ function printFacture(f){
   <table style="margin-top:8px;border:none;">
     <tr>
       <td style="border:none;width:40%;vertical-align:bottom;">
-        <div style="font-size:11px;font-weight:700;text-decoration:underline">Mode de règlement</div>
         <table style="margin-top:4px;">
           <tr>
+            <td style="padding:4px 8px;font-size:11px;font-weight:700;text-decoration:underline">Mode de règlement</td>
             <td style="padding:4px 8px;font-size:11px">${f.reglement||'Virement'}</td>
-            <td style="padding:4px 8px;font-size:11px">${f.numReglement||''}</td>
           </tr>
         </table>
       </td>
