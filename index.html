@@ -590,7 +590,7 @@ function printDoc(htmlContent, title, opts={}){
         + 'var root=(src.children.length===1&&src.firstElementChild&&src.firstElementChild.tagName==="DIV")?src.firstElementChild:src;'
         + 'var blocks=[].slice.call(root.children);var sheets=[],body=null,inner=null;'
         + 'function ns(){var s=document.createElement("div");s.className="pf-sheet";s.innerHTML=\'<div class="pf-head">\'+HDR+\'</div><div class="pf-body"><div class="pf-inner"></div></div><div class="pf-foot"><div class="pf-pagenum"></div>\'+FTR+\'</div>\';out.appendChild(s);body=s.querySelector(".pf-body");inner=s.querySelector(".pf-inner");sheets.push(s);}'
-        + 'function fits(){return inner.offsetHeight<=body.clientHeight-18;}'
+        + 'function fits(){return inner.offsetHeight<=body.clientHeight-42;}'
         + 'function shell(orig,thead){var t=document.createElement("table");if(orig.getAttribute("style"))t.setAttribute("style",orig.getAttribute("style"));if(thead)t.appendChild(thead.cloneNode(true));t.appendChild(document.createElement("tbody"));return t;}'
         + 'ns();'
         + 'imgsReady(function(){'
