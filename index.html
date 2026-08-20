@@ -577,28 +577,30 @@ function printDoc(htmlContent, title, opts={}){
     var _hasFooter = !!(opts.footerHTML && String(opts.footerHTML).trim());
     var _hasHF = _hasHeader || _hasFooter;
     var _pageMargin = opts.margin || (opts.fullBleed?'0':'30mm 15mm 30mm 15mm');
-    if(!_hasHF && /^\s*(8|10)mm/.test(_pageMargin)){ _pageMargin = '22mm 15mm 22mm 15mm'; }
+    if(!_hasHF && /^\s*(6|8|10)mm/.test(_pageMargin)){ _pageMargin = '22mm 15mm 22mm 15mm'; }
     if(_hasHF){
-      var _m = (opts.margin||'10mm 12mm 10mm 12mm').split(/\s+/);
-      var _mt=_m[0]||'10mm', _mr=_m[1]||'12mm', _mb=_m[2]||_m[0]||'10mm', _ml=_m[3]||_m[1]||'12mm';
+      var _m = (opts.margin||'6mm 12mm 6mm 12mm').split(/\s+/);
+      var _mt=_m[0]||'6mm', _mr=_m[1]||'12mm', _mb=_m[2]||_m[0]||'6mm', _ml=_m[3]||_m[1]||'12mm';
       doc.write('<style>@page{size:A4;margin:0;} .pf-src{position:absolute;left:-9999px;top:0;width:calc(210mm - '+_ml+' - '+_mr+');} .pf-sheet{width:210mm;height:297mm;padding:'+_mt+' '+_mr+' '+_mb+' '+_ml+';display:flex;flex-direction:column;overflow:hidden;page-break-after:always;background:#fff;} .pf-sheet:last-child{page-break-after:auto;} .pf-head{flex:0 0 auto;} .pf-body{flex:1 1 auto;overflow:hidden;} .pf-foot{flex:0 0 auto;} .pf-pagenum{text-align:right;font-size:9px;color:#444;padding:2px 0;} .pf-head img,.pf-foot img{max-width:100%;display:block;} @media print{.pf-src{display:none!important;}} @media screen{.pf-sheet{margin:0 auto 10px;box-shadow:0 0 6px rgba(0,0,0,.2);}}</style>');
       doc.write('<div class="pf-src" id="main">'+htmlContent+'</div>');
       doc.write('<div id="pf-out"></div>');
       var _pf = 'var HDR='+JSON.stringify(opts.headerHTML||'')+';var FTR='+JSON.stringify(opts.footerHTML||'')+';'
-        + 'function imgsReady(cb){var imgs=[].slice.call(document.images);var p=imgs.filter(function(i){return !i.complete;});if(!p.length){cb();return;}var left=p.length,done=false;function fin(){if(done)return;if(--left<=0){done=true;cb();}}p.forEach(function(i){i.addEventListener("load",fin);i.addEventListener("error",fin);});setTimeout(function(){if(!done){done=true;cb();}},1500);}'
+        + 'function imgsReady(cb){var imgs=[].slice.call(document.images);var p=imgs.filter(function(i){return !i.complete;});if(!p.length){cb();return;}var left=p.length,done=false;function fin(){if(done)return;if(--left<=0){done=true;cb();}}p.forEach(function(i){i.addEventListener("load",fin);i.addEventListener("error",fin);});setTimeout(function(){if(!done){done=true;cb();}},2000);}'
         + 'function doPaginate(){var src=document.getElementById("main");var out=document.getElementById("pf-out");'
         + 'var root=(src.children.length===1&&src.firstElementChild&&src.firstElementChild.tagName==="DIV")?src.firstElementChild:src;'
         + 'var blocks=[].slice.call(root.children);var sheets=[],body=null;'
         + 'function ns(){var s=document.createElement("div");s.className="pf-sheet";s.innerHTML=\'<div class="pf-head">\'+HDR+\'</div><div class="pf-body"></div><div class="pf-foot"><div class="pf-pagenum"></div>\'+FTR+\'</div>\';out.appendChild(s);body=s.querySelector(".pf-body");sheets.push(s);}'
-        + 'function fits(){return body.scrollHeight<=body.clientHeight+1;}'
+        + 'function fits(){return body.scrollHeight<=body.clientHeight;}'
         + 'function shell(orig,thead){var t=document.createElement("table");if(orig.getAttribute("style"))t.setAttribute("style",orig.getAttribute("style"));if(thead)t.appendChild(thead.cloneNode(true));t.appendChild(document.createElement("tbody"));return t;}'
         + 'ns();'
+        + 'imgsReady(function(){'
         + 'for(var bi=0;bi<blocks.length;bi++){var block=blocks[bi];var tb=(block.tagName==="TABLE")?block.querySelector(":scope>tbody"):null;'
         + 'if(tb&&tb.children.length>3){var thead=block.querySelector(":scope>thead");var rows=[].slice.call(tb.children);var t=shell(block,thead);body.appendChild(t);var nb=t.querySelector("tbody");'
         + 'for(var ri=0;ri<rows.length;ri++){nb.appendChild(rows[ri].cloneNode(true));if(!fits()){nb.removeChild(nb.lastChild);ns();t=shell(block,thead);body.appendChild(t);nb=t.querySelector("tbody");nb.appendChild(rows[ri].cloneNode(true));}}'
         + '}else{var c=block.cloneNode(true);body.appendChild(c);if(!fits()&&body.children.length>1){body.removeChild(c);ns();body.appendChild(c);}}}'
-        + 'var total=sheets.length;for(var si=0;si<sheets.length;si++){sheets[si].querySelector(".pf-pagenum").textContent="Page "+(si+1)+" / "+total;}}'
-        + 'imgsReady(doPaginate);';
+        + 'var total=sheets.length;for(var si=0;si<sheets.length;si++){sheets[si].querySelector(".pf-pagenum").textContent="Page "+(si+1)+" / "+total;}'
+        + '});}'
+        + 'doPaginate();';
       doc.write('<scr'+'ipt>'+_pf+'<\/scr'+'ipt>');
     } else {
       doc.write('<div id="main" style="padding:0;">'+htmlContent+'</div>');
@@ -1050,7 +1052,7 @@ function printFacture(f){
   </div>
   </div>
   `;
-  printDoc(html, 'Facture '+f.num, {margin:'10mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+  printDoc(html, 'Facture '+f.num, {margin:'6mm 12mm 6mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
 }
 
 // ── PARAMETRES ───────────────────────────
@@ -3077,7 +3079,7 @@ function printDevis(d){
   </div>
   </div>
   `;
-  printDoc(html,'Devis '+d.num, {margin:'10mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+  printDoc(html,'Devis '+d.num, {margin:'6mm 12mm 6mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
 }
 
 function printBL(b){
@@ -3105,7 +3107,7 @@ function printBL(b){
       <div>Signature Client</div><div>Signature SMERAV${cachetHTML()}</div>
     </div>
   </div>`;
-  printDoc(html, 'Bon de Livraison '+b.num, {margin:'10mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+  printDoc(html, 'Bon de Livraison '+b.num, {margin:'6mm 12mm 6mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
 }
 
 // ── BONS DE LIVRAISON ─────────────────────
@@ -3429,7 +3431,7 @@ function printBC(b){
         <div>Signature Fournisseur</div><div>Signature SMERAV${cachetHTML()}</div>
       </div>
     </div>`;
-  printDoc(html, 'Bon de Commande '+b.num, {margin:'10mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+  printDoc(html, 'Bon de Commande '+b.num, {margin:'6mm 12mm 6mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
 }
 
 function renderBonsCommande(){
@@ -3528,7 +3530,7 @@ function printBR(b){
         <div>Signature Fournisseur</div><div>Signature SMERAV${cachetHTML()}</div>
       </div>
     </div>`;
-  printDoc(html, 'Bon de Réception '+b.num, {margin:'10mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+  printDoc(html, 'Bon de Réception '+b.num, {margin:'6mm 12mm 6mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
 }
 
 function renderBonsReception(){
@@ -3847,7 +3849,7 @@ function renderFichesPaie(){
             <tbody>${rowsHTML}</tbody>
           </table>
         </div>`;
-      printDoc(html, 'Tableau de paiement - '+mois, {margin:'10mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+      printDoc(html, 'Tableau de paiement - '+mois, {margin:'6mm 12mm 6mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
     }
 
     return div({},
@@ -3923,7 +3925,7 @@ function renderFichesPaie(){
           <div>Signature Employeur</div><div>Signature Employé</div>
         </div>
       </div>`;
-    printDoc(html, 'Fiche de paie - '+o.nom+' - '+mois, {margin:'10mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+    printDoc(html, 'Fiche de paie - '+o.nom+' - '+mois, {margin:'6mm 12mm 6mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
   }
 
   return div({},
@@ -4534,7 +4536,7 @@ function printBordereauEnvoi(env, p){
       <div>Signature Destinataire</div><div>Signature SMERAV${cachetHTML()}</div>
     </div>
   </div>`;
-  printDoc(html, "Bordereau d'envoi "+env.num, {margin:'10mm 12mm 10mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+  printDoc(html, "Bordereau d'envoi "+env.num, {margin:'6mm 12mm 6mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
 }
 
 function renderBordereauEnvoiSection(p, updateProject){
