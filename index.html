@@ -547,6 +547,9 @@ function printDoc(htmlContent, title, opts={}){
     var excelScript = `function saveExcel(){var main=document.getElementById("main");if(!main){alert("Pas de contenu");return;}var XLNAME=${JSON.stringify(xlName)};var SHEET=(XLNAME||"Document").substring(0,28);var css="<style>table{border-collapse:collapse;}td,th{border:1px solid #000;padding:4px 6px;font-size:11pt;}th{font-weight:bold;}</style>";var xmlSheet="<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>"+SHEET+"</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->";var html="<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:x='urn:schemas-microsoft-com:office:excel'><head><meta charset='UTF-8'>"+xmlSheet+css+"</head><body>"+main.innerHTML+"</body></html>";var blob=new Blob([String.fromCharCode(65279)+html],{type:"application/vnd.ms-excel;charset=utf-8"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=XLNAME+".xls";document.body.appendChild(a);a.click();document.body.removeChild(a);}`;
 
     doc.open();
+    var _hasHeader = !!(opts.headerHTML && String(opts.headerHTML).trim());
+    var _hasFooter = !!(opts.footerHTML && String(opts.footerHTML).trim());
+    var _hasHF = _hasHeader || _hasFooter;
     doc.write('<!DOCTYPE html><html><head><title>'+(title||'Document')+'</title>');
     doc.write('<style>');
     doc.write('*{box-sizing:border-box;margin:0;padding:0;}');
@@ -561,7 +564,7 @@ function printDoc(htmlContent, title, opts={}){
     doc.write('@media print{');
     doc.write('.no-print-bar{display:none!important;}');
     doc.write('body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}');
-    doc.write('@page{size:'+(opts.landscape?'A4 landscape':'A4')+';margin:'+(opts.margin||(opts.fullBleed?'0':'30mm 15mm 30mm 15mm'))+';}');
+    doc.write('@page{size:'+(opts.landscape?'A4 landscape':'A4')+';margin:'+(_hasHF?'0':(opts.margin||(opts.fullBleed?'0':'30mm 15mm 30mm 15mm')))+';}');
     doc.write('thead{display:table-header-group;}');
     doc.write('tr{page-break-inside:avoid;page-break-after:auto;}');
     doc.write('table{page-break-inside:auto;}');
@@ -573,15 +576,12 @@ function printDoc(htmlContent, title, opts={}){
     doc.write('<button onclick="parent.document.getElementById(\'__printFrame\').remove()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">&#x2715; Fermer</button>');
     doc.write('</div>');
     doc.write('<scr'+'ipt>'+excelScript+'<\/scr'+'ipt>');
-    var _hasHeader = !!(opts.headerHTML && String(opts.headerHTML).trim());
-    var _hasFooter = !!(opts.footerHTML && String(opts.footerHTML).trim());
-    var _hasHF = _hasHeader || _hasFooter;
     var _pageMargin = opts.margin || (opts.fullBleed?'0':'30mm 15mm 30mm 15mm');
     if(!_hasHF && /^\s*(6|8|10)mm/.test(_pageMargin)){ _pageMargin = '22mm 15mm 22mm 15mm'; }
     if(_hasHF){
       var _m = (opts.margin||'6mm 12mm 6mm 12mm').split(/\s+/);
       var _mt=_m[0]||'6mm', _mr=_m[1]||'12mm', _mb=_m[2]||_m[0]||'6mm', _ml=_m[3]||_m[1]||'12mm';
-      doc.write('<style>@page{size:A4;margin:0;} .pf-src{position:absolute;left:-9999px;top:0;width:calc(210mm - '+_ml+' - '+_mr+');} .pf-sheet{width:210mm;height:297mm;padding:'+_mt+' '+_mr+' '+_mb+' '+_ml+';display:flex;flex-direction:column;overflow:hidden;page-break-after:always;background:#fff;} .pf-sheet:last-child{page-break-after:auto;} .pf-head{flex:0 0 auto;} .pf-body{flex:1 1 auto;overflow:hidden;} .pf-foot{flex:0 0 auto;} .pf-pagenum{text-align:right;font-size:9px;color:#444;padding:2px 0;} .pf-head img,.pf-foot img{max-width:100%;display:block;} @media print{.pf-src{display:none!important;}} @media screen{.pf-sheet{margin:0 auto 10px;box-shadow:0 0 6px rgba(0,0,0,.2);}}</style>');
+      doc.write('<style>.pf-src{position:absolute;left:-9999px;top:0;width:calc(210mm - '+_ml+' - '+_mr+');} .pf-sheet{width:210mm;height:296mm;padding:'+_mt+' '+_mr+' '+_mb+' '+_ml+';display:flex;flex-direction:column;overflow:hidden;page-break-after:always;background:#fff;} .pf-sheet:last-child{page-break-after:auto;} .pf-head{flex:0 0 auto;} .pf-body{flex:1 1 auto;overflow:hidden;} .pf-foot{flex:0 0 auto;} .pf-pagenum{text-align:right;font-size:9px;color:#444;padding:2px 0;} .pf-head img,.pf-foot img{max-width:100%;display:block;} @media print{.pf-src{display:none!important;} .pf-sheet{box-shadow:none!important;margin:0!important;}} @media screen{.pf-sheet{margin:0 auto 10px;box-shadow:0 0 6px rgba(0,0,0,.2);}}</style>');
       doc.write('<div class="pf-src" id="main">'+htmlContent+'</div>');
       doc.write('<div id="pf-out"></div>');
       var _pf = 'var HDR='+JSON.stringify(opts.headerHTML||'')+';var FTR='+JSON.stringify(opts.footerHTML||'')+';'
