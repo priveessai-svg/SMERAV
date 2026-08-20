@@ -594,8 +594,9 @@ function printDoc(htmlContent, title, opts={}){
         + 'function shell(orig,thead){var t=document.createElement("table");if(orig.getAttribute("style"))t.setAttribute("style",orig.getAttribute("style"));if(thead)t.appendChild(thead.cloneNode(true));t.appendChild(document.createElement("tbody"));return t;}'
         + 'ns();'
         + 'imgsReady(function(){'
-        + 'for(var bi=0;bi<blocks.length;bi++){var block=blocks[bi];var tb=(block.tagName==="TABLE")?block.querySelector(":scope>tbody"):null;'
-        + 'if(tb&&tb.children.length>3){var thead=block.querySelector(":scope>thead");var rows=[].slice.call(tb.children);var t=shell(block,thead);inner.appendChild(t);var nb=t.querySelector("tbody");'
+        + 'var mainT=null,maxR=3;for(var mi=0;mi<blocks.length;mi++){var mb=blocks[mi];if(mb.tagName==="TABLE"){var mtb=mb.querySelector(":scope>tbody");if(mtb&&mtb.children.length>maxR){maxR=mtb.children.length;mainT=mb;}}}'
+        + 'for(var bi=0;bi<blocks.length;bi++){var block=blocks[bi];'
+        + 'if(block===mainT){var thead=block.querySelector(":scope>thead");var rows=[].slice.call(block.querySelector(":scope>tbody").children);var t=shell(block,thead);inner.appendChild(t);var nb=t.querySelector("tbody");'
         + 'for(var ri=0;ri<rows.length;ri++){nb.appendChild(rows[ri].cloneNode(true));if(!fits()){nb.removeChild(nb.lastChild);ns();t=shell(block,thead);inner.appendChild(t);nb=t.querySelector("tbody");nb.appendChild(rows[ri].cloneNode(true));}}'
         + '}else{var c=block.cloneNode(true);inner.appendChild(c);if(!fits()&&inner.children.length>1){inner.removeChild(c);ns();inner.appendChild(c);}}}'
         + 'var total=sheets.length;for(var si=0;si<sheets.length;si++){sheets[si].querySelector(".pf-pagenum").textContent="Page "+(si+1)+" / "+total;}'
@@ -5016,7 +5017,7 @@ function renderAttachementsSection(p, updateProject){
                 </table>
                 ${buildSignatureHTML(p, s.titulaire||s.nom)}
                 `;
-                printDoc(html, 'Attachement N°'+a.num)},{style:{padding:'4px 8px',fontSize:12}}),
+                printDoc(html, 'Attachement N°'+a.num, {margin:'6mm 10mm 6mm 10mm', headerHTML:headerHTML(), footerHTML:footerHTML()})},{style:{padding:'4px 8px',fontSize:12}}),
               btn('✏️','btn-orange',()=>{
                 const editLignes = JSON.parse(JSON.stringify(a.lignes||[]));
                 const editForm = {du:a.du,au:a.au,date:a.date,num:a.num,travailNum:a.travailNum||'',definitif:!!a.definitif,rgManuel:a.rgManuel||0};
@@ -5381,7 +5382,7 @@ function printDecompte(att, p){
   <p style="font-size:11px;font-style:italic;margin-top:8px;">Arrêté le présent décompte à la somme de : <strong>${numToWords(n2)}</strong></p>
   ${buildSignatureHTML(p, s.nom)}
   `;
-  printDoc(html,'Décompte N°'+att.num);
+  printDoc(html,'Décompte N°'+att.num, {margin:'6mm 10mm 6mm 10mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
 }
 
 // ── RAPPORT CHANTIER ─────────────────────
