@@ -223,7 +223,18 @@ const DB = {
       paiements_fourn: this._cache.paiementsFourn||[],
       settings: this._cache.settings||{},
       updated_at: new Date().toISOString(),
-    }).then(()=>{ this._pendingSync = false; }).catch(e=>{ this._pendingSync = false; console.log('Sync error:', e); });
+    }).then((res)=>{
+      this._pendingSync = false;
+      if(res && res.error){
+        console.log('Sync error:', res.error);
+        try{ notify('⚠️ Sauvegarde échouée : '+(res.error.message||res.error.hint||res.error.code||'erreur inconnue'),'error'); }catch(e){}
+      }
+      return res;
+    }).catch(e=>{
+      this._pendingSync = false;
+      console.log('Sync error:', e);
+      try{ notify('⚠️ Sauvegarde échouée — vérifiez la connexion internet','error'); }catch(e2){}
+    });
   },
   _syncToSupabase(){
     clearTimeout(this._syncTimer);
@@ -3752,7 +3763,7 @@ function renderOuvriers(){
           ),
           div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
             btn('Annuler','btn-gray',()=>setState({modal:null})),
-            btn('Enregistrer','btn-orange',()=>{if(!f.nom){alert('Nom obligatoire');return;}setState({ouvriers:[...state.ouvriers,{id:Date.now(),...f}],modal:null});notify('Employé ajouté ✓');})
+            btn('Enregistrer','btn-orange',()=>{if(!f.nom){alert('Nom obligatoire');return;}setState({ouvriers:[...(state.ouvriers||[]),{id:Date.now(),...f}],modal:null});try{DB.flushNow();}catch(e){}notify('Employé ajouté ✓');})
           )
         );
         setState({modal:{title:'Nouvel Employé',content:fEl}});
