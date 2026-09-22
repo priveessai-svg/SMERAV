@@ -169,9 +169,14 @@ const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 // ══════════════════════════════════════════
 const DB = {
   _cache: {},
+  _dirty: {},
+  _retryCount: 0,
+  _retryTimer: null,
+  _COL: {projects:'projects',clients:'clients',factures:'factures',devis:'devis',bls:'bls',fournisseurs:'fournisseurs',bcs:'bcs',brs:'brs',facturesAchat:'factures_achat',cheques:'cheques',ouvriers:'ouvriers',specialites:'specialites',stock:'stock',paiementsClients:'paiements_clients',paiementsFourn:'paiements_fourn',settings:'settings'},
   get(k){ return this._cache[k] || null; },
   set(k,v){ 
     this._cache[k] = v;
+    this._dirty[k] = true;
     this._syncToSupabase();
   },
   async load(){
@@ -203,42 +208,38 @@ const DB = {
   _syncTimer: null,
   _pendingSync: false,
   _doSync(){
+    const keys = Object.keys(this._dirty);
+    if(!keys.length) return Promise.resolve();
+    // On n'envoie QUE les données modifiées (charge légère) — évite d'uploader tous les projets+documents à chaque clic.
+    const payload = { id:'main', updated_at:new Date().toISOString() };
+    const sending = {};
+    keys.forEach(k=>{ sending[k]=this._cache[k]; payload[this._COL[k]||k] = this._cache[k]; });
     this._pendingSync = true;
-    return supa.from('smerav_data').upsert({
-      id: 'main',
-      projects: this._cache.projects||[],
-      clients: this._cache.clients||[],
-      factures: this._cache.factures||[],
-      devis: this._cache.devis||[],
-      bls: this._cache.bls||[],
-      fournisseurs: this._cache.fournisseurs||[],
-      bcs: this._cache.bcs||[],
-      brs: this._cache.brs||[],
-      factures_achat: this._cache.facturesAchat||[],
-      cheques: this._cache.cheques||[],
-      ouvriers: this._cache.ouvriers||[],
-      specialites: this._cache.specialites||[],
-      stock: this._cache.stock||[],
-      paiements_clients: this._cache.paiementsClients||[],
-      paiements_fourn: this._cache.paiementsFourn||[],
-      settings: this._cache.settings||{},
-      updated_at: new Date().toISOString(),
-    }).then((res)=>{
+    return supa.from('smerav_data').upsert(payload).then((res)=>{
       this._pendingSync = false;
-      if(res && res.error){
-        console.log('Sync error:', res.error);
-        try{ notify('⚠️ Sauvegarde échouée : '+(res.error.message||res.error.hint||res.error.code||'erreur inconnue'),'error'); }catch(e){}
-      }
+      if(res && res.error){ this._onSyncFail(res.error); return res; }
+      // Succès : on efface les clés envoyées (sauf celles re-modifiées entre-temps)
+      Object.keys(sending).forEach(k=>{ if(this._cache[k]===sending[k]) delete this._dirty[k]; });
+      this._retryCount = 0;
       return res;
-    }).catch(e=>{
-      this._pendingSync = false;
-      console.log('Sync error:', e);
-      try{ notify('⚠️ Sauvegarde échouée — vérifiez la connexion internet','error'); }catch(e2){}
-    });
+    }).catch(e=>{ this._pendingSync = false; this._onSyncFail(e); });
+  },
+  _onSyncFail(err){
+    console.log('Sync error:', err);
+    // Les données restent en mémoire (this._dirty) — on réessaie automatiquement.
+    if(this._retryCount < 6){
+      this._retryCount++;
+      clearTimeout(this._retryTimer);
+      const delay = Math.min(1500*this._retryCount, 12000);
+      this._retryTimer = setTimeout(()=>{ this._doSync(); }, delay);
+    } else {
+      this._retryCount = 0;
+      try{ notify('⚠️ Sauvegarde échouée — vérifiez internet (les données sont gardées, réessai à la prochaine action)','error'); }catch(e){}
+    }
   },
   _syncToSupabase(){
     clearTimeout(this._syncTimer);
-    this._syncTimer = setTimeout(()=>{ this._doSync(); }, 250);
+    this._syncTimer = setTimeout(()=>{ this._doSync(); }, 400);
   },
   flushNow(){
     clearTimeout(this._syncTimer);
