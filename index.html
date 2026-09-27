@@ -3051,7 +3051,54 @@ function showDevisForm(){
             (ligne)=>{f.lignes.push(ligne);calcTotal();},
             ()=>setState({modal:{title:'Nouveau Devis',content:formEl,wide:true}})
           ),{style:{padding:'5px 10px',fontSize:12}}),
-          btn('+ Ligne manuelle','btn-orange',()=>{f.lignes.push({designation:'',qte:1,unite:'U',pu:0});calcTotal();},{style:{padding:'5px 12px',fontSize:12}})
+          btn('+ Ligne manuelle','btn-orange',()=>{f.lignes.push({designation:'',qte:1,unite:'U',pu:0});calcTotal();},{style:{padding:'5px 12px',fontSize:12}}),
+          btn('📥 Import Excel','btn-green',()=>{
+            const inp=el('input',{type:'file',accept:'.xlsx,.xls,.csv',style:{display:'none'}});
+            inp.onchange=ev=>{
+              const file=ev.target.files[0]; if(!file) return;
+              if(typeof XLSX==='undefined'){ alert('Module Excel en cours de chargement, réessayez dans un instant.'); return; }
+              const reader=new FileReader();
+              reader.onload=e=>{
+                try{
+                  const wb=XLSX.read(e.target.result,{type:'binary'});
+                  const ws=wb.Sheets[wb.SheetNames[0]];
+                  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+                  const norm=s=>String(s||'').toLowerCase().replace(/[éè]/g,'e').replace(/[^a-z0-9]/g,'');
+                  let start=0, col={des:1,qte:2,unite:3,pu:4};
+                  // Cherche une ligne d'en-tête (Désignation / Qté / P.U ...)
+                  for(let r=0;r<Math.min(rows.length,8);r++){
+                    const cells=(rows[r]||[]).map(norm);
+                    const iDes=cells.findIndex(c=>c.indexOf('design')>-1||c.indexOf('prestation')>-1||c.indexOf('article')>-1);
+                    if(iDes>-1){
+                      col.des=iDes;
+                      col.qte=cells.findIndex(c=>c.indexOf('qte')>-1||c.indexOf('quantite')>-1||c==='q');
+                      col.unite=cells.findIndex(c=>c.indexOf('unite')>-1||c==='u'||c.indexOf('ute')>-1);
+                      col.pu=cells.findIndex(c=>c.indexOf('pu')>-1||c.indexOf('prixu')>-1||c.indexOf('puht')>-1||c.indexOf('prixunitaire')>-1);
+                      start=r+1; break;
+                    }
+                  }
+                  const toNum=v=>{ if(typeof v==='number') return v; const n=parseFloat(String(v).replace(/\s/g,'').replace(',','.').replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; };
+                  let added=0;
+                  for(let r=start;r<rows.length;r++){
+                    const row=rows[r]||[];
+                    const des=col.des>-1?String(row[col.des]||'').trim():'';
+                    const qte=col.qte>-1?toNum(row[col.qte]):0;
+                    const pu=col.pu>-1?toNum(row[col.pu]):0;
+                    const unite=col.unite>-1?(String(row[col.unite]||'').trim()||'U'):'U';
+                    if(!des && !qte && !pu) continue;
+                    if(!des) continue;
+                    f.lignes.push({designation:des,qte:qte||1,unite:unite,pu:pu});
+                    added++;
+                  }
+                  calcTotal();
+                  notify(added?added+' ligne(s) importée(s) ✓':'Aucune ligne détectée — vérifiez le fichier');
+                }catch(err){ alert('Erreur lecture Excel : '+err.message); }
+              };
+              reader.readAsBinaryString(file);
+              ev.target.value='';
+            };
+            document.body.appendChild(inp); inp.click(); setTimeout(()=>{try{document.body.removeChild(inp);}catch(e){}},1000);
+          },{style:{padding:'5px 10px',fontSize:12}})
         )
       ),
       lignesContainer
