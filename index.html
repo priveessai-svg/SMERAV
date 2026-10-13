@@ -474,6 +474,7 @@ const NAV = [
   {key:'clients',icon:'👤',label:'Clients',children:[
     {key:'liste-clients',label:'Clients'},
     {key:'liste-devis',label:'Devis'},
+    {key:'liste-cotations',label:'Cotations / Offres'},
     {key:'bons-livraison',label:'Bons de livraison'},
     {key:'liste-factures',label:'Factures'},
     {key:'paiements-clients',label:'Paiements Clients'},
@@ -1472,7 +1473,7 @@ function renderComingSoon(title){
 function getPageTitle(){
   const pages = {
     'dashboard':'Tableau de bord','bibliotheque-societe':'Bibliothèque','rentabilite':'Rentabilité','tresorerie':'Trésorerie','appels-offres':"Appels d'offres",'liste-projets':'Projets','liste-clients':'Clients',
-    'factures':'Factures','devis':'Devis','bons-livraison':'Bons de livraison',
+    'factures':'Factures','devis':'Devis','liste-cotations':'Cotations / Offres','bons-livraison':'Bons de livraison',
     'paiements-clients':'Paiements Clients','fournisseurs':'Fournisseurs',
     'bons-commande':'Bons de commande','bons-reception':'Bons de réception',
     'factures-achat':'Factures d\'achat','paiements-fourn':'Paiements Fournisseurs',
@@ -1497,6 +1498,7 @@ function renderContent(){
     case 'liste-factures': return renderFactures();
     case 'devis': return renderDevis();
     case 'liste-devis': return renderDevis();
+    case 'liste-cotations': return renderCotations();
     case 'bons-livraison': return renderBonsLivraison();
     case 'paiements-clients': return renderPaiementsClients();
     case 'fournisseurs': return renderFournisseurs();
@@ -3142,6 +3144,175 @@ function printDevis(d){
   </div>
   `;
   printDoc(html,'Devis '+d.num, {margin:'6mm 12mm 6mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+}
+
+// ── COTATIONS / OFFRES DE PRIX ─────────────────────
+function renderCotations(){
+  const list = (state.settings&&state.settings.cotations)||[];
+  function save(next){ setState({settings:{...state.settings, cotations:next}}); try{DB.flushNow();}catch(e){} }
+
+  function openForm(item, idx){
+    const nextNum = 'COT-'+new Date().getFullYear()+String(list.length+1).padStart(4,'0');
+    const f = item ? {...item, lignes:(item.lignes||[]).map(l=>({...l}))} :
+      {id:Date.now(), num:nextNum, date:today(), client:'', contact:'', tel:'', email:'', refAffaire:'', objet:'', suiviPar:'',
+       validite:'Une semaine', delai:'À convenir', reglement:'', transport:'', tva:20, lignes:[]};
+    const lC=div({}); const tD=div({style:{textAlign:'right',marginTop:8,padding:'8px 0',borderTop:'1px solid #eee'}});
+    function cT(){
+      const ht=f.lignes.reduce((s,l)=>s+(+l.qte||0)*(+l.pu||0),0);
+      f.montantHT=ht; f.montantTVA=ht*f.tva/100; f.montantTTC=ht*(1+f.tva/100);
+      tD.innerHTML=`<div style="font-size:12px;color:#6B7A99">HT: <strong>${fmtN(ht)}</strong> · TVA: <strong>${fmtN(f.montantTVA)}</strong></div><div style="font-size:16px;font-weight:900;color:#E8730A">Total TTC: ${fmt(f.montantTTC)}</div>`;
+      rL();
+    }
+    function rL(){
+      lC.innerHTML='';
+      lC.appendChild(el('table',{},
+        el('thead',{},el('tr',{},...['Désignation','Quantité','Unité','P.U. HT','Montant HT',''].map(h=>el('th',{style:{fontSize:10,padding:'5px 8px'}},h)))),
+        el('tbody',{},...f.lignes.map((l,i)=>el('tr',{},
+          el('td',{style:{padding:'3px'}},Object.assign(el('input',{value:l.designation||'',style:{width:200}}),{oninput:e=>f.lignes[i].designation=e.target.value})),
+          el('td',{style:{padding:'3px'}},Object.assign(el('input',{type:'number',value:l.qte||1,style:{width:70}}),{oninput:e=>{f.lignes[i].qte=+e.target.value;cT();}})),
+          el('td',{style:{padding:'3px'}},Object.assign(el('input',{value:l.unite||'U',style:{width:55}}),{oninput:e=>f.lignes[i].unite=e.target.value})),
+          el('td',{style:{padding:'3px'}},Object.assign(el('input',{type:'number',value:l.pu||0,style:{width:85}}),{oninput:e=>{f.lignes[i].pu=+e.target.value;cT();}})),
+          el('td',{style:{padding:'5px 8px',fontWeight:700}},fmtN((l.qte||0)*(l.pu||0))),
+          el('td',{},el('button',{style:{background:'#FEE2E2',color:'#EF4444',border:'none',borderRadius:4,padding:'3px 8px',cursor:'pointer'},onclick:()=>{f.lignes.splice(i,1);cT();}},'✕'))
+        )))
+      ));
+    }
+    cT();
+    const inp=(label,key)=>div({},el('label',{className:'lbl'},label),Object.assign(el('input',{value:f[key]||''}),{oninput:e=>f[key]=e.target.value}));
+    const fEl=div({style:{display:'flex',flexDirection:'column',gap:12}},
+      div({className:'grid-2'},
+        div({},el('label',{className:'lbl'},'N° Cotation'),Object.assign(el('input',{value:f.num}),{oninput:e=>f.num=e.target.value})),
+        div({},el('label',{className:'lbl'},'Date'),Object.assign(el('input',{type:'date',value:f.date}),{oninput:e=>f.date=e.target.value})),
+        div({},el('label',{className:'lbl'},'Client'),(()=>{const s=el('select',{});s.innerHTML='<option value="">-- Choisir / libre --</option>';state.clients.forEach(c=>s.innerHTML+=`<option ${f.client===c.nom?'selected':''}>${c.nom}</option>`);s.oninput=e=>f.client=e.target.value;return s;})()),
+        inp('Contact','contact'), inp('Téléphone','tel'), inp('Email','email'),
+        inp('Réf / Affaire','refAffaire'), inp('Suivi par','suiviPar'),
+      ),
+      inp('Objet','objet'),
+      div({style:{borderTop:'1px solid #eee',paddingTop:10}},
+        div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8,flexWrap:'wrap',gap:8}},
+          div({style:{fontWeight:800,fontSize:13}},'Détail de l\'offre'),
+          div({style:{display:'flex',gap:8,flexWrap:'wrap'}},
+            btn('📦 Produits/Services','btn-blue',()=>openLignePicker(
+              (ligne)=>{f.lignes.push(ligne);cT();},
+              ()=>setState({modal:{title:item?'Modifier Cotation':'Nouvelle Cotation',content:fEl,wide:true}})
+            ),{style:{padding:'5px 10px',fontSize:12}}),
+            btn('+ Ligne manuelle','btn-orange',()=>{f.lignes.push({designation:'',qte:1,unite:'U',pu:0});cT();},{style:{padding:'5px 12px',fontSize:12}}),
+            btn('📥 Import Excel','btn-green',()=>{
+              const inpf=el('input',{type:'file',accept:'.xlsx,.xls,.csv',style:{display:'none'}});
+              inpf.onchange=ev=>{const file=ev.target.files[0];if(!file)return;if(typeof XLSX==='undefined'){alert('Module Excel en cours de chargement.');return;}
+                const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'binary'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+                  const norm=x=>String(x||'').toLowerCase().replace(/[éè]/g,'e').replace(/[^a-z0-9]/g,'');let start=0,col={des:0,qte:1,unite:2,pu:3};
+                  for(let rr=0;rr<Math.min(rows.length,8);rr++){const cells=(rows[rr]||[]).map(norm);const iD=cells.findIndex(c=>c.indexOf('design')>-1||c.indexOf('article')>-1||c.indexOf('prestation')>-1);if(iD>-1){col.des=iD;col.qte=cells.findIndex(c=>c.indexOf('qte')>-1||c.indexOf('quantite')>-1);col.unite=cells.findIndex(c=>c.indexOf('unite')>-1||c==='u');col.pu=cells.findIndex(c=>c.indexOf('pu')>-1||c.indexOf('prix')>-1);start=rr+1;break;}}
+                  const toN=v=>{if(typeof v==='number')return v;const n=parseFloat(String(v).replace(/\s/g,'').replace(',','.').replace(/[^0-9.\-]/g,''));return isNaN(n)?0:n;};let added=0;
+                  for(let rr=start;rr<rows.length;rr++){const row=rows[rr]||[];const des=col.des>-1?String(row[col.des]||'').trim():'';if(!des)continue;f.lignes.push({designation:des,qte:(col.qte>-1?toN(row[col.qte]):0)||1,unite:(col.unite>-1?(String(row[col.unite]||'').trim()||'U'):'U'),pu:col.pu>-1?toN(row[col.pu]):0});added++;}
+                  cT();notify(added?added+' ligne(s) importée(s) ✓':'Aucune ligne détectée');
+                }catch(err){alert('Erreur Excel : '+err.message);}};r.readAsBinaryString(file);ev.target.value='';};
+              document.body.appendChild(inpf);inpf.click();setTimeout(()=>{try{document.body.removeChild(inpf);}catch(e){}},1000);
+            },{style:{padding:'5px 10px',fontSize:12}})
+          )
+        ),
+        lC
+      ),
+      tD,
+      div({className:'grid-2'},
+        inp('Validité de l\'offre','validite'), inp('Délai de livraison','delai'),
+        inp('Mode de règlement','reglement'), inp('Mode de transport','transport'),
+      ),
+      div({style:{display:'flex',gap:10,justifyContent:'flex-end'}},
+        btn('Annuler','btn-gray',()=>setState({modal:null})),
+        btn('Enregistrer','btn-orange',()=>{
+          cT();
+          let next; if(idx==null) next=[...list, f]; else { next=list.slice(); next[idx]=f; }
+          save(next); setState({modal:null}); notify(idx==null?'Cotation enregistrée ✓':'Cotation modifiée ✓');
+        })
+      )
+    );
+    setState({modal:{title:item?'Modifier Cotation':'Nouvelle Cotation',content:fEl,wide:true}});
+  }
+
+  return div({},
+    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}},
+      div({style:{fontSize:18,fontWeight:800}},'Cotations / Offres de prix'),
+      btn('+ Nouvelle Cotation','btn-orange',()=>openForm(null,null))
+    ),
+    div({className:'card'},
+      el('table',{},
+        el('thead',{},el('tr',{},...['N°','Date','Client','Objet','Montant TTC',''].map(h=>el('th',{},h)))),
+        el('tbody',{}, list.length? list.map((c,i)=>
+          el('tr',{},
+            el('td',{style:{fontWeight:700,color:'#2563EB'}},c.num||'—'),
+            el('td',{},fmtDate(c.date)),
+            el('td',{style:{fontWeight:600}},c.client||'—'),
+            el('td',{style:{color:'#6B7A99'}},c.objet||'—'),
+            el('td',{style:{fontWeight:800,color:'#E8730A'}},fmtN(c.montantTTC||0)),
+            el('td',{},div({style:{display:'flex',gap:6}},
+              btn('✏️','btn-gray',()=>openForm(c,i),{style:{padding:'4px 8px',fontSize:12}}),
+              btn('🖨','btn-blue',()=>printCotation(c),{style:{padding:'4px 8px',fontSize:12}}),
+              btn('✕','btn-red',()=>{if(confirmDelete()){const n=list.slice();n.splice(i,1);save(n);}},{style:{padding:'4px 8px',fontSize:12}})
+            ))
+          )
+        ) : [el('tr',{},el('td',{colSpan:6,style:{padding:40,textAlign:'center',color:'#6B7A99'}},'Aucune cotation — cliquez sur « + Nouvelle Cotation »'))])
+      )
+    )
+  );
+}
+
+function printCotation(c){
+  const s=getSettings();
+  const rowsHTML=(c.lignes||[]).map(l=>`
+    <tr>
+      <td style="border:1px solid #333;padding:7px 10px;font-size:12px;">${l.designation||''}</td>
+      <td style="border:1px solid #333;padding:7px 8px;font-size:12px;text-align:center;white-space:nowrap">${fmtN(l.qte||0)}</td>
+      <td style="border:1px solid #333;padding:7px 8px;font-size:12px;text-align:center;white-space:nowrap">${l.unite||'U'}</td>
+      <td style="border:1px solid #333;padding:7px 8px;font-size:12px;text-align:right;white-space:nowrap">${fmtN(l.pu||0)}</td>
+      <td style="border:1px solid #333;padding:7px 8px;font-size:12px;text-align:right;white-space:nowrap">${fmtN((l.qte||0)*(l.pu||0))}</td>
+    </tr>`).join('');
+  const info=(lbl,val)=>`<tr><td style="border:1px solid #999;padding:4px 8px;font-size:11px;font-weight:700;background:#f4f4f4;width:22%">${lbl}</td><td style="border:1px solid #999;padding:4px 8px;font-size:11px;width:28%">${val||''}</td>`;
+  const html=`
+  <div>
+    <h2 style="text-align:center;margin:6px 0 16px;letter-spacing:3px;font-size:22px;">COTATION</h2>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+      ${info('Client', c.client)}<td style="border:1px solid #999;padding:4px 8px;font-size:11px;font-weight:700;background:#f4f4f4;width:12%">Date</td><td style="border:1px solid #999;padding:4px 8px;font-size:11px">${fmtDate(c.date)}</td></tr>
+      ${info('Contact', c.contact)}<td style="border:1px solid #999;padding:4px 8px;font-size:11px;font-weight:700;background:#f4f4f4">N° Cotation</td><td style="border:1px solid #999;padding:4px 8px;font-size:11px">${c.num||''}</td></tr>
+      ${info('Tél', c.tel)}<td style="border:1px solid #999;padding:4px 8px;font-size:11px;font-weight:700;background:#f4f4f4">Email</td><td style="border:1px solid #999;padding:4px 8px;font-size:11px">${c.email||''}</td></tr>
+      ${info('Réf / Affaire', c.refAffaire)}<td style="border:1px solid #999;padding:4px 8px;font-size:11px;font-weight:700;background:#f4f4f4">Suivi par</td><td style="border:1px solid #999;padding:4px 8px;font-size:11px">${c.suiviPar||''}</td></tr>
+      <tr><td style="border:1px solid #999;padding:4px 8px;font-size:11px;font-weight:700;background:#f4f4f4">Objet</td><td colspan="3" style="border:1px solid #999;padding:4px 8px;font-size:11px">${c.objet||''}</td></tr>
+    </table>
+    <p style="font-size:12px;margin:10px 0 14px;line-height:1.6;">Messieurs ;<br>Nous vous remercions pour votre consultation référencée et nous avons le plaisir de vous communiquer notre meilleure cotation :</p>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="background:#e2e6ee;">
+        <th style="border:1px solid #333;padding:8px 10px;font-size:12px;text-align:left;">Désignation</th>
+        <th style="border:1px solid #333;padding:8px 8px;font-size:12px;width:14%;">Quantité</th>
+        <th style="border:1px solid #333;padding:8px 8px;font-size:12px;width:10%;">Unité</th>
+        <th style="border:1px solid #333;padding:8px 8px;font-size:12px;width:16%;">P.U. HT</th>
+        <th style="border:1px solid #333;padding:8px 8px;font-size:12px;width:18%;">Montant HT</th>
+      </tr></thead>
+      <tbody>${rowsHTML}</tbody>
+    </table>
+    <table style="width:100%;border-collapse:collapse;margin-top:10px;page-break-inside:avoid;">
+      <tr>
+        <td style="width:60%;border:none;vertical-align:top;font-size:11px;line-height:1.9;">
+          <div><b>* Validité de l'offre :</b> ${c.validite||'—'}</div>
+          <div><b>* Délai de livraison :</b> ${c.delai||'—'}</div>
+          <div><b>* Mode de règlement :</b> ${c.reglement||'—'}</div>
+          <div><b>* Mode de transport :</b> ${c.transport||'—'}</div>
+        </td>
+        <td style="width:40%;border:none;vertical-align:top;">
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="border:1px solid #999;padding:6px 10px;font-size:12px;font-weight:700;">Total HT</td><td style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:right;white-space:nowrap">${fmtN(c.montantHT||0)}</td></tr>
+            <tr><td style="border:1px solid #999;padding:6px 10px;font-size:12px;">TVA ${c.tva||20}%</td><td style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:right;white-space:nowrap">${fmtN(c.montantTVA||0)}</td></tr>
+            <tr style="background:#fff3e0"><td style="border:1px solid #999;padding:6px 10px;font-size:13px;font-weight:900;">TOTAL TTC</td><td style="border:1px solid #999;padding:6px 10px;font-size:13px;font-weight:900;color:#E8730A;text-align:right;white-space:nowrap">${fmtN(c.montantTTC||0)}</td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    <p style="font-size:12px;margin-top:14px;line-height:1.6;">Nous vous en souhaitons bonne réception.<br>Veuillez agréer, Monsieur, nos meilleures salutations.</p>
+    <div style="margin-top:30px;display:flex;justify-content:flex-end;font-size:12px;">
+      <div style="text-align:center;">Signature &amp; Cachet${cachetHTML()}</div>
+    </div>
+    <p style="font-size:10px;font-style:italic;color:#555;margin-top:18px;border-top:1px solid #ddd;padding-top:6px;">NB : La présente cotation n'est plus valable en cas de fluctuation des cours de la matière. Le cas échéant, prière de l'actualiser en concertation avec la Direction Commerciale.</p>
+  </div>`;
+  printDoc(html, 'Cotation '+(c.num||''), {margin:'6mm 12mm 6mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
 }
 
 function printBL(b){
