@@ -563,7 +563,7 @@ function printDoc(htmlContent, title, opts={}){
     var _hasHeader = !!(opts.headerHTML && String(opts.headerHTML).trim());
     var _hasFooter = !!(opts.footerHTML && String(opts.footerHTML).trim());
     var _hasHF = _hasHeader || _hasFooter;
-    doc.write('<!DOCTYPE html><html><head><title>'+(title||'Document')+'</title>');
+    doc.write('<!DOCTYPE html><html><head><title>'+xlName+'</title>');
     doc.write('<style>');
     doc.write('*{box-sizing:border-box;margin:0;padding:0;}');
     doc.write('body{font-family:Arial,sans-serif;font-size:12px;color:#000;}');
@@ -584,7 +584,7 @@ function printDoc(htmlContent, title, opts={}){
     doc.write('}');
     doc.write('</style></head><body>');
     doc.write('<div class="no-print-bar">');
-    doc.write('<button onclick="window.print()" style="background:#E8730A;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;margin-right:6px;">&#128424; Imprimer</button>');
+    doc.write('<button onclick="var _pt=parent.document.title;parent.document.title=document.title;var r=function(){parent.document.title=_pt;window.removeEventListener(\'afterprint\',r);};window.addEventListener(\'afterprint\',r);window.print();" style="background:#E8730A;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;margin-right:6px;">&#128424; Imprimer</button>');
     doc.write('<button onclick="saveExcel()" style="background:#16A34A;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer;margin-right:6px;">&#128202; Excel</button>');
     doc.write('<button onclick="parent.document.getElementById(\'__printFrame\').remove()" style="background:#6B7A99;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">&#x2715; Fermer</button>');
     doc.write('</div>');
