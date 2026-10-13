@@ -3183,7 +3183,14 @@ function renderCotations(){
       div({className:'grid-2'},
         div({},el('label',{className:'lbl'},'N° Cotation'),Object.assign(el('input',{value:f.num}),{oninput:e=>f.num=e.target.value})),
         div({},el('label',{className:'lbl'},'Date'),Object.assign(el('input',{type:'date',value:f.date}),{oninput:e=>f.date=e.target.value})),
-        div({},el('label',{className:'lbl'},'Client'),(()=>{const s=el('select',{});s.innerHTML='<option value="">-- Choisir / libre --</option>';state.clients.forEach(c=>s.innerHTML+=`<option ${f.client===c.nom?'selected':''}>${c.nom}</option>`);s.oninput=e=>f.client=e.target.value;return s;})()),
+        div({},el('label',{className:'lbl'},'Client (choisir ou écrire librement)'),(()=>{
+          const dlId='cot-clients-dl';
+          const dl=el('datalist',{id:dlId});
+          state.clients.forEach(c=>dl.appendChild(el('option',{value:c.nom})));
+          const inp=Object.assign(el('input',{value:f.client||'',placeholder:'Tapez un nom ou choisissez…'}),{oninput:e=>f.client=e.target.value});
+          inp.setAttribute('list',dlId);
+          return div({},inp,dl);
+        })()),
         inp('Contact','contact'), inp('Téléphone','tel'), inp('Email','email'),
         inp('Réf / Affaire','refAffaire'), inp('Suivi par','suiviPar'),
       ),
