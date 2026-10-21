@@ -305,6 +305,75 @@ try {
   }
 } catch(e){}
 
+// ====== Icône de l'app (écran d'accueil) à partir du logo ======
+function updateAppIcon(){
+  try{
+    var s = (state && state.settings) || {};
+    var logo = s.logo || '';
+    var nom = s.nom || 'SMERAV';
+    function initials(){
+      var ini = (nom.replace(/[^A-Za-z؀-ۿ ]/g,' ').trim().split(/\s+/).map(function(x){return x[0]||'';}).join('').substring(0,2)) || 'SM';
+      return ini.toUpperCase();
+    }
+    function draw(size, cb){
+      var cv = document.createElement('canvas'); cv.width=size; cv.height=size;
+      var ctx = cv.getContext('2d');
+      ctx.fillStyle = logo ? '#ffffff' : '#E8730A';
+      ctx.fillRect(0,0,size,size);
+      if(logo){
+        var img = new Image();
+        img.onload = function(){
+          var pad = size*0.15;
+          var r = Math.min((size-pad*2)/img.width, (size-pad*2)/img.height);
+          var w = img.width*r, h = img.height*r;
+          try{ ctx.drawImage(img,(size-w)/2,(size-h)/2,w,h); }catch(e){}
+          cb(cv.toDataURL('image/png'));
+        };
+        img.onerror = function(){ cb(cv.toDataURL('image/png')); };
+        img.src = logo;
+      } else {
+        ctx.fillStyle='#fff';
+        ctx.font='900 '+Math.round(size*0.40)+'px Arial';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(initials(), size/2, size/2+size*0.02);
+        cb(cv.toDataURL('image/png'));
+      }
+    }
+    draw(512, function(url512){
+      draw(192, function(url192){
+        function setLink(rel, href, sizes){
+          var key = rel+(sizes||'');
+          var l = document.querySelector('link[data-dynicon="'+key+'"]');
+          if(!l){ l=document.createElement('link'); l.setAttribute('data-dynicon',key); document.head.appendChild(l); }
+          l.rel=rel; l.type='image/png'; if(sizes) l.setAttribute('sizes',sizes); l.href=href;
+        }
+        // Neutraliser les anciens liens statiques (icon-192.png "SM")
+        document.querySelectorAll('link[rel="apple-touch-icon"]:not([data-dynicon]),link[rel="icon"]:not([data-dynicon])').forEach(function(x){ x.parentNode && x.parentNode.removeChild(x); });
+        setLink('apple-touch-icon', url192);
+        setLink('icon', url192, '192x192');
+        setLink('icon', url512, '512x512');
+        setLink('shortcut icon', url192);
+        try{
+          var mani = {
+            name: nom, short_name: (nom||'App').substring(0,12),
+            start_url: '.', display:'standalone',
+            background_color:'#ffffff', theme_color:'#E8730A',
+            icons:[
+              {src:url192, sizes:'192x192', type:'image/png', purpose:'any maskable'},
+              {src:url512, sizes:'512x512', type:'image/png', purpose:'any maskable'}
+            ]
+          };
+          var murl = URL.createObjectURL(new Blob([JSON.stringify(mani)],{type:'application/manifest+json'}));
+          var ml = document.querySelector('link[rel="manifest"]');
+          if(!ml){ ml=document.createElement('link'); ml.rel='manifest'; document.head.appendChild(ml); }
+          if(ml._blobUrl){ try{URL.revokeObjectURL(ml._blobUrl);}catch(e){} }
+          ml.href = murl; ml._blobUrl = murl;
+        }catch(e){}
+      });
+    });
+  }catch(e){}
+}
+
 // Load from Supabase on start
 DB.load().then(cache => {
   if(Object.keys(cache).length > 0){
@@ -316,10 +385,12 @@ DB.load().then(cache => {
     });
   }
   render();
+  updateAppIcon();
 });
 
 function setState(updates){
   Object.assign(state, updates);
+  if(updates.settings !== undefined){ try{ updateAppIcon(); }catch(e){} }
   ['settings','projects','clients','factures','devis','bls','fournisseurs','bcs','brs',
    'facturesAchat','cheques','ouvriers','specialites','stock','paiementsClients','paiementsFourn'].forEach(k=>{
     if(updates[k] !== undefined) DB.set(k, updates[k]);
