@@ -309,7 +309,7 @@ try {
 function updateAppIcon(){
   try{
     var s = (state && state.settings) || {};
-    var logo = s.logo || '';
+    var logo = s.appIcon || s.logo || '';
     var nom = s.nom || 'SMERAV';
     function initials(){
       var ini = (nom.replace(/[^A-Za-z؀-ۿ ]/g,' ').trim().split(/\s+/).map(function(x){return x[0]||'';}).join('').substring(0,2)) || 'SM';
@@ -1187,6 +1187,23 @@ function renderParametres(){
     );
        if(activeTab==='perso') return div({style:{padding:28,flex:1}},
       div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',letterSpacing:1,marginBottom:20}},'IDENTITÉ VISUELLE'),
+      div({style:{background:'#FFF7ED',border:'1.5px solid #FED7AA',borderRadius:12,padding:16,marginBottom:24,display:'flex',gap:18,alignItems:'center',flexWrap:'wrap'}},
+        (()=>{const prev=el('div',{style:{width:'84px',height:'84px',borderRadius:'22px',background:(s.appIcon||s.logo)?'#fff':'#E8730A',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',boxShadow:'0 3px 10px rgba(0,0,0,0.2)',flex:'0 0 auto'}});
+          if(s.appIcon||s.logo){prev.appendChild(el('img',{src:(s.appIcon||s.logo),style:{maxWidth:'72%',maxHeight:'72%',objectFit:'contain'}}));}
+          else{prev.appendChild(el('div',{style:{color:'#fff',fontWeight:900,fontSize:'30px'}},'SM'));}
+          return prev;})(),
+        div({style:{flex:'1 1 200px',minWidth:'180px'}},
+          el('label',{className:'lbl'},"ICÔNE DE L'APPLICATION (écran d'accueil)"),
+          div({style:{fontSize:11,color:'#92400E',marginBottom:8}},"L'image qui s'affiche sur l'écran d'accueil du téléphone. Choisissez une image carrée de préférence."),
+          el('label',{style:{cursor:'pointer',color:C.blue,fontSize:12,fontWeight:700,marginRight:12}},
+            '📁 Choisir une image...',
+            Object.assign(el('input',{type:'file',accept:'image/*',style:{display:'none'}}),{
+              onchange:e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{s.appIcon=ev.target.result;setState({settings:s});try{updateAppIcon();}catch(x){}notify("Icône mise à jour ✓ — ré-ajoutez l'app à l'écran d'accueil");};r.readAsDataURL(file);}
+            })
+          ),
+          s.appIcon ? el('button',{onclick:()=>{s.appIcon=null;setState({settings:s});try{updateAppIcon();}catch(x){}notify('Icône réinitialisée');},style:{background:'none',border:'none',color:'#EF4444',fontSize:12,fontWeight:700,cursor:'pointer'}},'✕ Retirer') : null
+        )
+      ),
       div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:32,marginBottom:28}},
         div({},
           el('label',{className:'lbl'},'LOGO OFFICIEL'),
