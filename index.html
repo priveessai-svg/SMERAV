@@ -173,36 +173,112 @@ const DB = {
   _retryCount: 0,
   _retryTimer: null,
   _COL: {projects:'projects',clients:'clients',factures:'factures',devis:'devis',bls:'bls',fournisseurs:'fournisseurs',bcs:'bcs',brs:'brs',facturesAchat:'factures_achat',cheques:'cheques',ouvriers:'ouvriers',specialites:'specialites',stock:'stock',paiementsClients:'paiements_clients',paiementsFourn:'paiements_fourn',settings:'settings'},
+
+  // ---- Sauvegarde locale de secours (IndexedDB) : les données ne se perdent jamais ----
+  _idb:null,
+  _idbOpen(){
+    if(this._idb) return Promise.resolve(this._idb);
+    return new Promise((resolve)=>{
+      try{
+        const req = indexedDB.open('smerav_local', 1);
+        req.onupgradeneeded = ()=>{ try{ req.result.createObjectStore('kv'); }catch(e){} };
+        req.onsuccess = ()=>{ this._idb = req.result; resolve(this._idb); };
+        req.onerror = ()=>{ resolve(null); };
+      }catch(e){ resolve(null); }
+    });
+  },
+  _idbSaveTimer:null,
+  _idbSave(now){
+    const doIt = ()=>{
+      this._idbOpen().then(db=>{
+        if(!db) return;
+        try{
+          const tx = db.transaction('kv','readwrite');
+          tx.objectStore('kv').put({ data:this._cache, ts:new Date().toISOString() }, 'all');
+        }catch(e){}
+      });
+    };
+    clearTimeout(this._idbSaveTimer);
+    if(now){ doIt(); } else { this._idbSaveTimer = setTimeout(doIt, 500); }
+  },
+  _idbLoad(){
+    return this._idbOpen().then(db=>{
+      if(!db) return null;
+      return new Promise((resolve)=>{
+        try{
+          const tx = db.transaction('kv','readonly');
+          const rq = tx.objectStore('kv').get('all');
+          rq.onsuccess = ()=>resolve(rq.result||null);
+          rq.onerror = ()=>resolve(null);
+        }catch(e){ resolve(null); }
+      });
+    });
+  },
+  _mapRow(data){
+    return {
+      projects: data.projects||[],
+      clients: data.clients||[],
+      factures: data.factures||[],
+      devis: data.devis||[],
+      bls: data.bls||[],
+      fournisseurs: data.fournisseurs||[],
+      bcs: data.bcs||[],
+      brs: data.brs||[],
+      facturesAchat: data.factures_achat||[],
+      cheques: data.cheques||[],
+      ouvriers: data.ouvriers||[],
+      specialites: data.specialites||['Plombier','Maçon','Électricien','Conducteur','Manœuvre'],
+      stock: data.stock||[],
+      paiementsClients: data.paiements_clients||[],
+      paiementsFourn: data.paiements_fourn||[],
+      settings: data.settings||{},
+    };
+  },
+
   get(k){ return this._cache[k] || null; },
-  set(k,v){ 
+  set(k,v){
     this._cache[k] = v;
     this._dirty[k] = true;
-    this._syncToSupabase();
+    this._idbSave();          // secours local immédiat (sur l'appareil)
+    this._syncToSupabase();   // puis cloud
   },
   async load(){
+    let cloud=null, cloudTs=0, cloudOk=false;
     try {
-      const { data } = await supa.from('smerav_data').select('*').eq('id','main').single();
-      if(data){
-        this._cache = {
-          projects: data.projects||[],
-          clients: data.clients||[],
-          factures: data.factures||[],
-          devis: data.devis||[],
-          bls: data.bls||[],
-          fournisseurs: data.fournisseurs||[],
-          bcs: data.bcs||[],
-          brs: data.brs||[],
-          facturesAchat: data.factures_achat||[],
-          cheques: data.cheques||[],
-          ouvriers: data.ouvriers||[],
-          specialites: data.specialites||['Plombier','Maçon','Électricien','Conducteur','Manœuvre'],
-          stock: data.stock||[],
-          paiementsClients: data.paiements_clients||[],
-          paiementsFourn: data.paiements_fourn||[],
-          settings: data.settings||{},
-        };
-      }
+      const res = await supa.from('smerav_data').select('*').eq('id','main').single();
+      const data = res && res.data;
+      const err  = res && res.error;
+      if(data){ cloud = this._mapRow(data); cloudTs = Date.parse(data.updated_at||'')||0; cloudOk = true; }
+      else if(err && (err.code==='PGRST116' || /0 rows/i.test(err.details||err.message||''))){ cloudOk = true; } // cloud joignable mais vide
     } catch(e){ console.log('Load error:', e); }
+
+    let local=null, localTs=0;
+    try {
+      const l = await this._idbLoad();
+      if(l && l.data && Object.keys(l.data).length){ local = l.data; localTs = Date.parse(l.ts||'')||0; }
+    } catch(e){}
+
+    if(cloudOk && cloud && (!local || cloudTs >= localTs)){
+      // Cloud à jour (ou pas de local) → on prend le cloud
+      this._cache = cloud; this._idbSave(true);
+    } else if(cloudOk && cloud && local && localTs > cloudTs){
+      // Local plus récent qu'un cloud joignable (une sauvegarde cloud avait échoué) → on restaure le local et on le renvoie au cloud
+      this._cache = local;
+      Object.keys(this._COL).forEach(k=>{ if(this._cache[k]!==undefined) this._dirty[k]=true; });
+      this._syncToSupabase();
+    } else if(cloudOk && !cloud && local){
+      // Cloud joignable mais vide + local présent → on restaure le local et on le pousse (récupération)
+      this._cache = local;
+      Object.keys(this._COL).forEach(k=>{ if(this._cache[k]!==undefined) this._dirty[k]=true; });
+      this._syncToSupabase();
+    } else if(cloud){
+      this._cache = cloud; this._idbSave(true);
+    } else if(local){
+      // Cloud injoignable (internet) → on travaille sur la copie locale, SANS écraser le cloud
+      this._cache = local;
+    } else {
+      this._cache = {};
+    }
     return this._cache;
   },
   _syncTimer: null,
@@ -234,7 +310,7 @@ const DB = {
       this._retryTimer = setTimeout(()=>{ this._doSync(); }, delay);
     } else {
       this._retryCount = 0;
-      try{ notify('⚠️ Sauvegarde échouée — vérifiez internet (les données sont gardées, réessai à la prochaine action)','error'); }catch(e){}
+      try{ notify('⚠️ Cloud injoignable — vos données sont gardées sur l\'appareil et seront renvoyées automatiquement. Vérifiez internet.','error'); }catch(e){}
     }
   },
   _syncToSupabase(){
@@ -249,8 +325,9 @@ const DB = {
 
 // Flush any pending save immediately if the user navigates away or refreshes,
 // so quick "Enregistrer puis Actualiser" never loses data.
-window.addEventListener('beforeunload', ()=>{ if(DB._syncTimer) DB.flushNow(); });
-document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && DB._syncTimer) DB.flushNow(); });
+window.addEventListener('beforeunload', ()=>{ try{ if(DB._syncTimer) DB.flushNow(); DB._idbSave(true); }catch(e){} });
+window.addEventListener('pagehide', ()=>{ try{ if(DB._syncTimer) DB.flushNow(); DB._idbSave(true); }catch(e){} });
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden'){ try{ if(DB._syncTimer) DB.flushNow(); DB._idbSave(true); }catch(e){} } });
 
 
 // ══════════════════════════════════════════
