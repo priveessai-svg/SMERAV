@@ -2436,19 +2436,39 @@ function renderBibliothequeSociete(){
     saveBiblio({...biblio, [catKey]:list.filter(x=>x.id!==id)});
   }
 
-  function buildPdfFromImage(imgData, onReady){
+  // Compresse une image (photo/scan) pour qu'elle soit légère et s'enregistre bien dans le cloud
+  function compressImage(imgData, onReady){
     const img = new Image();
     img.onload = ()=>{
-      const { jsPDF } = window.jspdf;
-      const pageW=210, pageH=297;
-      const ratio = Math.min((pageW-20)/img.width, (pageH-20)/img.height);
-      const w = img.width*ratio, h = img.height*ratio;
-      const x = (pageW-w)/2, y = (pageH-h)/2;
-      const docPdf = new jsPDF({unit:'mm',format:'a4'});
-      docPdf.addImage(imgData, 'JPEG', x, y, w, h);
-      onReady(docPdf.output('datauristring'));
+      try{
+        const maxDim = 1654; // ~A4 à 150 dpi : lisible et léger
+        let w = img.width, h = img.height;
+        if(w>maxDim || h>maxDim){ const r=Math.min(maxDim/w, maxDim/h); w=Math.round(w*r); h=Math.round(h*r); }
+        const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+        const ctx=cv.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
+        let q=0.6, out=cv.toDataURL('image/jpeg',q);
+        while(out.length>900*1024 && q>0.35){ q-=0.1; out=cv.toDataURL('image/jpeg',q); } // encore plus léger si besoin
+        onReady(out);
+      }catch(e){ onReady(imgData); }
     };
+    img.onerror = ()=>onReady(imgData);
     img.src = imgData;
+  }
+  function buildPdfFromImage(imgData, onReady){
+    compressImage(imgData, (jpeg)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const { jsPDF } = window.jspdf;
+        const pageW=210, pageH=297;
+        const ratio = Math.min((pageW-20)/img.width, (pageH-20)/img.height);
+        const w = img.width*ratio, h = img.height*ratio;
+        const x = (pageW-w)/2, y = (pageH-h)/2;
+        const docPdf = new jsPDF({unit:'mm',format:'a4',compress:true});
+        docPdf.addImage(jpeg, 'JPEG', x, y, w, h);
+        onReady(docPdf.output('datauristring'));
+      };
+      img.src = jpeg;
+    });
   }
 
   function handleFile(file, catKey){
@@ -2468,10 +2488,17 @@ function renderBibliothequeSociete(){
             const save = (dataUrl)=>{
               addDoc(catKey, {id:Date.now(), nom:nomVal.trim(), dataUrl, date:today()});
               setState({modal:null});
+              try{ DB.flushNow(); }catch(e){}
               notify('Document ajouté ✓');
             };
-            if(isPdf) save(fileData);
-            else buildPdfFromImage(fileData, save);
+            if(isPdf){
+              if(fileData.length > 4*1024*1024){
+                if(!confirm('⚠️ Ce PDF est lourd ('+Math.round(fileData.length/1024/1024)+' Mo). Pour un enregistrement fiable, préférez une photo (compressée automatiquement) ou un PDF plus léger. Enregistrer quand même ?')) return;
+              }
+              save(fileData);
+            } else {
+              buildPdfFromImage(fileData, save);
+            }
           })
         )
       );
