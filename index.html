@@ -172,7 +172,8 @@ const DB = {
   _dirty: {},
   _retryCount: 0,
   _retryTimer: null,
-  _COL: {projects:'projects',clients:'clients',factures:'factures',devis:'devis',bls:'bls',fournisseurs:'fournisseurs',bcs:'bcs',brs:'brs',facturesAchat:'factures_achat',cheques:'cheques',ouvriers:'ouvriers',specialites:'specialites',stock:'stock',paiementsClients:'paiements_clients',paiementsFourn:'paiements_fourn',settings:'settings'},
+  _COL: {projects:'projects',clients:'clients',factures:'factures',devis:'devis',bls:'bls',fournisseurs:'fournisseurs',bcs:'bcs',brs:'brs',facturesAchat:'factures_achat',cheques:'cheques',ouvriers:'ouvriers',specialites:'specialites',stock:'stock',paiementsClients:'paiements_clients',paiementsFourn:'paiements_fourn',settings:'settings',bibliotheque:'bibliotheque',cotations:'cotations'},
+  _newColsOk: false, // vrai si les colonnes dédiées 'bibliotheque' et 'cotations' existent dans la base
 
   // ---- Sauvegarde locale de secours (IndexedDB) : les données ne se perdent jamais ----
   _idb:null,
@@ -215,6 +216,7 @@ const DB = {
     });
   },
   _mapRow(data){
+    const settings = data.settings||{};
     return {
       projects: data.projects||[],
       clients: data.clients||[],
@@ -231,7 +233,10 @@ const DB = {
       stock: data.stock||[],
       paiementsClients: data.paiements_clients||[],
       paiementsFourn: data.paiements_fourn||[],
-      settings: data.settings||{},
+      settings: settings,
+      // Colonnes dédiées si elles existent, sinon on récupère l'ancienne copie éventuellement stockée dans settings
+      bibliotheque: (data.bibliotheque!=null ? data.bibliotheque : (settings.bibliotheque||{})),
+      cotations:    (data.cotations!=null    ? data.cotations    : (settings.cotations||[])),
     };
   },
 
@@ -248,7 +253,9 @@ const DB = {
       const res = await supa.from('smerav_data').select('*').eq('id','main').single();
       const data = res && res.data;
       const err  = res && res.error;
-      if(data){ cloud = this._mapRow(data); cloudTs = Date.parse(data.updated_at||'')||0; cloudOk = true; }
+      if(data){ cloud = this._mapRow(data); cloudTs = Date.parse(data.updated_at||'')||0; cloudOk = true;
+        this._newColsOk = Object.prototype.hasOwnProperty.call(data,'bibliotheque') && Object.prototype.hasOwnProperty.call(data,'cotations');
+      }
       else if(err && (err.code==='PGRST116' || /0 rows/i.test(err.details||err.message||''))){ cloudOk = true; } // cloud joignable mais vide
     } catch(e){ console.log('Load error:', e); }
 
@@ -368,6 +375,7 @@ let state = {
   cheques: [], ouvriers: [],
   specialites: ['Plombier','Maçon','Electricien','Conducteur','Manoeuvre'],
   stock: [], paiementsClients: [], paiementsFourn: [],
+  bibliotheque: {}, cotations: [],
   modal: null, selProject: null, ficheSection: 'info', notif: null, syncing: false, expandedNav: {},
 };
 
@@ -460,6 +468,8 @@ DB.load().then(cache => {
      'cheques','ouvriers','specialites','stock','paiementsClients','paiementsFourn'].forEach(k=>{
       if(cache[k] && cache[k].length>0) state[k] = cache[k];
     });
+    if(cache.bibliotheque!==undefined) state.bibliotheque = cache.bibliotheque||{};
+    if(cache.cotations!==undefined) state.cotations = cache.cotations||[];
   }
   render();
   updateAppIcon();
@@ -1435,13 +1445,13 @@ function renderParametres(){
       div({style:{fontSize:11,color:'#6B7A99',marginTop:6}},'Ces informations apparaîtront en bas de tous vos documents imprimés.')
     );
     if(activeTab==='sauvegarde'){
-      const KEYS_BK = ['settings','projects','clients','factures','devis','bls','fournisseurs','bcs','brs','facturesAchat','cheques','ouvriers','specialites','stock','paiementsClients','paiementsFourn'];
+      const KEYS_BK = ['settings','projects','clients','factures','devis','bls','fournisseurs','bcs','brs','facturesAchat','cheques','ouvriers','specialites','stock','paiementsClients','paiementsFourn','bibliotheque','cotations'];
       const sanitize = (n)=>String(n||'sans-nom').replace(/[\\/:*?"<>|\n\r\t]+/g,'-').replace(/\s+/g,' ').trim().slice(0,80) || 'sans-nom';
       const extOf = (u)=>{ const m=(u||'').match(/^data:([^;]+)/); const mime=m?m[1]:''; return mime.indexOf('png')>-1?'png':(mime.indexOf('jpeg')>-1||mime.indexOf('jpg')>-1)?'jpg':'pdf'; };
       const b64 = (u)=>String(u||'').split(',')[1]||'';
-      const docCount = (state.projects||[]).reduce((a,p)=>a+((p.documents||[]).length),0) + Object.values((state.settings&&state.settings.bibliotheque)||{}).reduce((a,arr)=>a+((arr||[]).length),0);
+      const docCount = (state.projects||[]).reduce((a,p)=>a+((p.documents||[]).length),0) + Object.values((state.bibliotheque||{})).reduce((a,arr)=>a+((arr||[]).length),0);
 
-      const COL_MAP = {projects:'projects',clients:'clients',factures:'factures',devis:'devis',bls:'bls',fournisseurs:'fournisseurs',bcs:'bcs',brs:'brs',facturesAchat:'factures_achat',cheques:'cheques',ouvriers:'ouvriers',specialites:'specialites',stock:'stock',paiementsClients:'paiements_clients',paiementsFourn:'paiements_fourn',settings:'settings'};
+      const COL_MAP = {projects:'projects',clients:'clients',factures:'factures',devis:'devis',bls:'bls',fournisseurs:'fournisseurs',bcs:'bcs',brs:'brs',facturesAchat:'factures_achat',cheques:'cheques',ouvriers:'ouvriers',specialites:'specialites',stock:'stock',paiementsClients:'paiements_clients',paiementsFourn:'paiements_fourn',settings:'settings',bibliotheque:'bibliotheque',cotations:'cotations'};
       const LOCAL_KEYS = ['smerav_pwd','smerav_email','smerav_secq','smerav_seca'];
       async function doBackup(){
         notify('Préparation de la sauvegarde…');
@@ -1472,6 +1482,9 @@ function renderParametres(){
           if(!confirmDelete()) return;
           const updates={}; KEYS_BK.forEach(k=>{ if(data[k]!==undefined) updates[k]=data[k]; });
           setState(updates);
+          // bibliotheque & cotations ne sont pas auto-sauvegardés par setState : on les persiste explicitement
+          if(data.bibliotheque!==undefined){ if(DB._newColsOk){ DB.set('bibliotheque', data.bibliotheque); } else { try{DB._cache.bibliotheque=data.bibliotheque;}catch(e){} const sb={...state.settings, bibliotheque:data.bibliotheque}; state.settings=sb; DB.set('settings', sb); } }
+          if(data.cotations!==undefined){ if(DB._newColsOk){ DB.set('cotations', data.cotations); } else { try{DB._cache.cotations=data.cotations;}catch(e){} const sc={...state.settings, cotations:data.cotations}; state.settings=sc; DB.set('settings', sc); } }
           if(payload.local){ LOCAL_KEYS.forEach(k=>{ if(payload.local[k]!==undefined){ try{ localStorage.setItem(k, payload.local[k]); }catch(e){} } }); }
           try{ if(DB && DB.flushNow) DB.flushNow(); }catch(e){}
           notify('✓ Données restaurées');
@@ -1488,7 +1501,7 @@ function renderParametres(){
           const folder='Projets/'+sanitize(p.ref||p.nom||('projet-'+p.id));
           (p.documents||[]).forEach((d,i)=>{ zip.file(folder+'/'+sanitize(d.nom)+'-'+(i+1)+'.'+extOf(d.dataUrl), b64(d.dataUrl), {base64:true}); });
         });
-        const biblio=(state.settings&&state.settings.bibliotheque)||{};
+        const biblio=(state.bibliotheque||{});
         const labels={administratif:'Administratif',technique:'Technique',financier:'Financier',additif:'Additif'};
         Object.keys(biblio).forEach(cat=>{
           (biblio[cat]||[]).forEach((d,i)=>{ zip.file('Bibliotheque/'+(labels[cat]||cat)+'/'+sanitize(d.nom)+'-'+(i+1)+'.'+extOf(d.dataUrl), b64(d.dataUrl), {base64:true}); });
@@ -2421,11 +2434,19 @@ function renderBibliothequeSociete(){
     {key:'financier',     label:'Financier',     icon:'💰', color:'#10B981', desc:'Bilans, attestations fiscales, RIB, cautions bancaires'},
     {key:'additif',       label:'Additif',       icon:'➕', color:'#8B5CF6', desc:'Documents divers, pièces complémentaires'},
   ];
-  const biblio = (state.settings && state.settings.bibliotheque) || {};
+  const biblio = (state.bibliotheque || {});
   const openCat = renderBibliothequeSociete._cat || null;
 
   function saveBiblio(next){
-    setState({settings:{...state.settings, bibliotheque:next}});
+    if(DB._newColsOk){
+      setState({bibliotheque: next});   // mémoire + affichage
+      DB.set('bibliotheque', next);     // colonne dédiée (fiable)
+    } else {
+      // repli : ancienne méthode (dans settings) tant que la colonne n'existe pas
+      try{ DB._cache.bibliotheque = next; }catch(e){}
+      setState({bibliotheque: next, settings:{...state.settings, bibliotheque:next}});
+    }
+    try{ DB.flushNow(); }catch(e){}
   }
   function addDoc(catKey, newDoc){
     const list = biblio[catKey] || [];
@@ -3340,8 +3361,17 @@ function printDevis(d){
 
 // ── COTATIONS / OFFRES DE PRIX ─────────────────────
 function renderCotations(){
-  const list = (state.settings&&state.settings.cotations)||[];
-  function save(next){ setState({settings:{...state.settings, cotations:next}}); try{DB.flushNow();}catch(e){} }
+  const list = (state.cotations||[]);
+  function save(next){
+    if(DB._newColsOk){
+      setState({cotations: next});
+      DB.set('cotations', next);
+    } else {
+      try{ DB._cache.cotations = next; }catch(e){}
+      setState({cotations: next, settings:{...state.settings, cotations:next}});
+    }
+    try{DB.flushNow();}catch(e){}
+  }
 
   function openForm(item, idx){
     const nextNum = 'COT-'+new Date().getFullYear()+String(list.length+1).padStart(4,'0');
