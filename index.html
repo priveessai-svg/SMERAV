@@ -1449,7 +1449,7 @@ function renderParametres(){
       const sanitize = (n)=>String(n||'sans-nom').replace(/[\\/:*?"<>|\n\r\t]+/g,'-').replace(/\s+/g,' ').trim().slice(0,80) || 'sans-nom';
       const extOf = (u)=>{ const m=(u||'').match(/^data:([^;]+)/); const mime=m?m[1]:''; return mime.indexOf('png')>-1?'png':(mime.indexOf('jpeg')>-1||mime.indexOf('jpg')>-1)?'jpg':'pdf'; };
       const b64 = (u)=>String(u||'').split(',')[1]||'';
-      const docCount = (state.projects||[]).reduce((a,p)=>a+((p.documents||[]).length),0) + Object.values((state.bibliotheque||{})).reduce((a,arr)=>a+((arr||[]).length),0);
+      const docCount = (state.projects||[]).reduce((a,p)=>a+((p.documents||[]).length)+((p.pvDemande||[]).length),0) + Object.values((state.bibliotheque||{})).reduce((a,arr)=>a+((arr||[]).length),0);
 
       const COL_MAP = {projects:'projects',clients:'clients',factures:'factures',devis:'devis',bls:'bls',fournisseurs:'fournisseurs',bcs:'bcs',brs:'brs',facturesAchat:'factures_achat',cheques:'cheques',ouvriers:'ouvriers',specialites:'specialites',stock:'stock',paiementsClients:'paiements_clients',paiementsFourn:'paiements_fourn',settings:'settings',bibliotheque:'bibliotheque',cotations:'cotations'};
       const LOCAL_KEYS = ['smerav_pwd','smerav_email','smerav_secq','smerav_seca'];
@@ -1500,6 +1500,7 @@ function renderParametres(){
         (state.projects||[]).forEach(p=>{
           const folder='Projets/'+sanitize(p.ref||p.nom||('projet-'+p.id));
           (p.documents||[]).forEach((d,i)=>{ zip.file(folder+'/'+sanitize(d.nom)+'-'+(i+1)+'.'+extOf(d.dataUrl), b64(d.dataUrl), {base64:true}); });
+          (p.pvDemande||[]).forEach((d,i)=>{ zip.file(folder+'/PV-Demande/'+sanitize(d.nom)+'-'+(i+1)+'.'+extOf(d.dataUrl), b64(d.dataUrl), {base64:true}); });
         });
         const biblio=(state.bibliotheque||{});
         const labels={administratif:'Administratif',technique:'Technique',financier:'Financier',additif:'Additif'};
@@ -1998,6 +1999,7 @@ function renderFicheProjet(){
     ['bordereau-envoi',"📤 Bordereau D'envoi"],
     ['attachements','📎 Attachements'],['decomptes','💰 Décomptes'],
     ['rapport','📄 Rapport'],['charges','💳 Charges'],['documents','📁 Documents'],
+    ['pv-demande','📋 PV / Demande'],
   ];
   const sec = state.ficheSection||'info';
 
@@ -2054,6 +2056,7 @@ function renderFicheProjet(){
     sec==='rapport' ? renderRapportSection(p, updateProject) :
     sec==='charges' ? renderProjetCharges(p, updateProject) :
     sec==='documents' ? renderProjetDocuments(p, updateProject) :
+    sec==='pv-demande' ? renderProjetPVDemande(p, updateProject) :
     renderComingSoon(sec)
   );
 }
@@ -2426,6 +2429,210 @@ function renderProjetDocuments(p, updateProject){
   );
 }
 
+// ───── Partie PV / Demande (génère des documents pré-remplis avec les infos du marché) ─────
+function pvTypes(){
+  return {
+    demande: [
+      {key:'reception-prov', label:'Demande de réception provisoire'},
+      {key:'reception-def',  label:'Demande de réception définitive'},
+      {key:'paiement',       label:'Demande de paiement (décompte)'},
+      {key:'prorogation',    label:'Demande de prorogation de délai'},
+      {key:'caution',        label:'Demande de mainlevée / restitution de caution'},
+      {key:'reprise-os',     label:"Demande d'ordre de service de reprise"},
+      {key:'autre-d',        label:'Autre demande (libre)'},
+    ],
+    pv: [
+      {key:'commencement',   label:'PV de commencement des travaux'},
+      {key:'chantier',       label:'PV de réunion de chantier'},
+      {key:'arret',          label:"PV d'arrêt des travaux"},
+      {key:'reprise',        label:'PV de reprise des travaux'},
+      {key:'reception-prov', label:'PV de réception provisoire'},
+      {key:'reception-def',  label:'PV de réception définitive'},
+      {key:'autre-p',        label:'Autre PV (libre)'},
+    ]
+  };
+}
+function pvBody(cat, key, p){
+  const mo = p.maitreOuvrage||p.client||'le Maître d\'ouvrage';
+  const soc = (getSettings().nom)||'l\'entreprise';
+  const objet = p.objet||p.nom||'—';
+  const marche = p.marcheNum||'—';
+  const os = p.ordreService||'—';
+  const an = String(new Date().getFullYear());
+  if(cat==='demande'){
+    switch(key){
+      case 'reception-prov': return "Nous avons l'honneur de vous informer que les travaux relatifs au marché cité en objet sont achevés.\n\nÀ cet effet, nous vous prions de bien vouloir procéder à la réception provisoire desdits travaux et de désigner la commission compétente à cette fin.\n\nDans l'attente de votre réponse favorable, veuillez agréer, Monsieur, l'expression de nos salutations distinguées.";
+      case 'reception-def':  return "Le délai de garantie relatif au marché cité en objet étant expiré, et les travaux étant maintenus en bon état, nous avons l'honneur de solliciter de votre bienveillance la réception définitive desdits travaux.\n\nVeuillez agréer, Monsieur, l'expression de nos salutations distinguées.";
+      case 'paiement':       return "Nous avons l'honneur de vous soumettre, pour règlement, le décompte relatif aux travaux exécutés dans le cadre du marché cité en objet.\n\nNous vous prions de bien vouloir procéder au mandatement des sommes dues.\n\nVeuillez agréer, Monsieur, l'expression de nos salutations distinguées.";
+      case 'prorogation':    return "En raison de (motif : intempéries / retard d'approvisionnement / ordres d'arrêt …), nous avons l'honneur de solliciter une prorogation du délai d'exécution du marché cité en objet d'une durée de ______ jours.\n\nVeuillez agréer, Monsieur, l'expression de nos salutations distinguées.";
+      case 'caution':        return "Les travaux relatifs au marché cité en objet ayant été réceptionnés définitivement, nous avons l'honneur de solliciter la mainlevée et la restitution de la caution définitive et/ou de la retenue de garantie y afférente.\n\nVeuillez agréer, Monsieur, l'expression de nos salutations distinguées.";
+      case 'reprise-os':     return "Suite à la levée des causes ayant motivé l'arrêt des travaux, nous avons l'honneur de solliciter la délivrance d'un ordre de service de reprise des travaux relatifs au marché cité en objet.\n\nVeuillez agréer, Monsieur, l'expression de nos salutations distinguées.";
+      default:               return "Nous avons l'honneur de solliciter de votre bienveillance ______ concernant le marché cité en objet.\n\nVeuillez agréer, Monsieur, l'expression de nos salutations distinguées.";
+    }
+  } else {
+    switch(key){
+      case 'commencement':   return "L'an "+an+", en présence des représentants du Maître d'ouvrage ("+mo+") et de l'entreprise ("+soc+"), il a été procédé au constat du commencement des travaux relatifs au marché cité en objet, conformément à l'ordre de service N° "+os+".\n\nLe présent procès-verbal est dressé pour servir et valoir ce que de droit.";
+      case 'chantier':       return "L'an "+an+", s'est tenue une réunion de chantier relative au marché cité en objet, en présence des parties concernées.\n\nPoints abordés : ______\nObservations : ______\nDécisions prises : ______\n\nLe présent procès-verbal est dressé contradictoirement.";
+      case 'arret':          return "L'an "+an+", il a été procédé au constat de l'arrêt des travaux relatifs au marché cité en objet, pour le(s) motif(s) suivant(s) : ______\n\nLe présent procès-verbal est dressé contradictoirement entre le Maître d'ouvrage ("+mo+") et l'entreprise ("+soc+").";
+      case 'reprise':        return "L'an "+an+", les causes ayant motivé l'arrêt des travaux étant levées, il a été procédé à la reprise des travaux relatifs au marché cité en objet.\n\nLe présent procès-verbal est dressé contradictoirement.";
+      case 'reception-prov': return "L'an "+an+", la commission de réception s'est réunie et a procédé à la réception provisoire des travaux relatifs au marché cité en objet.\n\nRéserves / observations : ______\n\nLe présent procès-verbal est dressé pour servir et valoir ce que de droit.";
+      case 'reception-def':  return "L'an "+an+", la commission a procédé à la réception définitive des travaux relatifs au marché cité en objet, le délai de garantie étant expiré et les travaux maintenus en bon état.\n\nLe présent procès-verbal est dressé pour servir et valoir ce que de droit.";
+      default:               return "L'an "+an+", il a été procédé à ______ concernant le marché cité en objet.\n\nLe présent procès-verbal est dressé contradictoirement.";
+    }
+  }
+}
+function pvDefaultDraft(cat, key, p){
+  const types = pvTypes()[cat];
+  const t = types.find(x=>x.key===key) || types[0];
+  return { cat, typeKey:t.key, typeLabel:t.label, numero:'', date:today(), objet:(p.objet||p.nom||''), corps:pvBody(cat, t.key, p) };
+}
+function printPVDoc(rec, p){
+  const s = getSettings();
+  const mo = p.maitreOuvrage||p.client||'—';
+  const ville = p.ville || s.ville || '';
+  const refLines = [
+    'Marché N° : '+(p.marcheNum||'—'),
+    (p.ordreService?('Ordre de service N° : '+p.ordreService):''),
+    'Projet : '+(p.nom||'—'),
+    'Objet du marché : '+(p.objet||'—'),
+  ].filter(Boolean);
+  const corpsHtml = String(rec.corps||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>');
+  const titre = ((rec.titre||rec.typeLabel||'Document')+(rec.numero?(' N° '+rec.numero):'')).toUpperCase();
+  const dest = (rec.cat==='demande')
+    ? '<div style="margin-bottom:16px;">À l\'attention de : <b>'+mo+'</b></div>'
+    : '';
+  const html =
+    '<div style="font-size:13px;line-height:1.7;color:#000;">'
+    + '<div style="text-align:right;margin-bottom:16px;">'+(ville?ville+', le ':'Le ')+fmtDate(rec.date||today())+'</div>'
+    + dest
+    + '<div style="font-weight:800;text-decoration:underline;text-align:center;font-size:15px;margin:6px 0 16px;">'+titre+'</div>'
+    + '<div style="border:1px solid #333;padding:8px 12px;margin-bottom:18px;font-size:12px;">'+refLines.map(function(l){return '<div>'+l+'</div>';}).join('')+'</div>'
+    + (rec.objet?('<div style="margin-bottom:14px;"><b>Objet : </b>'+String(rec.objet).replace(/</g,'&lt;')+'</div>'):'')
+    + '<div style="margin-bottom:26px;text-align:justify;">'+corpsHtml+'</div>'
+    + '<div style="display:flex;justify-content:flex-end;margin-top:28px;"><div style="text-align:center;min-width:180px;">'
+    + '<div style="font-weight:700;margin-bottom:4px;">'+(s.nom||'')+'</div>'
+    + (typeof cachetHTML==='function'?cachetHTML():'')
+    + '</div></div></div>';
+  printDoc(html, (rec.typeLabel||'Document')+(rec.numero?(' '+rec.numero):''), {margin:'6mm 12mm 6mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
+}
+function renderProjetPVDemande(p, updateProject){
+  renderProjetPVDemande._ui = renderProjetPVDemande._ui || {};
+  const ui = renderProjetPVDemande._ui[p.id] || (renderProjetPVDemande._ui[p.id] = {mode:'list', cat:'demande', draft:null, editingId:null});
+  const list = p.pvDemande || [];
+
+  function openNew(cat){ ui.mode='edit'; ui.cat=cat; ui.editingId=null; ui.draft=null; render(); }
+  function editRec(rec){ ui.mode='edit'; ui.cat=rec.cat||'demande'; ui.editingId=rec.id; ui.draft=Object.assign({}, rec); render(); }
+  function cancel(){ ui.mode='list'; ui.draft=null; ui.editingId=null; render(); }
+  function saveDraft(){
+    if(!ui.draft || !ui.draft.typeKey){ alert('Choisissez un type.'); return; }
+    const rec = Object.assign({}, ui.draft);
+    if(!rec.id) rec.id = Date.now();
+    let next;
+    if(ui.editingId){ next = list.map(x=>x.id===ui.editingId?rec:x); }
+    else { next = [...list, rec]; }
+    updateProject({pvDemande: next});
+    ui.mode='list'; ui.draft=null; ui.editingId=null;
+    try{ DB.flushNow(); }catch(e){}
+    notify('Enregistré ✓'); render();
+  }
+  function delRec(id){ if(confirmDelete()) updateProject({pvDemande: list.filter(x=>x.id!==id)}); }
+
+  function openScan(d){
+    try{
+      const parts=d.dataUrl.split(','); const mime=parts[0].match(/:(.*?);/)[1];
+      const bin=atob(parts[1]); const bytes=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+      window.open(URL.createObjectURL(new Blob([bytes],{type:mime})),'_blank');
+    }catch(e){ window.open(d.dataUrl,'_blank'); }
+  }
+
+  // ---- Mode édition / création ----
+  if(ui.mode==='edit'){
+    const types = pvTypes()[ui.cat];
+    if(!ui.draft){ ui.draft = pvDefaultDraft(ui.cat, types[0].key, p); }
+    const d = ui.draft;
+
+    const typeSel = el('select',{});
+    types.forEach(t=>{ const o=el('option',{value:t.key}, t.label); if(t.key===d.typeKey) o.selected=true; typeSel.appendChild(o); });
+    typeSel.onchange = e=>{ const keep={numero:d.numero,date:d.date}; ui.draft = pvDefaultDraft(ui.cat, e.target.value, p); ui.draft.numero=keep.numero; ui.draft.date=keep.date; render(); };
+
+    const numInput = Object.assign(el('input',{type:'text',value:d.numero||'',placeholder:'ex: 01/2026'}),{oninput:e=>d.numero=e.target.value});
+    const dateInput = Object.assign(el('input',{type:'date',value:d.date||today()}),{oninput:e=>d.date=e.target.value});
+    const objetInput = Object.assign(el('input',{type:'text',value:d.objet||''}),{oninput:e=>d.objet=e.target.value});
+    const corpsTa = Object.assign(el('textarea',{rows:12,style:{width:'100%',resize:'vertical',lineHeight:1.6,fontSize:13}}, d.corps||''),{oninput:e=>d.corps=e.target.value});
+
+    return div({},
+      div({style:{display:'flex',alignItems:'center',gap:10,marginBottom:14}},
+        span({style:{color:'#E8730A',cursor:'pointer',fontWeight:700},onclick:cancel},'← PV / Demande'),
+        span({style:{color:'#6B7A99'}},'›'),
+        span({style:{fontWeight:700}}, ui.editingId?'Modifier':'Nouveau '+(ui.cat==='demande'?'Demande':'PV'))
+      ),
+      div({style:{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:10,padding:'10px 14px',marginBottom:16,fontSize:12,color:'#92400E'}},
+        '✓ Les infos du marché (N° marché, OS, client, objet…) sont ajoutées automatiquement au document. Modifiez le texte si besoin.'),
+      div({className:'card',style:{padding:18}},
+        div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}},
+          div({},el('label',{className:'lbl'}, ui.cat==='demande'?'Type de la demande':'Type du PV'), typeSel),
+          div({},el('label',{className:'lbl'},'N° (facultatif)'), numInput)
+        ),
+        div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}},
+          div({},el('label',{className:'lbl'},'Date'), dateInput),
+          div({},el('label',{className:'lbl'},'Objet'), objetInput)
+        ),
+        div({style:{marginBottom:8}},el('label',{className:'lbl'},'Texte du document'), corpsTa),
+        div({style:{display:'flex',gap:10,justifyContent:'flex-end',marginTop:12,flexWrap:'wrap'}},
+          btn('Annuler','btn-gray',cancel),
+          btn('👁 Aperçu / Imprimer','btn-blue',()=>printPVDoc(d,p)),
+          btn('💾 Enregistrer','btn-orange',saveDraft)
+        )
+      )
+    );
+  }
+
+  // ---- Mode liste ----
+  const demandes = list.filter(x=>x.cat==='demande');
+  const pvs = list.filter(x=>x.cat==='pv');
+  const scans = list.filter(x=>!x.cat && x.dataUrl); // anciens scans éventuels
+
+  function ligne(rec){
+    const isScan = (!rec.cat && rec.dataUrl);
+    return div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid #E5E9F2'}},
+      div({style:{display:'flex',alignItems:'center',gap:10}},
+        span({style:{fontSize:20}}, rec.cat==='pv'?'📝':(rec.cat==='demande'?'✉️':'📄')),
+        div({},
+          div({style:{fontWeight:700}}, (rec.typeLabel||rec.nom||'Document')+(rec.numero?(' — N° '+rec.numero):'')),
+          div({style:{fontSize:11,color:'#6B7A99'}}, fmtDate(rec.date))
+        )
+      ),
+      div({style:{display:'flex',gap:6}},
+        isScan
+          ? btn('👁 Ouvrir','btn-gray',()=>openScan(rec),{style:{padding:'4px 10px',fontSize:12}})
+          : btn('👁 Imprimer','btn-gray',()=>printPVDoc(rec,p),{style:{padding:'4px 10px',fontSize:12}}),
+        isScan ? null : btn('✎','btn-blue',()=>editRec(rec),{style:{padding:'4px 8px',fontSize:12}}),
+        btn('✕','btn-red',()=>delRec(rec.id),{style:{padding:'4px 8px',fontSize:12}})
+      )
+    );
+  }
+  function bloc(titre, arr){
+    return div({style:{marginBottom:18}},
+      div({style:{fontSize:13,fontWeight:800,color:'#1A2540',margin:'4px 0 8px'}}, titre+' ('+arr.length+')'),
+      div({className:'card'}, arr.length ? div({}, ...arr.slice().reverse().map(ligne))
+        : div({style:{padding:24,textAlign:'center',color:'#6B7A99',fontSize:12}},'Aucun élément pour le moment.'))
+    );
+  }
+
+  return div({},
+    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:10}},
+      div({},div({style:{fontSize:15,fontWeight:800}},'PV / Demande'),div({style:{color:'#6B7A99',fontSize:12}}, list.length+' élément(s)')),
+      div({style:{display:'flex',gap:8,flexWrap:'wrap'}},
+        btn('✉️ Nouvelle Demande','btn-orange',()=>openNew('demande')),
+        btn('📝 Nouveau PV','btn-blue',()=>openNew('pv'))
+      )
+    ),
+    bloc('Demandes', demandes),
+    bloc('PV', pvs),
+    scans.length ? bloc('Documents scannés (ancien)', scans) : null
+  );
+}
 
 function renderBibliothequeSociete(){
   const CATS = [
