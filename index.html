@@ -611,7 +611,7 @@ function footerHTML(){
 function cachetHTML(){
   const s = getSettings();
   if(s.cachetImg && s.cachetActif!==false){
-    return `<img src="${s.cachetImg}" style="max-width:110px;max-height:110px;object-fit:contain;display:block;margin-top:4px;"/>`;
+    return `<img src="${s.cachetImg}" style="max-width:185px;max-height:185px;object-fit:contain;display:block;margin-top:4px;"/>`;
   }
   return '';
 }
@@ -2522,8 +2522,8 @@ function printPVDoc(rec, p){
     + '<div style="border:1px solid #333;padding:8px 12px;margin-bottom:18px;font-size:12px;">'+refLines.map(function(l){return '<div>'+l+'</div>';}).join('')+'</div>'
     + (rec.objet?('<div style="margin-bottom:14px;"><b>Objet : </b>'+String(rec.objet).replace(/</g,'&lt;')+'</div>'):'')
     + '<div style="margin-bottom:26px;text-align:justify;">'+corpsHtml+'</div>'
-    + '<div style="display:flex;justify-content:flex-end;margin-top:28px;"><div style="text-align:center;min-width:180px;">'
-    + '<div style="font-weight:700;margin-bottom:4px;">'+(s.nom||'')+'</div>'
+    + '<div style="display:flex;justify-content:flex-end;margin-top:28px;"><div style="text-align:center;min-width:200px;">'
+    + '<div style="font-weight:700;margin-bottom:6px;">'+(s.nom||'')+'</div>'
     + (typeof cachetHTML==='function'?cachetHTML():'')
     + '</div></div></div>';
   printDoc(html, (rec.typeLabel||'Document')+(rec.numero?(' '+rec.numero):''), {margin:'6mm 12mm 6mm 12mm', headerHTML:headerHTML(), footerHTML:footerHTML()});
