@@ -2460,14 +2460,15 @@ function pvBody(cat, key, p){
   const os = p.ordreService||'—';
   const an = String(new Date().getFullYear());
   if(cat==='demande'){
+    // Corps administratif formel (sans la formule d'appel ni la formule de politesse : elles sont ajoutées automatiquement selon le destinataire)
     switch(key){
-      case 'reception-prov': return "Nous avons l'honneur de vous informer que les travaux relatifs au marché cité en objet sont achevés.\n\nÀ cet effet, nous vous prions de bien vouloir procéder à la réception provisoire desdits travaux et de désigner la commission compétente à cette fin.\n\nDans l'attente de votre réponse favorable, veuillez agréer, Monsieur, l'expression de nos salutations distinguées.";
-      case 'reception-def':  return "Le délai de garantie relatif au marché cité en objet étant expiré, et les travaux étant maintenus en bon état, nous avons l'honneur de solliciter de votre bienveillance la réception définitive desdits travaux.\n\nVeuillez agréer, Monsieur, l'expression de nos salutations distinguées.";
-      case 'paiement':       return "Nous avons l'honneur de vous soumettre, pour règlement, le décompte relatif aux travaux exécutés dans le cadre du marché cité en objet.\n\nNous vous prions de bien vouloir procéder au mandatement des sommes dues.\n\nVeuillez agréer, Monsieur, l'expression de nos salutations distinguées.";
-      case 'prorogation':    return "En raison de (motif : intempéries / retard d'approvisionnement / ordres d'arrêt …), nous avons l'honneur de solliciter une prorogation du délai d'exécution du marché cité en objet d'une durée de ______ jours.\n\nVeuillez agréer, Monsieur, l'expression de nos salutations distinguées.";
-      case 'caution':        return "Les travaux relatifs au marché cité en objet ayant été réceptionnés définitivement, nous avons l'honneur de solliciter la mainlevée et la restitution de la caution définitive et/ou de la retenue de garantie y afférente.\n\nVeuillez agréer, Monsieur, l'expression de nos salutations distinguées.";
-      case 'reprise-os':     return "Suite à la levée des causes ayant motivé l'arrêt des travaux, nous avons l'honneur de solliciter la délivrance d'un ordre de service de reprise des travaux relatifs au marché cité en objet.\n\nVeuillez agréer, Monsieur, l'expression de nos salutations distinguées.";
-      default:               return "Nous avons l'honneur de solliciter de votre bienveillance ______ concernant le marché cité en objet.\n\nVeuillez agréer, Monsieur, l'expression de nos salutations distinguées.";
+      case 'reception-prov': return "J'ai l'honneur de porter à votre haute connaissance que les travaux relatifs au marché cité en objet ont été entièrement achevés, conformément aux prescriptions du cahier des charges.\n\nÀ cet effet, je vous saurais gré de bien vouloir ordonner la constitution de la commission compétente et de procéder à la réception provisoire desdits travaux.";
+      case 'reception-def':  return "J'ai l'honneur de porter à votre haute connaissance que le délai de garantie afférent au marché cité en objet est arrivé à expiration, les travaux ayant été maintenus en parfait état d'entretien.\n\nEn conséquence, je vous saurais gré de bien vouloir ordonner la réception définitive desdits travaux.";
+      case 'paiement':       return "J'ai l'honneur de vous transmettre, ci-joint, le décompte relatif aux travaux exécutés dans le cadre du marché cité en objet.\n\nJe vous saurais gré de bien vouloir ordonner le mandatement et le règlement des sommes dues.";
+      case 'prorogation':    return "J'ai l'honneur de solliciter de votre haute bienveillance une prorogation du délai d'exécution du marché cité en objet d'une durée de ______ jours.\n\nCette demande est motivée par : (intempéries / retard d'approvisionnement / ordres d'arrêt / ______).";
+      case 'caution':        return "J'ai l'honneur de porter à votre haute connaissance que les travaux relatifs au marché cité en objet ont fait l'objet d'une réception définitive.\n\nEn conséquence, je sollicite de votre haute bienveillance la mainlevée et la restitution de la caution définitive et/ou de la retenue de garantie y afférente.";
+      case 'reprise-os':     return "J'ai l'honneur de vous informer que les causes ayant motivé l'arrêt des travaux relatifs au marché cité en objet ont été entièrement levées.\n\nÀ cet effet, je sollicite de votre haute bienveillance la délivrance d'un ordre de service de reprise des travaux.";
+      default:               return "J'ai l'honneur de solliciter de votre haute bienveillance ______ concernant le marché cité en objet.";
     }
   } else {
     switch(key){
@@ -2481,10 +2482,21 @@ function pvBody(cat, key, p){
     }
   }
 }
-function pvDefaultDraft(cat, key, p){
+function pvDestinataires(){
+  return ['Monsieur le Directeur Général','Monsieur le Président','Monsieur le Directeur','Monsieur le Directeur Provincial','Monsieur le Directeur Régional','Madame la Directrice Générale','Madame la Présidente'];
+}
+function pvBuildCorps(cat, key, p, destinataire){
+  const core = pvBody(cat, key, p);
+  if(cat!=='demande') return core;
+  const dest = destinataire || 'Monsieur le Directeur Général';
+  // Formule d'appel + corps + formule de politesse administrative
+  return dest + ",\n\n" + core + "\n\n" + "Dans cet espoir, je vous prie d'agréer, " + dest + ", l'expression de ma très haute considération.";
+}
+function pvDefaultDraft(cat, key, p, destinataire){
   const types = pvTypes()[cat];
   const t = types.find(x=>x.key===key) || types[0];
-  return { cat, typeKey:t.key, typeLabel:t.label, numero:'', date:today(), objet:(p.objet||p.nom||''), corps:pvBody(cat, t.key, p) };
+  const dest = destinataire || 'Monsieur le Directeur Général';
+  return { cat, typeKey:t.key, typeLabel:t.label, numero:'', date:today(), objet:(p.objet||p.nom||''), destinataire:dest, corps:pvBuildCorps(cat, t.key, p, dest) };
 }
 function printPVDoc(rec, p){
   const s = getSettings();
@@ -2498,8 +2510,9 @@ function printPVDoc(rec, p){
   ].filter(Boolean);
   const corpsHtml = String(rec.corps||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>');
   const titre = ((rec.titre||rec.typeLabel||'Document')+(rec.numero?(' N° '+rec.numero):'')).toUpperCase();
+  const destName = rec.destinataire || 'Monsieur le Directeur Général';
   const dest = (rec.cat==='demande')
-    ? '<div style="margin-bottom:16px;">À l\'attention de : <b>'+mo+'</b></div>'
+    ? '<div style="margin-bottom:18px;text-align:right;">À <b>'+String(destName).replace(/</g,'&lt;')+'</b>'+(mo&&mo!=='—'?'<br><span style="font-size:12px;">'+String(mo).replace(/</g,'&lt;')+'</span>':'')+'</div>'
     : '';
   const html =
     '<div style="font-size:13px;line-height:1.7;color:#000;">'
@@ -2551,10 +2564,16 @@ function renderProjetPVDemande(p, updateProject){
     const types = pvTypes()[ui.cat];
     if(!ui.draft){ ui.draft = pvDefaultDraft(ui.cat, types[0].key, p); }
     const d = ui.draft;
+    if(ui.cat==='demande' && !d.destinataire){ d.destinataire='Monsieur le Directeur Général'; }
 
     const typeSel = el('select',{});
     types.forEach(t=>{ const o=el('option',{value:t.key}, t.label); if(t.key===d.typeKey) o.selected=true; typeSel.appendChild(o); });
-    typeSel.onchange = e=>{ const keep={numero:d.numero,date:d.date}; ui.draft = pvDefaultDraft(ui.cat, e.target.value, p); ui.draft.numero=keep.numero; ui.draft.date=keep.date; render(); };
+    typeSel.onchange = e=>{ const keep={numero:d.numero,date:d.date,destinataire:d.destinataire}; ui.draft = pvDefaultDraft(ui.cat, e.target.value, p, keep.destinataire); ui.draft.numero=keep.numero; ui.draft.date=keep.date; render(); };
+
+    // Destinataire (autorité) — uniquement pour les demandes
+    const destSel = el('select',{});
+    pvDestinataires().forEach(nom=>{ const o=el('option',{value:nom}, nom); if(nom===d.destinataire) o.selected=true; destSel.appendChild(o); });
+    destSel.onchange = e=>{ d.destinataire=e.target.value; d.corps=pvBuildCorps(ui.cat, d.typeKey, p, d.destinataire); render(); };
 
     const numInput = Object.assign(el('input',{type:'text',value:d.numero||'',placeholder:'ex: 01/2026'}),{oninput:e=>d.numero=e.target.value});
     const dateInput = Object.assign(el('input',{type:'date',value:d.date||today()}),{oninput:e=>d.date=e.target.value});
@@ -2574,6 +2593,9 @@ function renderProjetPVDemande(p, updateProject){
           div({},el('label',{className:'lbl'}, ui.cat==='demande'?'Type de la demande':'Type du PV'), typeSel),
           div({},el('label',{className:'lbl'},'N° (facultatif)'), numInput)
         ),
+        ui.cat==='demande' ? div({style:{marginBottom:14}},
+          el('label',{className:'lbl'},'Adressée à (autorité)'), destSel
+        ) : null,
         div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}},
           div({},el('label',{className:'lbl'},'Date'), dateInput),
           div({},el('label',{className:'lbl'},'Objet'), objetInput)
