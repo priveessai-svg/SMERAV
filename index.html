@@ -169,6 +169,8 @@ const DB = {
   _dirty: {},
   _retryCount: 0,
   _retryTimer: null,
+  _loaded: false,   // vrai seulement si les données ont été lues depuis le cloud
+  _lastErr: '',
   _COL: {projects:'projects',clients:'clients',factures:'factures',devis:'devis',bls:'bls',fournisseurs:'fournisseurs',bcs:'bcs',brs:'brs',facturesAchat:'factures_achat',cheques:'cheques',ouvriers:'ouvriers',specialites:'specialites',stock:'stock',paiementsClients:'paiements_clients',paiementsFourn:'paiements_fourn',settings:'settings',bibliotheque:'bibliotheque',cotations:'cotations'},
   _newColsOk: false, // vrai si les colonnes dédiées 'bibliotheque' et 'cotations' existent dans la base
 
@@ -250,11 +252,12 @@ const DB = {
       const res = await supa.from('smerav_data').select('*').eq('id','main').single();
       const data = res && res.data;
       const err  = res && res.error;
+      if(err) this._lastErr = (err.message || JSON.stringify(err)) + (err.code?(' ['+err.code+']'):'');
       if(data){ cloud = this._mapRow(data); cloudTs = Date.parse(data.updated_at||'')||0; cloudOk = true;
         this._newColsOk = Object.prototype.hasOwnProperty.call(data,'bibliotheque') && Object.prototype.hasOwnProperty.call(data,'cotations');
       }
       else if(err && (err.code==='PGRST116' || /0 rows/i.test(err.details||err.message||''))){ cloudOk = true; } // cloud joignable mais vide
-    } catch(e){ console.log('Load error:', e); }
+    } catch(e){ console.log('Load error:', e); this._lastErr = (e && e.message) || String(e); }
 
     let local=null, localTs=0;
     try {
@@ -283,6 +286,8 @@ const DB = {
     } else {
       this._cache = {};
     }
+    // Chargé = la lecture cloud a réussi (y compris base vide). Sinon : aucune sauvegarde vers le cloud.
+    this._loaded = !!cloudOk;
     return this._cache;
   },
   _syncTimer: null,
@@ -290,6 +295,8 @@ const DB = {
   _doSync(){
     const keys = Object.keys(this._dirty);
     if(!keys.length) return Promise.resolve();
+    // Sécurité : on n'envoie RIEN au cloud tant que les données réelles n'ont pas été lues
+    if(!this._loaded) return Promise.resolve();
     // On n'envoie QUE les données modifiées (charge légère) — évite d'uploader tous les projets+documents à chaque clic.
     const payload = { id:'main', updated_at:new Date().toISOString() };
     const sending = {};
@@ -472,6 +479,19 @@ function loadIntoState(cache){
 // Après connexion réussie : charger les données puis afficher l'application
 function afterAuth(){
   return DB.load().then(loadIntoState).catch(()=>{}).then(()=>{ render(); try{updateAppIcon();}catch(e){} });
+}
+// Affiché si les données n'ont pas pu être lues : on n'affiche PAS de fausses données
+function renderLoadError(){
+  const app = document.getElementById('app');
+  app.innerHTML='';
+  app.appendChild(authShell([
+    div({style:{color:'#FBBF24',fontSize:13,marginBottom:12,textAlign:'center',lineHeight:1.6}},
+      "⚠️ Impossible de charger vos données depuis le cloud. Aucune modification n'est envoyée tant que la connexion n'est pas rétablie."),
+    div({style:{color:'#6B7A99',fontSize:11,marginBottom:16,textAlign:'center',wordBreak:'break-word'}},
+      'Détail : '+(DB._lastErr||'inconnu')),
+    el('button',{style:{width:'100%',padding:'13px',background:'#E8730A',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:15,cursor:'pointer',marginBottom:10},onclick:()=>afterAuth()},'🔄 Réessayer'),
+    el('button',{style:{width:'100%',padding:'13px',background:'#1E2D4A',color:'#fff',border:'none',borderRadius:10,fontWeight:700,fontSize:14,cursor:'pointer'},onclick:()=>AUTH.logout()},'🚪 Se déconnecter')
+  ]));
 }
 
 function setState(updates){
@@ -1958,8 +1978,10 @@ function renderPointageOnly(){
 
 function render(){
   if(AUTH._recovery){ renderNewPassword(); return; }
-  if(new URLSearchParams(window.location.search).get('pointage')==='1'){ renderPointageOnly(); return; }
-  if(!AUTH.isLoggedIn()){ renderLogin(); return; }
+  const isPointage = new URLSearchParams(window.location.search).get('pointage')==='1';
+  if(!AUTH.isLoggedIn()){ if(isPointage) renderPointageOnly(); else renderLogin(); return; }
+  if(!DB._loaded){ renderLoadError(); return; }
+  if(isPointage){ renderPointageOnly(); return; }
 
   const app = document.getElementById('app');
   app.innerHTML='';
