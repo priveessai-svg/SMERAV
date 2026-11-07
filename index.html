@@ -865,6 +865,133 @@ function renderSidebar(){
 // PAGES
 // ══════════════════════════════════════════
 
+// ───── Stockage des fichiers lourds (Supabase Storage, bucket privé "smerav-files") ─────
+// Les fichiers ne sont plus stockés dans la ligne principale (ce qui la rendait très lourde).
+// Un document = { storePath, size, mime, storeOk } ; les anciens gardent dataUrl jusqu'à migration vérifiée.
+const FILES = {
+  BUCKET: 'smerav-files',
+  async _uid(){
+    try{ const {data}=await supa.auth.getSession(); return (data.session&&data.session.user&&data.session.user.id)||'anon'; }catch(e){ return 'anon'; }
+  },
+  async _toBlob(dataUrl){ const r = await fetch(dataUrl); return r.blob(); },
+  async upload(dataUrl, nom){
+    const blob = await this._toBlob(dataUrl);
+    const ext = blob.type==='application/pdf' ? 'pdf' : 'jpg';
+    const path = (await this._uid())+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
+    const {error} = await supa.storage.from(this.BUCKET).upload(path, blob, {contentType: blob.type||'application/octet-stream', upsert:false});
+    if(error) throw new Error(error.message||'envoi impossible');
+    return {storePath:path, size:blob.size, mime:blob.type};
+  },
+  async getBlob(d){
+    if(d.dataUrl) return this._toBlob(d.dataUrl);
+    const {data,error} = await supa.storage.from(this.BUCKET).download(d.storePath);
+    if(error||!data) throw new Error((error&&error.message)||'téléchargement impossible');
+    return data;
+  },
+  async open(d){
+    const w = window.open('','_blank');
+    try{
+      const b = await this.getBlob(d);
+      const u = URL.createObjectURL(b);
+      if(w) w.location.href = u; else window.open(u,'_blank');
+    }catch(e){ if(w) w.close(); alert('Impossible d\'ouvrir le document : '+e.message); }
+  },
+  async download(d){
+    try{
+      const b = await this.getBlob(d);
+      const u = URL.createObjectURL(b);
+      const a = document.createElement('a');
+      a.href = u; a.download = (d.nom||'document')+(b.type==='application/pdf'?'.pdf':'.jpg');
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(u), 60000);
+    }catch(e){ alert('Téléchargement impossible : '+e.message); }
+  },
+  // Copie chaque ancien fichier vers Storage et VÉRIFIE la copie (taille). N'efface RIEN.
+  async migrateAll(){
+    const map = new Map(); let done=0, failed=0;
+    const fix = async (key, d)=>{
+      if(!d || !d.dataUrl || d.storePath) return;
+      try{
+        const up = await this.upload(d.dataUrl, d.nom);
+        const back = await this.getBlob({storePath: up.storePath});
+        if(back.size !== up.size) throw new Error('vérification échouée');
+        map.set(key, {...d, storePath:up.storePath, size:up.size, mime:up.mime, storeOk:true});
+        done++;
+      }catch(e){ failed++; }
+    };
+    for(const p of (state.projects||[])){
+      for(const d of (p.documents||[])) await fix('p'+p.id+':doc:'+d.id, d);
+      for(const d of (p.pvDemande||[])) await fix('p'+p.id+':pv:'+d.id, d);
+    }
+    const b = state.bibliotheque||{};
+    for(const c of Object.keys(b)) for(const d of (b[c]||[])) await fix('b:'+c+':'+d.id, d);
+    return {map, done, failed};
+  }
+};
+
+// Applique des remplacements de documents sur l'état actuel (sans écraser les ajouts faits pendant ce temps)
+function applyFileChanges(map){
+  if(!map || !map.size) return;
+  const projects = (state.projects||[]).map(p=>{
+    const q = {...p};
+    if(p.documents) q.documents = p.documents.map(d=>map.get('p'+p.id+':doc:'+d.id)||d);
+    if(p.pvDemande) q.pvDemande = p.pvDemande.map(d=>map.get('p'+p.id+':pv:'+d.id)||d);
+    return q;
+  });
+  const biblio = {};
+  Object.keys(state.bibliotheque||{}).forEach(c=>{ biblio[c] = (state.bibliotheque[c]||[]).map(d=>map.get('b:'+c+':'+d.id)||d); });
+  setState({projects});
+  setState({bibliotheque: biblio});
+  if(DB._newColsOk){ DB.set('bibliotheque', biblio); }
+  else { setState({settings:{...state.settings, bibliotheque:biblio}}); }
+  try{ DB.flushNow(); }catch(e){}
+}
+function filesStatus(){
+  let pending=0, ready=0;
+  const scan = d=>{ if(!d||!d.dataUrl) return; if(!d.storePath) pending++; else if(d.storeOk) ready++; };
+  (state.projects||[]).forEach(p=>{ (p.documents||[]).forEach(scan); (p.pvDemande||[]).forEach(scan); });
+  Object.values(state.bibliotheque||{}).forEach(arr=>(arr||[]).forEach(scan));
+  return {pending, ready};
+}
+async function runMigration(){
+  if(!confirm('Copier les fichiers vers le stockage sécurisé ? Les originaux restent intacts.')) return;
+  notify('Migration en cours… ne fermez pas la page');
+  const res = await FILES.migrateAll();
+  applyFileChanges(res.map);
+  notify('Migration : '+res.done+' copié(s) et vérifié(s), '+res.failed+' échec(s)');
+  render();
+}
+function runStrip(){
+  const s = filesStatus();
+  if(!s.ready) return;
+  if(!confirm('Retirer les anciennes copies lourdes de l\'application ? Les fichiers restent dans le stockage sécurisé (déjà vérifiés). Continuer ?')) return;
+  const map = new Map();
+  const strip = (key,d)=>{ if(d && d.dataUrl && d.storePath && d.storeOk){ const n={...d}; delete n.dataUrl; map.set(key,n); } };
+  (state.projects||[]).forEach(p=>{
+    (p.documents||[]).forEach(d=>strip('p'+p.id+':doc:'+d.id, d));
+    (p.pvDemande||[]).forEach(d=>strip('p'+p.id+':pv:'+d.id, d));
+  });
+  Object.keys(state.bibliotheque||{}).forEach(c=>(state.bibliotheque[c]||[]).forEach(d=>strip('b:'+c+':'+d.id, d)));
+  applyFileChanges(map);
+  notify('Espace libéré : '+map.size+' fichier(s) ✓');
+  render();
+}
+function filesBanner(){
+  const s = filesStatus();
+  if(!s.pending && !s.ready) return null;
+  const kids = [];
+  if(s.pending) kids.push(
+    div({style:{fontWeight:800,marginBottom:6}}, '📦 '+s.pending+' fichier(s) à copier vers le stockage sécurisé'),
+    div({style:{fontSize:12,color:'#6B7A99',marginBottom:10}}, 'Ceci allège l\'application et accélère le chargement. Les originaux ne sont pas effacés.'),
+    btn('Copier et vérifier', 'btn-orange', ()=>runMigration())
+  );
+  if(s.ready) kids.push(
+    div({style:{fontWeight:800,marginTop:s.pending?14:0,marginBottom:6}}, '✅ '+s.ready+' fichier(s) copiés et vérifiés'),
+    btn('Libérer l\'espace de l\'application', 'btn-blue', ()=>runStrip())
+  );
+  return div({className:'card',style:{padding:16,marginBottom:20,borderLeft:'4px solid #E8730A'}}, ...kids);
+}
+
 function renderDashboard(){
   const totalBudget = state.projects.reduce((s,p)=>s+p.budget,0);
   const totalClients = state.clients.length;
@@ -873,6 +1000,7 @@ function renderDashboard(){
 
   return div({},
     div({style:{fontSize:22,fontWeight:900,marginBottom:20}},'Tableau de Bord'),
+    filesBanner(),
     div({className:'grid-3',style:{marginBottom:20}},
       ...([
         ['🏗 Projets actifs', state.projects.filter(p=>p.statut==='En cours').length, C.blue],
@@ -1512,16 +1640,20 @@ function renderParametres(){
         if(docCount===0){ alert('Aucun document à exporter pour le moment.'); return; }
         notify('Préparation du ZIP…');
         const zip=new JSZip();
-        (state.projects||[]).forEach(p=>{
+        const addZ = async (path, d)=>{
+          try{ const b = await FILES.getBlob(d); zip.file(path+'.'+(b.type==='application/pdf'?'pdf':'jpg'), b); }
+          catch(e){ zip.file(path+'.ERREUR.txt', 'Fichier non récupéré : '+e.message); }
+        };
+        for(const p of (state.projects||[])){
           const folder='Projets/'+sanitize(p.ref||p.nom||('projet-'+p.id));
-          (p.documents||[]).forEach((d,i)=>{ zip.file(folder+'/'+sanitize(d.nom)+'-'+(i+1)+'.'+extOf(d.dataUrl), b64(d.dataUrl), {base64:true}); });
-          (p.pvDemande||[]).forEach((d,i)=>{ zip.file(folder+'/PV-Demande/'+sanitize(d.nom)+'-'+(i+1)+'.'+extOf(d.dataUrl), b64(d.dataUrl), {base64:true}); });
-        });
+          let i=0; for(const d of (p.documents||[])){ i++; await addZ(folder+'/'+sanitize(d.nom)+'-'+i, d); }
+          i=0; for(const d of (p.pvDemande||[])){ i++; await addZ(folder+'/PV-Demande/'+sanitize(d.nom)+'-'+i, d); }
+        }
         const biblio=(state.bibliotheque||{});
         const labels={administratif:'Administratif',technique:'Technique',financier:'Financier',additif:'Additif'};
-        Object.keys(biblio).forEach(cat=>{
-          (biblio[cat]||[]).forEach((d,i)=>{ zip.file('Bibliotheque/'+(labels[cat]||cat)+'/'+sanitize(d.nom)+'-'+(i+1)+'.'+extOf(d.dataUrl), b64(d.dataUrl), {base64:true}); });
-        });
+        for(const cat of Object.keys(biblio)){
+          let i=0; for(const d of (biblio[cat]||[])){ i++; await addZ('Bibliotheque/'+(labels[cat]||cat)+'/'+sanitize(d.nom)+'-'+i, d); }
+        }
         try{
           const blob=await zip.generateAsync({type:'blob'});
           const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
@@ -2380,19 +2512,17 @@ function renderProjetDocuments(p, updateProject){
           btn('Annuler','btn-gray',()=>setState({modal:null})),
           btn('Enregistrer','btn-orange',()=>{
             if(!nomVal.trim()){alert('Nom obligatoire');return;}
-            if(isPdf){
-              const newDoc = {id:Date.now(), nom:nomVal.trim(), dataUrl:fileData, date:today()};
-              updateProject({documents:[...docs,newDoc]});
-              setState({modal:null});
-              notify('Document enregistré ✓');
-            } else {
-              buildPdfFromImage(fileData,(dataUrl)=>{
-                const newDoc = {id:Date.now(), nom:nomVal.trim(), dataUrl, date:today()};
+            const finish = async (dataUrl)=>{
+              try{
+                notify('Envoi vers le stockage…');
+                const up = await FILES.upload(dataUrl, nomVal.trim());
+                const newDoc = {id:Date.now(), nom:nomVal.trim(), storePath:up.storePath, size:up.size, mime:up.mime, storeOk:true, date:today()};
                 updateProject({documents:[...docs,newDoc]});
                 setState({modal:null});
                 notify('Document enregistré ✓');
-              });
-            }
+              }catch(err){ alert('Échec de l\'envoi. Rien n\'a été perdu, réessayez.\n'+err.message); }
+            };
+            if(isPdf){ finish(fileData); } else { buildPdfFromImage(fileData, finish); }
           })
         )
       );
@@ -2404,25 +2534,8 @@ function renderProjetDocuments(p, updateProject){
   const fileInput = el('input',{type:'file',accept:'image/*,application/pdf',style:{display:'none'}});
   fileInput.onchange = e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); e.target.value=''; };
 
-  function openDoc(d){
-    try {
-      const parts = d.dataUrl.split(',');
-      const mime = parts[0].match(/:(.*?);/)[1];
-      const bin = atob(parts[1]);
-      const bytes = new Uint8Array(bin.length);
-      for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
-      const blob = new Blob([bytes],{type:mime});
-      const blobUrl = URL.createObjectURL(blob);
-      window.open(blobUrl,'_blank');
-    } catch(e){
-      window.open(d.dataUrl,'_blank');
-    }
-  }
-  function downloadDoc(d){
-    const a = document.createElement('a');
-    a.href = d.dataUrl; a.download = d.nom+'.pdf';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  }
+  function openDoc(d){ FILES.open(d); }
+  function downloadDoc(d){ FILES.download(d); }
 
   return div({},
     fileInput,
@@ -2572,14 +2685,7 @@ function renderProjetPVDemande(p, updateProject){
   }
   function delRec(id){ if(confirmDelete()) updateProject({pvDemande: list.filter(x=>x.id!==id)}); }
 
-  function openScan(d){
-    try{
-      const parts=d.dataUrl.split(','); const mime=parts[0].match(/:(.*?);/)[1];
-      const bin=atob(parts[1]); const bytes=new Uint8Array(bin.length);
-      for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
-      window.open(URL.createObjectURL(new Blob([bytes],{type:mime})),'_blank');
-    }catch(e){ window.open(d.dataUrl,'_blank'); }
-  }
+  function openScan(d){ FILES.open(d); }
 
   // ---- Mode édition / création ----
   if(ui.mode==='edit'){
@@ -2635,10 +2741,10 @@ function renderProjetPVDemande(p, updateProject){
   // ---- Mode liste ----
   const demandes = list.filter(x=>x.cat==='demande');
   const pvs = list.filter(x=>x.cat==='pv');
-  const scans = list.filter(x=>!x.cat && x.dataUrl); // anciens scans éventuels
+  const scans = list.filter(x=>!x.cat && (x.dataUrl||x.storePath)); // anciens scans éventuels
 
   function ligne(rec){
-    const isScan = (!rec.cat && rec.dataUrl);
+    const isScan = (!rec.cat && (rec.dataUrl||rec.storePath));
     return div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderBottom:'1px solid #E5E9F2'}},
       div({style:{display:'flex',alignItems:'center',gap:10}},
         span({style:{fontSize:20}}, rec.cat==='pv'?'📝':(rec.cat==='demande'?'✉️':'📄')),
@@ -2757,11 +2863,15 @@ function renderBibliothequeSociete(){
           btn('Annuler','btn-gray',()=>setState({modal:null})),
           btn('Enregistrer','btn-orange',()=>{
             if(!nomVal.trim()){alert('Nom obligatoire');return;}
-            const save = (dataUrl)=>{
-              addDoc(catKey, {id:Date.now(), nom:nomVal.trim(), dataUrl, date:today()});
-              setState({modal:null});
-              try{ DB.flushNow(); }catch(e){}
-              notify('Document ajouté ✓');
+            const save = async (dataUrl)=>{
+              try{
+                notify('Envoi vers le stockage…');
+                const up = await FILES.upload(dataUrl, nomVal.trim());
+                addDoc(catKey, {id:Date.now(), nom:nomVal.trim(), storePath:up.storePath, size:up.size, mime:up.mime, storeOk:true, date:today()});
+                setState({modal:null});
+                try{ DB.flushNow(); }catch(e){}
+                notify('Document ajouté ✓');
+              }catch(err){ alert('Échec de l\'envoi. Rien n\'a été perdu, réessayez.\n'+err.message); }
             };
             if(isPdf){
               if(fileData.length > 4*1024*1024){
@@ -2779,22 +2889,8 @@ function renderBibliothequeSociete(){
     reader.readAsDataURL(file);
   }
 
-  function openDoc(d){
-    try {
-      const parts = d.dataUrl.split(',');
-      const mime = parts[0].match(/:(.*?);/)[1];
-      const bin = atob(parts[1]);
-      const bytes = new Uint8Array(bin.length);
-      for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
-      const blob = new Blob([bytes],{type:mime});
-      window.open(URL.createObjectURL(blob),'_blank');
-    } catch(e){ window.open(d.dataUrl,'_blank'); }
-  }
-  function downloadDoc(d){
-    const a = document.createElement('a');
-    a.href = d.dataUrl; a.download = d.nom+'.pdf';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  }
+  function openDoc(d){ FILES.open(d); }
+  function downloadDoc(d){ FILES.download(d); }
 
   // ── Vue d'une partie (dossier ouvert) ──────────────────
   if(openCat){
