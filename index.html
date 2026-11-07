@@ -149,12 +149,9 @@ function numToWords(n){
 // ══════════════════════════════════════════
 // CONFIRM DELETE WITH PASSWORD
 // ══════════════════════════════════════════
+// Confirmation de suppression (l'utilisateur est déjà connecté de façon sécurisée ; aucun secret dans le code)
 function confirmDelete(){
-  const pwd = prompt('🔐 Entrez le mot de passe pour supprimer :');
-  if(pwd === null) return false;
-  if(pwd === 'Ksiksou1992') return true;
-  alert('❌ Mot de passe incorrect !');
-  return false;
+  return confirm('🗑️ Confirmer la suppression ? Cette action est définitive.');
 }
 
 // ══════════════════════════════════════════
@@ -459,9 +456,9 @@ function updateAppIcon(){
   }catch(e){}
 }
 
-// Load from Supabase on start
-DB.load().then(cache => {
-  if(Object.keys(cache).length > 0){
+// Charge les données dans l'état (appelé uniquement après connexion)
+function loadIntoState(cache){
+  if(cache && Object.keys(cache).length > 0){
     if(cache.settings && Object.keys(cache.settings).length>0) state.settings = cache.settings;
     if(cache.projects && cache.projects.length>0) state.projects = cache.projects;
     ['clients','factures','devis','bls','fournisseurs','bcs','brs','facturesAchat',
@@ -471,9 +468,11 @@ DB.load().then(cache => {
     if(cache.bibliotheque!==undefined) state.bibliotheque = cache.bibliotheque||{};
     if(cache.cotations!==undefined) state.cotations = cache.cotations||[];
   }
-  render();
-  updateAppIcon();
-});
+}
+// Après connexion réussie : charger les données puis afficher l'application
+function afterAuth(){
+  return DB.load().then(loadIntoState).catch(()=>{}).then(()=>{ render(); try{updateAppIcon();}catch(e){} });
+}
 
 function setState(updates){
   Object.assign(state, updates);
@@ -1415,13 +1414,7 @@ function renderParametres(){
       ),
       div({style:{borderTop:'1px solid #E5E9F2',paddingTop:24,marginTop:24}},
         div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',letterSpacing:1,marginBottom:16}},'ACCÈS RESTREINT — CHEF DE CHANTIER (Pointage uniquement)'),
-        div({style:{fontSize:12,color:'#6B7A99',marginBottom:14}},"Donnez ce lien et ce mot de passe au chef de chantier. Il pourra uniquement cocher les présences (Pointage) — sans accéder au reste de l'application. Tout ce qu'il coche apparaît immédiatement dans Fiches de paie."),
-        div({className:'grid-2'},
-          div({},el('label',{className:'lbl'},'Mot de passe Chef de Chantier'),
-            Object.assign(el('input',{type:'text',value:s.chefPass||'chantier2026'}),{oninput:e=>{s.chefPass=e.target.value;}})
-          ),
-        ),
-        btn('💾 Enregistrer le mot de passe','btn-gray',()=>{saveSettings();notify('Mot de passe enregistré ✓');},{style:{marginTop:10,fontSize:12}}),
+        div({style:{fontSize:12,color:'#6B7A99',marginBottom:14,lineHeight:1.6}},"Pour donner accès au pointage : créez un compte pour le chef de chantier dans Supabase (Authentication → Users → Add user). Le chef se connecte avec cet email et ce mot de passe sur le lien ?pointage=1. Le mot de passe n'est plus stocké dans le programme."),
         div({style:{marginTop:16,padding:14,background:'#F8FAFD',borderRadius:10,border:'1px solid #E5E9F2'}},
           div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',marginBottom:6}},'LIEN À PARTAGER AU CHEF DE CHANTIER'),
           div({style:{fontSize:13,fontWeight:700,color:'#2563EB',wordBreak:'break-all'}}, window.location.origin+window.location.pathname+'?pointage=1')
@@ -1452,7 +1445,7 @@ function renderParametres(){
       const docCount = (state.projects||[]).reduce((a,p)=>a+((p.documents||[]).length)+((p.pvDemande||[]).length),0) + Object.values((state.bibliotheque||{})).reduce((a,arr)=>a+((arr||[]).length),0);
 
       const COL_MAP = {projects:'projects',clients:'clients',factures:'factures',devis:'devis',bls:'bls',fournisseurs:'fournisseurs',bcs:'bcs',brs:'brs',facturesAchat:'factures_achat',cheques:'cheques',ouvriers:'ouvriers',specialites:'specialites',stock:'stock',paiementsClients:'paiements_clients',paiementsFourn:'paiements_fourn',settings:'settings',bibliotheque:'bibliotheque',cotations:'cotations'};
-      const LOCAL_KEYS = ['smerav_pwd','smerav_email','smerav_secq','smerav_seca'];
+      const LOCAL_KEYS = []; // aucun secret (mot de passe) dans la sauvegarde
       async function doBackup(){
         notify('Préparation de la sauvegarde…');
         const data={}; KEYS_BK.forEach(k=>{ data[k]=state[k]; });
@@ -1704,139 +1697,135 @@ function renderContent(){
 // ══════════════════════════════════════════
 // LOGIN SYSTEM
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// LOGIN SYSTEM — Supabase Auth (vérification côté serveur)
+// ══════════════════════════════════════════
 const AUTH = {
-  user: 'smerav',
-  pass: localStorage.getItem('smerav_pwd') || 'Ksiksou1992',
-  email: localStorage.getItem('smerav_email') || '',
-  secQuestion: localStorage.getItem('smerav_secq') || '',
-  secAnswer: localStorage.getItem('smerav_seca') || '',
-  isLoggedIn: () => localStorage.getItem('smerav_auth') === 'ok',
-  login: (u, p) => {
-    const uOk = (u === AUTH.user) || (AUTH.email && u.trim().toLowerCase() === AUTH.email.trim().toLowerCase());
-    if(uOk && p === AUTH.pass){
-      localStorage.setItem('smerav_auth','ok');
-      return true;
-    }
-    return false;
+  _ok: false,
+  _recovery: false,
+  _email: '',
+  isLoggedIn: () => AUTH._ok,
+  login: async (email, pass) => {
+    try{
+      const { data, error } = await supa.auth.signInWithPassword({ email: (email||'').trim(), password: pass||'' });
+      if(error || !data || !data.session){
+        return { ok:false, msg: (error && error.message && /invalid/i.test(error.message)) ? 'Email ou mot de passe incorrect' : ((error && error.message) || 'Connexion refusée') };
+      }
+      AUTH._ok = true;
+      AUTH._email = data.session.user.email || '';
+      AUTH._clearLegacySecrets();
+      return { ok:true };
+    }catch(e){ return { ok:false, msg:'Connexion impossible — vérifiez internet' }; }
   },
-  logout: () => { localStorage.removeItem('smerav_auth'); render(); }
+  // Supprime les anciens secrets stockés en clair dans le navigateur
+  _clearLegacySecrets: () => {
+    ['smerav_pwd','smerav_email','smerav_secq','smerav_seca','smerav_auth'].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+  },
+  logout: async () => {
+    try{ await supa.auth.signOut(); }catch(e){}
+    try{ if(DB._idb) DB._idb.close(); }catch(e){}
+    try{ sessionStorage.removeItem('smerav_nav'); }catch(e){}
+    let done = false;
+    const go = ()=>{ if(!done){ done=true; location.reload(); } };
+    try{
+      const rq = indexedDB.deleteDatabase('smerav_local');
+      rq.onsuccess = go; rq.onerror = go; rq.onblocked = go;
+    }catch(e){ go(); }
+    setTimeout(go, 1500);
+  }
 };
+
+function authShell(children){
+  return div({style:{minHeight:'100vh',background:'#0F1628',display:'flex',alignItems:'center',justifyContent:'center',padding:20}},
+    div({style:{background:'#162030',borderRadius:20,padding:'40px 36px',width:'100%',maxWidth:380,border:'1px solid #1E2D4A',boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}},
+      div({style:{textAlign:'center',marginBottom:28}},
+        div({style:{fontSize:22,fontWeight:800,color:'#E8730A',letterSpacing:1}}, 'SMERAV'),
+        div({style:{fontSize:12,color:'#6B7A99',marginTop:2}}, 'Gestion des Projets et Administration')
+      ),
+      ...children
+    )
+  );
+}
+const AUTH_INPUT = {marginBottom:12,padding:'12px 16px',fontSize:15,borderRadius:10,border:'2px solid #1E2D4A',background:'#1A2540',color:'#fff',outline:'none',width:'100%'};
 
 function renderLogin(){
   const app = document.getElementById('app');
   app.innerHTML='';
-  let errMsg = null;
+  let busy = false;
 
-  const draw = () => {
-    app.innerHTML='';
-    const userInput = el('input',{type:'text',placeholder:'Nom d\'utilisateur ou email',style:{marginBottom:12,padding:'12px 16px',fontSize:15,borderRadius:10,border:'2px solid #1E2D4A',background:'#1A2540',color:'#fff',outline:'none',width:'100%'}});
-    const passInput = el('input',{type:'password',placeholder:'Mot de passe',style:{marginBottom:16,padding:'12px 16px',fontSize:15,borderRadius:10,border:'2px solid #1E2D4A',background:'#1A2540',color:'#fff',outline:'none',width:'100%'}});
+  const emailInput = el('input',{type:'email',placeholder:'Adresse email',autocomplete:'username',style:AUTH_INPUT});
+  const passInput  = el('input',{type:'password',placeholder:'Mot de passe',autocomplete:'current-password',style:{...AUTH_INPUT,marginBottom:16}});
+  const errBox = div({style:{color:'#EF4444',fontSize:12,marginBottom:12,textAlign:'center',minHeight:16}});
 
-    const doLogin = () => {
-      if(AUTH.login(userInput.value.trim(), passInput.value.trim())){
-        render();
-      } else {
-        errMsg = '❌ Nom d\'utilisateur ou mot de passe incorrect';
-        draw();
-      }
+  const doLogin = async ()=>{
+    if(busy) return;
+    if(!emailInput.value.trim() || !passInput.value){ errBox.textContent='⚠️ Remplissez l\'email et le mot de passe'; return; }
+    busy = true; errBox.style.color='#6B7A99'; errBox.textContent='⏳ Connexion...';
+    const r = await AUTH.login(emailInput.value, passInput.value);
+    busy = false;
+    if(r.ok){ await afterAuth(); }
+    else { errBox.style.color='#EF4444'; errBox.textContent='❌ '+r.msg; passInput.value=''; }
+  };
+  passInput.addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+
+  const showForgot = ()=>{
+    const em = el('input',{type:'email',placeholder:'Votre adresse email',style:AUTH_INPUT});
+    const msg = div({style:{fontSize:12,textAlign:'center',marginBottom:12,minHeight:16,color:'#6B7A99'}});
+    const send = async ()=>{
+      const v = em.value.trim();
+      if(!v){ msg.textContent='Entrez votre adresse email'; return; }
+      msg.textContent='⏳ Envoi...';
+      const { error } = await supa.auth.resetPasswordForEmail(v, { redirectTo: location.origin + location.pathname });
+      msg.style.color = error ? '#EF4444' : '#10B981';
+      msg.textContent = error ? ('❌ '+error.message) : '✅ Si cet email existe, un lien de réinitialisation vient d\'être envoyé.';
     };
-
-    passInput.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-
-    const forgotLink = div({style:{textAlign:'center',marginTop:12,fontSize:12,color:'#6B7A99',cursor:'pointer',textDecoration:'underline'}, onclick:()=>drawRecovery()}, 'Mot de passe oublié ?');
-
-    app.appendChild(
-      div({style:{minHeight:'100vh',background:'#0F1628',display:'flex',alignItems:'center',justifyContent:'center',padding:20}},
-        div({style:{background:'#162030',borderRadius:20,padding:'40px 36px',width:'100%',maxWidth:380,border:'1px solid #1E2D4A',boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}},
-          div({style:{textAlign:'center',marginBottom:28}},
-            div({style:{fontSize:22,fontWeight:800,color:'#E8730A',letterSpacing:1}}, 'SMERAV'),
-            div({style:{fontSize:12,color:'#6B7A99',marginTop:2}}, 'Gestion des Projets et Administration')
-          ),
-          userInput,
-          passInput,
-          errMsg ? div({style:{color:'#EF4444',fontSize:12,marginBottom:12,textAlign:'center'}}, errMsg) : null,
-          el('button',{
-            style:{width:'100%',padding:'13px',background:'#E8730A',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:15,cursor:'pointer'},
-            onclick: doLogin
-          }, '🔐 Se connecter'),
-          forgotLink
-        )
-      )
-    );
+    app.innerHTML='';
+    app.appendChild(authShell([
+      em,
+      msg,
+      el('button',{style:{width:'100%',padding:'13px',background:'#2563EB',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:15,cursor:'pointer',marginBottom:10},onclick:send},'📧 Envoyer le lien'),
+      div({style:{textAlign:'center',marginTop:12,fontSize:12,color:'#6B7A99',cursor:'pointer',textDecoration:'underline'},onclick:()=>renderLogin()},'← Retour à la connexion')
+    ]));
   };
 
-  const drawRecovery = () => {
-    app.innerHTML='';
-    let recMsg = null;
-    let step = AUTH.secQuestion ? 'answer' : 'none'; // 'none' = no security question configured
-    const answerInput = el('input',{type:'text',placeholder:'Votre réponse',style:{marginBottom:12,padding:'12px 16px',fontSize:15,borderRadius:10,border:'2px solid #1E2D4A',background:'#1A2540',color:'#fff',outline:'none',width:'100%'}});
-    const newPassInput = el('input',{type:'password',placeholder:'Nouveau mot de passe',style:{marginBottom:12,padding:'12px 16px',fontSize:15,borderRadius:10,border:'2px solid #1E2D4A',background:'#1A2540',color:'#fff',outline:'none',width:'100%',display:'none'}});
-    let verified = false;
+  app.appendChild(authShell([
+    emailInput,
+    passInput,
+    errBox,
+    el('button',{style:{width:'100%',padding:'13px',background:'#E8730A',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:15,cursor:'pointer'},onclick:doLogin},'🔐 Se connecter'),
+    div({style:{textAlign:'center',marginTop:12,fontSize:12,color:'#6B7A99',cursor:'pointer',textDecoration:'underline'},onclick:showForgot},'Mot de passe oublié ?')
+  ]));
+}
 
-    const checkAnswer = () => {
-      if(answerInput.value.trim().toLowerCase() === (AUTH.secAnswer||'').trim().toLowerCase() && AUTH.secAnswer){
-        verified = true;
-        newPassInput.style.display='block';
-        recMsg = '✅ Réponse correcte — entrez votre nouveau mot de passe';
-      } else {
-        recMsg = '❌ Réponse incorrecte';
-      }
-      drawRecoveryBody();
-    };
-
-    function drawRecoveryBody(){
-      body.innerHTML='';
-      body.appendChild(div({style:{textAlign:'center',marginBottom:24}},
-        div({style:{fontSize:22,fontWeight:800,color:'#E8730A',letterSpacing:1}}, 'SMERAV'),
-        div({style:{fontSize:12,color:'#6B7A99',marginTop:2}}, 'Récupération du mot de passe')
-      ));
-      if(step==='none'){
-        body.appendChild(div({style:{color:'#6B7A99',fontSize:13,marginBottom:16,textAlign:'center'}},
-          "Aucune question de sécurité n'a été configurée. Rendez-vous dans Mon Profil > Sécurité (une fois connecté) pour en configurer une, afin de pouvoir récupérer votre mot de passe la prochaine fois."
-        ));
-      } else {
-        body.appendChild(div({style:{color:'#fff',fontSize:13,marginBottom:14,fontWeight:600}}, AUTH.secQuestion));
-        body.appendChild(answerInput);
-        if(!verified){
-          body.appendChild(el('button',{style:{width:'100%',padding:'12px',background:'#2563EB',color:'#fff',border:'none',borderRadius:10,fontWeight:700,fontSize:14,cursor:'pointer',marginBottom:10},onclick:checkAnswer},'Vérifier'));
-        } else {
-          body.appendChild(newPassInput);
-          body.appendChild(el('button',{style:{width:'100%',padding:'12px',background:'#10B981',color:'#fff',border:'none',borderRadius:10,fontWeight:700,fontSize:14,cursor:'pointer',marginBottom:10},onclick:()=>{
-            if(!newPassInput.value){recMsg='Entrez un nouveau mot de passe';drawRecoveryBody();return;}
-            AUTH.pass = newPassInput.value;
-            localStorage.setItem('smerav_pwd', newPassInput.value);
-            recMsg = '✅ Mot de passe réinitialisé — vous pouvez vous connecter';
-            draw();
-          }},'Réinitialiser le mot de passe'));
-        }
-      }
-      if(recMsg) body.appendChild(div({style:{color:verified?'#10B981':'#EF4444',fontSize:12,marginBottom:10,textAlign:'center'}}, recMsg));
-      body.appendChild(div({style:{textAlign:'center',marginTop:8,fontSize:12,color:'#6B7A99',cursor:'pointer',textDecoration:'underline'},onclick:()=>draw()}, '← Retour à la connexion'));
-    }
-
-    const body = div({});
-    app.appendChild(
-      div({style:{minHeight:'100vh',background:'#0F1628',display:'flex',alignItems:'center',justifyContent:'center',padding:20}},
-        div({style:{background:'#162030',borderRadius:20,padding:'40px 36px',width:'100%',maxWidth:380,border:'1px solid #1E2D4A',boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}},
-          body
-        )
-      )
-    );
-    drawRecoveryBody();
+// Écran "nouveau mot de passe" (après clic sur le lien reçu par email)
+function renderNewPassword(){
+  const app = document.getElementById('app');
+  app.innerHTML='';
+  const p1 = el('input',{type:'password',placeholder:'Nouveau mot de passe (8 caractères min.)',style:AUTH_INPUT});
+  const p2 = el('input',{type:'password',placeholder:'Confirmer le mot de passe',style:{...AUTH_INPUT,marginBottom:16}});
+  const msg = div({style:{color:'#EF4444',fontSize:12,marginBottom:12,textAlign:'center',minHeight:16}});
+  const go = async ()=>{
+    if(p1.value.length<8){ msg.textContent='Minimum 8 caractères'; return; }
+    if(p1.value!==p2.value){ msg.textContent='Les mots de passe ne correspondent pas'; return; }
+    const { error } = await supa.auth.updateUser({ password: p1.value });
+    if(error){ msg.textContent='❌ '+error.message; return; }
+    AUTH._recovery = false;
+    alert('✅ Mot de passe modifié. Reconnectez-vous.');
+    try{ await supa.auth.signOut(); }catch(e){}
+    location.replace(location.origin + location.pathname);
   };
-  draw();
+  app.appendChild(authShell([
+    p1, p2, msg,
+    el('button',{style:{width:'100%',padding:'13px',background:'#10B981',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:15,cursor:'pointer'},onclick:go},'Enregistrer le mot de passe')
+  ]));
 }
 
 // ── ACCÈS RESTREINT "CHEF DE CHANTIER" (Pointage uniquement) ──────────────
+// Le chef se connecte avec SON compte Supabase (email + mot de passe), créé par l'admin.
 const CHEF_AUTH = {
-  isLoggedIn: () => localStorage.getItem('smerav_chef_auth') === 'ok',
-  login: (p) => {
-    const s = getSettings();
-    const chefPass = s.chefPass || 'chantier2026';
-    if(p === chefPass){ localStorage.setItem('smerav_chef_auth','ok'); return true; }
-    return false;
-  },
-  logout: () => { localStorage.removeItem('smerav_chef_auth'); renderPointageOnly(); }
+  isLoggedIn: () => AUTH.isLoggedIn(),
+  login: async (email, pass) => AUTH.login(email, pass),
+  logout: async () => { await AUTH.logout(); }
 };
 
 function renderPointageOnly(){
@@ -1844,11 +1833,18 @@ function renderPointageOnly(){
   app.innerHTML='';
 
   if(!CHEF_AUTH.isLoggedIn()){
-    let errMsg=null;
-    const passInput = el('input',{type:'password',placeholder:'Mot de passe',style:{marginBottom:12,padding:'12px 16px',fontSize:15,borderRadius:10,border:'2px solid #1E2D4A',background:'#1A2540',color:'#fff',outline:'none',width:'100%'}});
-    const doLogin=()=>{
-      if(CHEF_AUTH.login(passInput.value.trim())){ renderPointageOnly(); }
-      else { errMsg='❌ Mot de passe incorrect'; renderPointageOnly(); }
+    const emailInput = el('input',{type:'email',placeholder:'Email du chef de chantier',autocomplete:'username',style:{marginBottom:12,padding:'12px 16px',fontSize:15,borderRadius:10,border:'2px solid #1E2D4A',background:'#1A2540',color:'#fff',outline:'none',width:'100%'}});
+    const passInput = el('input',{type:'password',placeholder:'Mot de passe',autocomplete:'current-password',style:{marginBottom:12,padding:'12px 16px',fontSize:15,borderRadius:10,border:'2px solid #1E2D4A',background:'#1A2540',color:'#fff',outline:'none',width:'100%'}});
+    const errBox = div({style:{color:'#EF4444',fontSize:12,marginBottom:12,textAlign:'center',minHeight:16}});
+    let busy=false;
+    const doLogin=async()=>{
+      if(busy) return;
+      if(!emailInput.value.trim()||!passInput.value){ errBox.textContent='⚠️ Remplissez les champs'; return; }
+      busy=true; errBox.style.color='#6B7A99'; errBox.textContent='⏳ Connexion...';
+      const r = await CHEF_AUTH.login(emailInput.value, passInput.value);
+      busy=false;
+      if(r.ok){ await afterAuth(); }
+      else { errBox.style.color='#EF4444'; errBox.textContent='❌ '+r.msg; passInput.value=''; }
     };
     passInput.addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
     app.appendChild(
@@ -1858,8 +1854,9 @@ function renderPointageOnly(){
             div({style:{fontSize:20,fontWeight:800,color:'#E8730A'}},'SMERAV'),
             div({style:{fontSize:12,color:'#6B7A99',marginTop:2}},'Pointage — Chef de Chantier')
           ),
+          emailInput,
           passInput,
-          errMsg?div({style:{color:'#EF4444',fontSize:12,marginBottom:12,textAlign:'center'}},errMsg):null,
+          errBox,
           el('button',{style:{width:'100%',padding:'13px',background:'#E8730A',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:15,cursor:'pointer'},onclick:doLogin},'🔐 Se connecter')
         )
       )
@@ -1960,6 +1957,7 @@ function renderPointageOnly(){
 }
 
 function render(){
+  if(AUTH._recovery){ renderNewPassword(); return; }
   if(new URLSearchParams(window.location.search).get('pointage')==='1'){ renderPointageOnly(); return; }
   if(!AUTH.isLoggedIn()){ renderLogin(); return; }
 
@@ -5068,70 +5066,15 @@ function renderProfil(){
   const editing = renderProfil._editing;
   let ef = editing ? {...s} : null;
   let newPwd = '', confirmPwd = '';
-  let secQ = AUTH.secQuestion||'', secA = AUTH.secAnswer||'';
-  let emailVal = AUTH.email||'';
 
-  function inp2(key, type='text', placeholder=''){
-    const i = el('input',{type,value:ef?ef[key]||'':'',placeholder,
-      style:{padding:'10px 14px',fontSize:14,borderRadius:8,border:'1.5px solid #E5E9F2',background:'#F8FAFD',color:'#1A2540',outline:'none',width:'100%'}});
-    i.oninput = e => { if(ef) ef[key] = type==='number'?+e.target.value:e.target.value; };
-    return i;
-  }
-
-  function row(label, value){
-    return div({style:{marginBottom:20}},
-      div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',letterSpacing:0.5,marginBottom:6}}, label),
-      div({style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',background:'#F8FAFD',borderRadius:10,border:'1px solid #E5E9F2'}},
-        div({style:{display:'flex',alignItems:'center',gap:10}},
-          span({style:{fontSize:18}}, label.includes('NOM')?'🏢':label.includes('EMAIL')?'✉️':label.includes('TÉL')?'📞':label.includes('ADRESSE')?'📍':label.includes('RC')?'🔢':label.includes('ICE')?'🆔':label.includes('TVA')?'💰':'📋'),
-          span({style:{fontWeight:600,fontSize:14,color:'#1A2540'}}, value||'—')
-        ),
-        span({style:{color:'#6B7A99',fontSize:18,cursor:'pointer'}}, '›')
-      )
-    );
-  }
-
-  // Info tab content
-  const infoContent = editing
-    ? div({},
-        ...[
-          ['Nom de l\'entreprise','nom'],['Téléphone','tel'],['Email','email'],
-          ['Adresse','adresse'],['RC','rc'],['ICE','ice'],['IF','if_'],
-          ['CNSS','cnss'],['RIB','rib'],['TVA (%)','tva'],
-        ].map(([label,key]) =>
-          div({style:{marginBottom:14}},
-            div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',marginBottom:5}}, label),
-            inp2(key, key==='tva'?'number':'text')
-          )
-        ),
-        div({style:{display:'flex',gap:10,marginTop:10}},
-          el('button',{onclick:()=>{setState({settings:{...state.settings,...ef}});renderProfil._editing=false;notify('Informations mises à jour ✓');},
-            style:{flex:1,padding:'12px',background:'#10B981',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:14,cursor:'pointer'}}, '💾 Enregistrer'),
-          el('button',{onclick:()=>{renderProfil._editing=false;render();},
-            style:{flex:1,padding:'12px',background:'#F4F6FA',color:'#6B7A99',border:'none',borderRadius:10,fontWeight:700,fontSize:14,cursor:'pointer'}}, 'Annuler')
-        )
-      )
-    : div({},
-        row('NOM DE L\'ENTREPRISE', s.nom),
-        row('EMAIL DE CONNEXION', s.email),
-        row('TÉLÉPHONE', s.tel),
-        row('ADRESSE', s.adresse),
-        row('RC', s.rc),
-        row('ICE', s.ice),
-        row('IF', s.if_),
-        row('CNSS', s.cnss),
-        row('RIB', s.rib),
-        row('TVA', (s.tva||20)+'%')
-      );
-
-  // Security tab
+  // Security tab (Supabase Auth)
   const secContent = div({},
     div({style:{display:'flex',alignItems:'center',gap:10,marginBottom:24}},
       span({style:{fontSize:20}}, '🔑'),
       span({style:{fontWeight:700,fontSize:15,color:'#1A2540'}}, 'MODIFIER LE MOT DE PASSE')
     ),
     div({style:{marginBottom:16}},
-      div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',marginBottom:6}}, 'NOUVEAU MOT DE PASSE'),
+      div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',marginBottom:6}}, 'NOUVEAU MOT DE PASSE (8 caractères min.)'),
       Object.assign(el('input',{type:'password',placeholder:'••••••••',
         style:{padding:'12px 16px',fontSize:14,borderRadius:10,border:'1.5px solid #E5E9F2',background:'#F8FAFD',width:'100%',outline:'none'}}),
         {oninput:e=>newPwd=e.target.value})
@@ -5142,59 +5085,33 @@ function renderProfil(){
         style:{padding:'12px 16px',fontSize:14,borderRadius:10,border:'1.5px solid #E5E9F2',background:'#F8FAFD',width:'100%',outline:'none'}}),
         {oninput:e=>confirmPwd=e.target.value})
     ),
-    el('button',{onclick:()=>{
+    el('button',{onclick:async()=>{
       if(!newPwd){alert('Entrez un nouveau mot de passe');return;}
+      if(newPwd.length<8){alert('Minimum 8 caractères');return;}
       if(newPwd!==confirmPwd){alert('Les mots de passe ne correspondent pas');return;}
-      AUTH.pass=newPwd;localStorage.setItem('smerav_pwd',newPwd);
+      const { error } = await supa.auth.updateUser({ password: newPwd });
+      if(error){ alert('❌ '+error.message); return; }
+      newPwd=''; confirmPwd='';
       notify('Mot de passe mis à jour ✓');
     },style:{width:'100%',padding:'14px',background:'#2563EB',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:'pointer',letterSpacing:0.5}},
     'METTRE À JOUR'),
 
     div({style:{display:'flex',alignItems:'center',gap:10,margin:'32px 0 24px'}},
       span({style:{fontSize:20}}, '📧'),
-      span({style:{fontWeight:700,fontSize:15,color:'#1A2540'}}, 'EMAIL DE CONNEXION (optionnel)')
+      span({style:{fontWeight:700,fontSize:15,color:'#1A2540'}}, 'EMAIL DE CONNEXION')
     ),
-    div({style:{fontSize:12,color:'#6B7A99',marginBottom:16}},
-      "Ajoutez un email : vous pourrez alors vous connecter avec ce email OU le nom d'utilisateur habituel."
+    div({style:{fontSize:13,color:'#1A2540',marginBottom:8,fontWeight:700}}, AUTH._email||'—'),
+    div({style:{fontSize:12,color:'#6B7A99',marginBottom:24,lineHeight:1.6}},
+      "Le changement d'email se fait depuis Supabase (Authentication → Users) par l'administrateur."
     ),
-    div({style:{marginBottom:16}},
-      Object.assign(el('input',{type:'email',value:AUTH.email||'',placeholder:'exemple@smerav.ma',
-        style:{padding:'12px 16px',fontSize:14,borderRadius:10,border:'1.5px solid #E5E9F2',background:'#F8FAFD',width:'100%',outline:'none'}}),
-        {oninput:e=>emailVal=e.target.value})
-    ),
-    el('button',{onclick:()=>{
-      if(!emailVal){alert('Entrez un email');return;}
-      AUTH.email=emailVal; localStorage.setItem('smerav_email',emailVal);
-      notify('Email de connexion enregistré ✓');
-    },style:{width:'100%',padding:'14px',background:'#2563EB',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:'pointer',letterSpacing:0.5,marginBottom:24}},
-    "ENREGISTRER L'EMAIL"),
 
     div({style:{display:'flex',alignItems:'center',gap:10,margin:'8px 0 24px'}},
       span({style:{fontSize:20}}, '🛟'),
       span({style:{fontWeight:700,fontSize:15,color:'#1A2540'}}, 'RÉCUPÉRATION DU MOT DE PASSE')
     ),
-    div({style:{fontSize:12,color:'#6B7A99',marginBottom:16}},
-      "Configurez une question de sécurité : si vous oubliez votre mot de passe, vous pourrez le réinitialiser depuis l'écran de connexion en répondant correctement à cette question."
-    ),
-    div({style:{marginBottom:16}},
-      div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',marginBottom:6}}, 'QUESTION SECRÈTE'),
-      Object.assign(el('input',{value:AUTH.secQuestion||'',placeholder:"ex : Quel est le nom de mon premier chantier ?",
-        style:{padding:'12px 16px',fontSize:14,borderRadius:10,border:'1.5px solid #E5E9F2',background:'#F8FAFD',width:'100%',outline:'none'}}),
-        {oninput:e=>secQ=e.target.value})
-    ),
-    div({style:{marginBottom:24}},
-      div({style:{fontSize:11,fontWeight:700,color:'#6B7A99',textTransform:'uppercase',marginBottom:6}}, 'RÉPONSE'),
-      Object.assign(el('input',{value:AUTH.secAnswer||'',placeholder:'Votre réponse',
-        style:{padding:'12px 16px',fontSize:14,borderRadius:10,border:'1.5px solid #E5E9F2',background:'#F8FAFD',width:'100%',outline:'none'}}),
-        {oninput:e=>secA=e.target.value})
-    ),
-    el('button',{onclick:()=>{
-      if(!secQ || !secA){alert('Remplissez la question et la réponse');return;}
-      AUTH.secQuestion=secQ; AUTH.secAnswer=secA;
-      localStorage.setItem('smerav_secq',secQ); localStorage.setItem('smerav_seca',secA);
-      notify('Question de sécurité enregistrée ✓');
-    },style:{width:'100%',padding:'14px',background:'#10B981',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:'pointer',letterSpacing:0.5}},
-    'ENREGISTRER LA QUESTION')
+    div({style:{fontSize:12,color:'#6B7A99',lineHeight:1.6}},
+      "En cas d'oubli, cliquez sur « Mot de passe oublié ? » sur l'écran de connexion : un lien de réinitialisation est envoyé à votre email."
+    )
   );
 
   return div({style:{maxWidth:700}},
@@ -6446,8 +6363,17 @@ function renderRapportSection(p, updateProject){
   );
 }
 
-// Start
-render();
+// Start — vérifier la session Supabase avant tout chargement de données
+supa.auth.onAuthStateChange((event, session)=>{
+  if(event==='PASSWORD_RECOVERY'){ AUTH._recovery = true; AUTH._ok = true; try{ render(); }catch(e){} }
+  if(event==='SIGNED_OUT'){ AUTH._ok = false; }
+});
+supa.auth.getSession().then(({data})=>{
+  AUTH._ok = !!(data && data.session);
+  if(AUTH._ok) AUTH._email = data.session.user.email || '';
+  if(AUTH._ok) return afterAuth();
+  render();
+}).catch(()=>render());
 
 // PWA Service Worker
 if('serviceWorker' in navigator){
