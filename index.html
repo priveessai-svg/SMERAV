@@ -287,7 +287,9 @@ const DB = {
       this._cache = {};
     }
     // Chargé = la lecture cloud a réussi (y compris base vide). Sinon : aucune sauvegarde vers le cloud.
-    this._loaded = !!cloudOk;
+    // Chargé uniquement si la ligne "main" du cloud a été lue. Sinon on n'affiche JAMAIS de données par défaut.
+    this._loaded = !!cloud;
+    if(!cloud && !this._lastErr) this._lastErr = 'Ligne "main" introuvable ou non lisible (RLS / droits)';
     return this._cache;
   },
   _syncTimer: null,
